@@ -1,7 +1,6 @@
 // ************************************************************************
 // ******* First scratch of a basic computational component class *********
 // ************************************************************************
-#[allow(dead_code)]
 mod rust_3d {
     // Implementation of Point3d structure
     // bound to vector 3d for standard operator processing.
