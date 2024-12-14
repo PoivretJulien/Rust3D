@@ -2,9 +2,10 @@
 // ******* First scratch of a basic computational component class *********
 // ************************************************************************
 mod rust_3d {
-    // Implementation of Point3d structure
-    // bound to vector 3d for standard operator processing.
-    use std::ops::{Add, Sub};
+    // Implementation of a Point3d structure
+    // bound to Vector3d structure
+    // for standard operator processing.
+    use std::ops::{Add, Mul, MulAssign, Sub};
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Point3d {
@@ -42,7 +43,7 @@ mod rust_3d {
         ///  (x:f64, y:f64, z:f64)
         ///  # Returns
         ///  a new Vector 3d from x,y,z values.
-        ///  ( the vector Length is automatically 
+        ///  ( the vector Length is automatically
         ///  computed at vector creation ).
         pub fn new(x: f64, y: f64, z: f64) -> Self {
             Self {
@@ -74,6 +75,14 @@ mod rust_3d {
                 vector_a.X * vector_b.Y - vector_a.Y * vector_b.X,
             )
         }
+
+        // Unitize the Vector3d.
+        pub fn unitize(&mut self) {
+            self.X /= self.Length;
+            self.Y /= self.Length;
+            self.Z /= self.Length;
+            self.compute_vector_length_a();
+        }
     }
 
     // Implementation of + and - operator for Point3d.
@@ -87,10 +96,8 @@ mod rust_3d {
             }
         }
     }
-
     impl Sub for Point3d {
         type Output = Vector3d; // Specify the result type of the addition
-
         fn sub(self, other: Self) -> Vector3d {
             Vector3d::new(self.X - other.X, self.Y - other.Y, self.Z - other.Z)
         }
@@ -98,13 +105,31 @@ mod rust_3d {
 
     impl Add<Vector3d> for Point3d {
         type Output = Point3d;
-
         fn add(self, vector: Vector3d) -> Point3d {
             Point3d {
                 X: self.X + vector.X,
                 Y: self.Y + vector.Y,
                 Z: self.Z + vector.Z,
             }
+        }
+    }
+
+    impl Mul<f64> for Vector3d {
+        type Output = Vector3d;
+        fn mul(self, scalar: f64) -> Self {
+            let v_x = self.X * scalar;
+            let v_y = self.Y * scalar;
+            let v_z = self.Z * scalar;
+            Vector3d::new(v_x, v_y, v_z)
+        }
+    }
+
+    impl MulAssign<f64> for Vector3d {
+        fn mul_assign(&mut self, scalar: f64) {
+            self.X *= scalar;
+            self.Y *= scalar;
+            self.Z *= scalar;
+            self.compute_vector_length_a();
         }
     }
 }
@@ -122,7 +147,27 @@ mod test {
         );
     }
     #[test]
-    fn test_vector3d_length(){
-        assert_eq!(f64::sqrt(2.0),Vector3d::new(1.0,1.0,0.0).Length);
+    fn test_vector3d_length() {
+        assert_eq!(f64::sqrt(2.0), Vector3d::new(1.0, 1.0, 0.0).Length);
+    }
+    #[test]
+    fn test_vector3d_unitize() {
+        let mut vector = Vector3d::new(6.0, 2.0, 8.0);
+        vector.unitize();
+        assert_eq!(1.0, vector.Length);
+    }
+    #[test]
+    fn test_vector3d_scalar_a() {
+        let mut vector = Vector3d::new(6.0, 2.0, 8.0);
+        vector.unitize();
+        vector = vector * 4.0;
+        assert_eq!(4.0, vector.Length);
+    }
+    #[test]
+    fn test_vector3d_scalar_b() {
+        let mut vector = Vector3d::new(6.0, 2.0, 8.0);
+        vector.unitize();
+        vector *= 4.0;
+        assert_eq!(4.0, vector.Length);
     }
 }
