@@ -80,7 +80,7 @@ mod rust_3d {
         }
         
         /// Compute the vector length.
-        pub fn update_length(&mut self) {
+        fn update_length(&mut self) {
             self.Length = ((self.X.powi(2)) + (self.Y.powi(2)) + (self.Z.powi(2))).sqrt();
         }
 
