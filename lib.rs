@@ -1,6 +1,7 @@
 // ************************************************************************
 // ******* First scratch of a basic computational component class *********
 // ************************************************************************
+#[allow(dead_code)]
 mod rust_3d {
     // Implementation of a Point3d structure
     // bound to Vector3d structure
@@ -30,10 +31,10 @@ mod rust_3d {
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Vector3d {
-        pub X: f64,
-        pub Y: f64,
-        pub Z: f64,
-        pub Length: f64,
+        X: f64,
+        Y: f64,
+        Z: f64,
+        Length: f64,
     }
 
     #[allow(non_snake_case)]
@@ -53,9 +54,34 @@ mod rust_3d {
                 Length: Vector3d::compute_vector_length_b(x, y, z),
             }
         }
+        pub fn set_X(&mut self, new_x_value: f64) {
+            self.X = new_x_value;
+            self.update_length();
+        }
+        pub fn set_Y(&mut self, new_y_value: f64) {
+            self.Y = new_y_value;
+            self.update_length();
+        }
+        pub fn set_Z(&mut self, new_z_value: f64) {
+            self.Z = new_z_value;
+            self.update_length();
+        }
+        pub fn get_X(&self) -> f64 {
+            self.X
+        }
+        pub fn get_Y(&self) -> f64 {
+            self.Y
+        }
+        pub fn get_Z(&self) -> f64 {
+            self.Z
+        }
+        /// Return the read only length
+        pub fn Length(&self) -> f64 {
+            self.Length
+        }
         // Some methods overload a&b.
         /// Compute the vector length.
-        pub fn compute_vector_length_a(&mut self) {
+        pub fn update_length(&mut self) {
             self.Length = ((self.X.powi(2)) + (self.Y.powi(2)) + (self.Z.powi(2))).sqrt();
         }
 
@@ -81,7 +107,7 @@ mod rust_3d {
             self.X /= self.Length;
             self.Y /= self.Length;
             self.Z /= self.Length;
-            self.compute_vector_length_a();
+            self.update_length();
         }
     }
 
@@ -129,7 +155,7 @@ mod rust_3d {
             self.X *= scalar;
             self.Y *= scalar;
             self.Z *= scalar;
-            self.compute_vector_length_a();
+            self.update_length();
         }
     }
 }
@@ -148,26 +174,26 @@ mod test {
     }
     #[test]
     fn test_vector3d_length() {
-        assert_eq!(f64::sqrt(2.0), Vector3d::new(1.0, 1.0, 0.0).Length);
+        assert_eq!(f64::sqrt(2.0), Vector3d::new(1.0, 1.0, 0.0).Length());
     }
     #[test]
     fn test_vector3d_unitize() {
         let mut vector = Vector3d::new(6.0, 2.0, 8.0);
         vector.unitize();
-        assert_eq!(1.0, vector.Length);
+        assert_eq!(1.0, vector.Length());
     }
     #[test]
     fn test_vector3d_scalar_a() {
         let mut vector = Vector3d::new(6.0, 2.0, 8.0);
         vector.unitize();
         vector = vector * 4.0;
-        assert_eq!(4.0, vector.Length);
+        assert_eq!(4.0, vector.Length());
     }
     #[test]
     fn test_vector3d_scalar_b() {
         let mut vector = Vector3d::new(6.0, 2.0, 8.0);
         vector.unitize();
         vector *= 4.0;
-        assert_eq!(4.0, vector.Length);
+        assert_eq!(4.0, vector.Length());
     }
 }
