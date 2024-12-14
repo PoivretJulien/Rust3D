@@ -1,4 +1,4 @@
-// ************************************************************************
+/ ************************************************************************
 // ******* First scratch of a basic computational component class *********
 // ************************************************************************
 #[allow(dead_code)]
@@ -6,7 +6,7 @@ mod rust_3d {
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
-    use std::ops::{Add, Mul, MulAssign, Sub};
+    use std::ops::{Add, Div, Mul, MulAssign, Sub};
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Point3d {
@@ -109,6 +109,16 @@ mod rust_3d {
             self.Z /= self.Length;
             self.update_length();
         }
+
+        /// return the angle between two vectors
+        pub fn compute_angle(vector_a: Vector3d, vector_b: Vector3d) -> f64 {
+            f64::acos(
+                (vector_a * vector_b)
+                    / 
+                    (f64::sqrt(vector_a.X.powi(2) + vector_a.Y.powi(2) + vector_a.Z.powi(2))
+                    * f64::sqrt(vector_b.X.powi(2) + vector_b.Y.powi(2) + vector_b.Z.powi(2))),
+                    )
+        }
     }
 
     // Implementation of + and - operator for Point3d.
@@ -122,6 +132,7 @@ mod rust_3d {
             }
         }
     }
+
     impl Sub for Point3d {
         type Output = Vector3d; // Specify the result type of the addition
         fn sub(self, other: Self) -> Vector3d {
@@ -140,12 +151,29 @@ mod rust_3d {
         }
     }
 
+    impl Mul for Vector3d {
+        type Output = f64;
+        fn mul(self, vector: Vector3d) -> f64 {
+            self.X * vector.X + self.Y * vector.Y + self.Z * vector.Z
+        }
+    }
+
     impl Mul<f64> for Vector3d {
         type Output = Vector3d;
         fn mul(self, scalar: f64) -> Self {
             let v_x = self.X * scalar;
             let v_y = self.Y * scalar;
             let v_z = self.Z * scalar;
+            Vector3d::new(v_x, v_y, v_z)
+        }
+    }
+
+    impl Div<f64> for Vector3d {
+        type Output = Vector3d;
+        fn div(self, scalar: f64) -> Self {
+            let v_x = self.X / scalar;
+            let v_y = self.Y / scalar;
+            let v_z = self.Z / scalar;
             Vector3d::new(v_x, v_y, v_z)
         }
     }
@@ -195,5 +223,10 @@ mod test {
         vector.unitize();
         vector *= 4.0;
         assert_eq!(4.0, vector.Length());
+    }
+    use std::f64::consts::PI;
+    #[test]
+    fn test_vector3d_angle(){
+       assert_eq!(PI/2.0,Vector3d::compute_angle(Vector3d::new(0.0,1.0,0.0),Vector3d::new(1.0,0.0,0.0)));
     }
 }
