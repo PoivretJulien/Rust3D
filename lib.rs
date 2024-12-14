@@ -78,7 +78,7 @@ mod rust_3d {
         pub fn Length(&self) -> f64 {
             self.Length
         }
-        // Some methods overload a&b.
+        
         /// Compute the vector length.
         pub fn update_length(&mut self) {
             self.Length = ((self.X.powi(2)) + (self.Y.powi(2)) + (self.Z.powi(2))).sqrt();
