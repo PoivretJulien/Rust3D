@@ -73,7 +73,7 @@ fn main() {
             // and rotate a copy of the 3dPoint by an angle value.
             let rotated_point = rotate_z(*p, angle);
             // Unbox projected point if a value is present an draw 3d points
-            // and Lines in 2d projected space. (3d engine have there completed his task).
+            // and Lines in 2d projected space. (3d engine have there completed it's task).
             // (a more fancy algorithm may use GPU for such operation rather than CPU)
             if let Some(projected_point) = camera.project(rotated_point) {
                 // Draw the point as a white pixel
@@ -123,11 +123,11 @@ fn main() {
             0x0000FF
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
-         if angle >= (std::f64::MAX - 0.005){ // prevent panic in case of overflow (will be optimized a compile time)
+         if angle >= (std::f64::MAX - 0.005){ // prevent panic in case of f64 overflow (substraction will be optimized a compile time)
             angle = 0.0;
         } else {
-            angle += 0.005; // increment angle rotation animation in loop
-        }
+            angle += 0.005; // increment angle rotation for animation in loop
+        }// enjoy.
     }
 }
 
