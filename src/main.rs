@@ -124,16 +124,9 @@ fn main()
                 .unwrap(),
             0x0000FF,
         );
-
-        /*
-                // Draw axis lines for orientation (as a simple example)
-                draw_line(&mut buffer, WIDTH, (WIDTH / 2, HEIGHT / 2), (WIDTH / 2 + 100, HEIGHT / 2), 0xFF0000); // X-axis in red
-                draw_line(&mut buffer, WIDTH, (WIDTH / 2, HEIGHT / 2), (WIDTH / 2, HEIGHT / 2 - 100), 0x00FF00); // Y-axis in green
-                draw_line(&mut buffer, WIDTH, (WIDTH / 2, HEIGHT / 2), (WIDTH / 2 - 100, HEIGHT / 2), 0x0000FF); // Z-axis in blue
-        */
-
+        
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
-        angle += 0.005;
+        angle += 0.005; // increment angle for animated projection in the next loop
     }
 
 }
