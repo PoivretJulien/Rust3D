@@ -523,19 +523,22 @@ mod rust_3d {
             let mut y = y0;
 
             loop {
+                // Write mutable buffer. 
                 if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
                     buffer[y as usize * width + x as usize] = color;
                 }
-
+                // Stop at end.
                 if x == x1 && y == y1 {
                     break;
                 }
-
+                
                 let e2 = 2 * err;
+                
                 if e2 > -dy {
                     err -= dy;
                     x += sx;
                 }
+                
                 if e2 < dx {
                     err += dx;
                     y += sy;
