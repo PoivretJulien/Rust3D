@@ -123,7 +123,11 @@ fn main() {
             0x0000FF
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
-        angle += 0.005; // increment angle for animated projection in the next loop (will overflow and panic at some point ok for testing...)
+         if angle >= (std::f64::MAX - 0.005){ // prevent panic in case of overflow (will be optimized a compile time)
+            angle = 0.0;
+        } else {
+            angle += 0.005; // increment angle rotation animation in loop
+        }
     }
 }
 
@@ -147,7 +151,7 @@ mod rust_3d {
 
         #[allow(non_snake_case)]
         impl Point3d {
-            /// Create a 3d point.
+            ///  Create a 3d point.
             ///  # Arguments
             ///  (x:f64, y:f64, z:f64)
             ///  # Returns
@@ -175,7 +179,8 @@ mod rust_3d {
             ///  # Returns
             ///  a new Vector 3d from x,y,z values.
             ///  ( the vector Length is automatically
-            ///  computed at vector creation ).
+            ///  computed at vector creation or 
+            ///  modification of one of it's x,y,z components ).
             pub fn new(x: f64, y: f64, z: f64) -> Self {
                 Self {
                     X: x,
