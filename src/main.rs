@@ -459,12 +459,12 @@ mod rust_3d {
             }
         }
     }
-    pub mod transformation {
-        use super::Geometry::Point3d;
-        /*
+    /*
          *  A set of early very basic transformations method
          *  of Point3d from world axis and Angles.
-         */
+    */
+    pub mod transformation {
+        use super::Geometry::Point3d;
         /// Rotate the point from Y world axis.
         /// # Arguments
         /// Point3d to transform and angle in radian (in f64)
