@@ -1,6 +1,7 @@
 // ************************************************************************
 // ******* First scratch of a basic computational component class *********
 // ************************************************************************
+#[allow(dead_code)]
 mod rust_3d {
     pub mod Geometry {
         // Implementation of a Point3d structure
@@ -195,16 +196,16 @@ mod rust_3d {
             }
         }
     }
-    
+
     /*
-     * 'atomic' Case study for a simple representation of a 3d point 
-     *  on simple 2D screen via projection matrix honestly for now it's kind of 
+     * 'atomic' Case study for a simple representation of a 3d point
+     *  on simple 2D screen via projection matrix honestly for now it's kind of
      *  a magic black box for me but let's refine the analysis.
-    */
+     */
     pub mod visualization {
 
         use super::Geometry::{Point3d, Vector3d};
-        
+
         struct Camera {
             position: Vector3d, // Camera position in world space
             target: Vector3d,   // The point the camera is looking at
@@ -328,7 +329,90 @@ mod rust_3d {
                     matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
                 )
             }
-            
+        }
+    }
+    pub mod transformation {
+        use super::Geometry::Point3d;
+        /*
+         *  A set of early very basic transformations method
+         *  of Point3d from world axis and Angles.
+         */
+        /// Rotate the point from Y world axis.
+        /// # Arguments
+        /// Point3d to transform and angle in radian (in f64)
+        /// # Returns
+        /// return a Point3d
+        pub fn rotate_y(point: Point3d, angle: f64) -> Point3d {
+            let cos_theta = angle.cos();
+            let sin_theta = angle.sin();
+            Point3d {
+                X: point.X * cos_theta - point.Z * sin_theta,
+                Y: point.Y,
+                Z: point.X * sin_theta + point.Z * cos_theta,
+            }
+        }
+
+        pub fn rotate_x(point: Point3d, angle: f64) -> Point3d {
+            let cos_theta = angle.cos();
+            let sin_theta = angle.sin();
+            Point3d {
+                X: point.X,
+                Y: point.Y * cos_theta - point.Z * sin_theta,
+                Z: point.Y * sin_theta + point.Z * cos_theta,
+            }
+        }
+
+        pub fn rotate_z(point: Point3d, angle: f64) -> Point3d {
+            let cos_theta = angle.cos();
+            let sin_theta = angle.sin();
+            Point3d {
+                X: point.X * cos_theta - point.Y * sin_theta,
+                Y: point.X * sin_theta + point.Y * cos_theta,
+                Z: point.Z,
+            }
+        }
+    }
+    pub mod draw {
+        // (more on this later)
+        // Draw a line between two 2d point on screen.
+        fn draw_line(
+            buffer: &mut Vec<u32>,
+            width: usize,
+            start: (usize, usize),
+            end: (usize, usize),
+            color: u32,
+        ) {
+            let (x0, y0) = (start.0 as isize, start.1 as isize);
+            let (x1, y1) = (end.0 as isize, end.1 as isize);
+
+            let dx = (x1 - x0).abs();
+            let dy = (y1 - y0).abs();
+            let sx = if x0 < x1 { 1 } else { -1 };
+            let sy = if y0 < y1 { 1 } else { -1 };
+            let mut err = dx - dy;
+
+            let mut x = x0;
+            let mut y = y0;
+
+            loop {
+                if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
+                    buffer[y as usize * width + x as usize] = color;
+                }
+
+                if x == x1 && y == y1 {
+                    break;
+                }
+
+                let e2 = 2 * err;
+                if e2 > -dy {
+                    err -= dy;
+                    x += sx;
+                }
+                if e2 < dx {
+                    err += dx;
+                    y += sy;
+                }
+            }
         }
     }
 }
