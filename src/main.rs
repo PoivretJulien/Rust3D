@@ -18,7 +18,7 @@ fn main() {
         "Simple Camera 3D Projection",
         WIDTH,
         HEIGHT,
-        WindowOptions::default(),
+        WindowOptions::default()
     )
     .unwrap_or_else(|e| {
         // panic on error (unwind stack and clean memory)
@@ -37,7 +37,7 @@ fn main() {
         HEIGHT as f64,
         35.0,  // FOV
         0.5,   // Near plane
-        100.0, // Far plane
+        100.0 // Far plane
     );
 
     /*
@@ -53,7 +53,7 @@ fn main() {
         Point3d::new(0.1, 0.0, 0.1),
         Point3d::new(0.0, 0.1, 0.1),
         Point3d::new(0.1, 0.1, 0.1),
-        Point3d::new(0.05, 0.05, 0.05),
+        Point3d::new(0.05, 0.05, 0.05)
     ];
 
     let mut angle = 0.0; // Angle in radian.
@@ -86,7 +86,7 @@ fn main() {
                     WIDTH,
                     camera.project(origin).unwrap(),
                     camera.project(rotated_point).unwrap(),
-                    0x00FF00,
+                    0x00FF00
                 );
             } else if i == 2 {
                 // if third point in Vector<Point3d> array.
@@ -95,7 +95,7 @@ fn main() {
                     WIDTH,
                     camera.project(origin).unwrap(),
                     camera.project(rotated_point).unwrap(),
-                    0xFF0000,
+                    0xFF0000
                 );
             } else if i == 8 {
                 // if 9th (zero based) point in Vector<Point3d> array.
@@ -105,7 +105,7 @@ fn main() {
                     WIDTH,
                     camera.project(origin).unwrap(),
                     camera.project(rotated_point).unwrap(),
-                    0xFA7600, // Orange color (see hexadecimal value).
+                    0xFA7600 // Orange color (see hexadecimal value).
                 );
             }
         }
@@ -119,7 +119,7 @@ fn main() {
             camera
                 .project(Point3d::new(0.0,0.0,0.1))
                 .unwrap(),
-            0x0000FF,
+            0x0000FF
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();// update the buffer
         angle += 0.005; // increment angle for animated projection in the next loop
@@ -141,7 +141,7 @@ mod rust_3d {
         pub struct Point3d {
             pub X: f64,
             pub Y: f64,
-            pub Z: f64,
+            pub Z: f64
         }
 
         #[allow(non_snake_case)]
@@ -163,7 +163,7 @@ mod rust_3d {
             X: f64,
             Y: f64,
             Z: f64,
-            Length: f64,
+            Length: f64
         }
 
         #[allow(non_snake_case)]
@@ -180,7 +180,7 @@ mod rust_3d {
                     X: x,
                     Y: y,
                     Z: z,
-                    Length: Vector3d::compute_length(x, y, z),
+                    Length: Vector3d::compute_length(x, y, z)
                 }
             }
             pub fn set_X(&mut self, new_x_value: f64) {
@@ -228,7 +228,7 @@ mod rust_3d {
                 Vector3d::new(
                     vector_a.Y * vector_b.Z - vector_a.Z * vector_b.Y,
                     vector_a.Z * vector_b.X - vector_a.X * vector_b.Z,
-                    vector_a.X * vector_b.Y - vector_a.Y * vector_b.X,
+                    vector_a.X * vector_b.Y - vector_a.Y * vector_b.X
                 )
             }
 
@@ -244,7 +244,7 @@ mod rust_3d {
                 Vector3d::new(
                     self.X / self.Length,
                     self.Y / self.Length,
-                    self.Z / self.Length,
+                    self.Z / self.Length
                 )
             }
 
@@ -255,7 +255,7 @@ mod rust_3d {
                         / (f64::sqrt(vector_a.X.powi(2) + vector_a.Y.powi(2) + vector_a.Z.powi(2))
                             * f64::sqrt(
                                 vector_b.X.powi(2) + vector_b.Y.powi(2) + vector_b.Z.powi(2),
-                            )),
+                            ))
                 )
             }
         }
@@ -267,7 +267,7 @@ mod rust_3d {
                 Self {
                     X: self.X + other.X,
                     Y: self.Y + other.Y,
-                    Z: self.Z + other.Z,
+                    Z: self.Z + other.Z
                 }
             }
         }
@@ -285,7 +285,7 @@ mod rust_3d {
                 Point3d {
                     X: self.X + vector.X,
                     Y: self.Y + vector.Y,
-                    Z: self.Z + vector.Z,
+                    Z: self.Z + vector.Z
                 }
             }
         }
@@ -342,7 +342,7 @@ mod rust_3d {
             width: f64,         // Screen width
             height: f64,        // Screen height
             near: f64,          // Near clipping plane
-            far: f64,           // Far clipping plane
+            far: f64           // Far clipping plane
         }
 
         impl Camera {
@@ -364,7 +364,7 @@ mod rust_3d {
                     width,
                     height,
                     near,
-                    far,
+                    far
                 }
             }
 
@@ -374,7 +374,7 @@ mod rust_3d {
                 let forward = Vector3d::new(
                     self.target.get_X() - self.position.get_X(),
                     self.target.get_Y() - self.position.get_Y(),
-                    self.target.get_Z() - self.position.get_Z(),
+                    self.target.get_Z() - self.position.get_Z()
                 )
                 .unitize_b();
                 let right = Vector3d::cross_product(forward, self.up).unitize_b();
@@ -382,7 +382,7 @@ mod rust_3d {
                 let translation = Vector3d::new(
                     -self.position.get_X(),
                     -self.position.get_Y(),
-                    -self.position.get_Z(),
+                    -self.position.get_Z()
                 );
                 [
                     [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
@@ -392,8 +392,8 @@ mod rust_3d {
                         right * translation,
                         up * translation,
                         forward * translation,
-                        1.0,
-                    ],
+                        1.0
+                    ]
                 ]
             }
 
@@ -409,14 +409,14 @@ mod rust_3d {
                         0.0,
                         0.0,
                         (self.far + self.near) / (self.near - self.far),
-                        -1.0,
+                        -1.0
                     ],
                     [
                         0.0,
                         0.0,
                         (2.0 * self.far * self.near) / (self.near - self.far),
-                        0.0,
-                    ],
+                        0.0
+                    ]
                 ]
             }
 
@@ -453,7 +453,7 @@ mod rust_3d {
                 Point3d::new(
                     matrix[0][0] * v.X + matrix[0][1] * v.Y + matrix[0][2] * v.Z + matrix[0][3],
                     matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
-                    matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
+                    matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3]
                 )
             }
         }
@@ -475,7 +475,7 @@ mod rust_3d {
             Point3d {
                 X: point.X * cos_theta - point.Z * sin_theta,
                 Y: point.Y,
-                Z: point.X * sin_theta + point.Z * cos_theta,
+                Z: point.X * sin_theta + point.Z * cos_theta
             }
         }
 
@@ -485,7 +485,7 @@ mod rust_3d {
             Point3d {
                 X: point.X,
                 Y: point.Y * cos_theta - point.Z * sin_theta,
-                Z: point.Y * sin_theta + point.Z * cos_theta,
+                Z: point.Y * sin_theta + point.Z * cos_theta
             }
         }
 
@@ -495,7 +495,7 @@ mod rust_3d {
             Point3d {
                 X: point.X * cos_theta - point.Y * sin_theta,
                 Y: point.X * sin_theta + point.Y * cos_theta,
-                Z: point.Z,
+                Z: point.Z
             }
         }
     }
@@ -504,9 +504,10 @@ mod rust_3d {
         // Draw a line between two 2d points on screen.
         // it's a clever algorithm dynamicly plotting 
         // the distance between two points. 
-        // - he compute at each loop the direction x or y 
+        // - he compute at each loop the direction x and y 
         //   of next point to plot and so, draw a line in 
-        //   a 2d space efficiently.
+        //   a 2d space and efficiently create the ilusion of  
+        ///  a 3d line moving/rotating.
         pub fn draw_line(
             buffer: &mut Vec<u32>,
             width: usize,
@@ -532,18 +533,20 @@ mod rust_3d {
             let mut y = y0;
             
             loop {
-                // Write mutable buffer inputs condition are met. 
+                // Write mutable buffer if inputs condition are met. 
                 if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
                     buffer[y as usize * width + x as usize] = color;
                 }
-                // Stop at end.
+                // Stop at end (when start point reach end point (x,y).
                 if x == x1 && y == y1 {
                     break;
                 }
-                // Evaluate the next x or y direction (we are only in 2D space).
-                // algorithm key point by doubling the reminder by two
-                // allow to shrink the remider by dy or dx in one step
+                // Evaluate the next x and y direction (we are only in 2D space).
+                // algorithm key point: is to  double the reminder by two
+                // allowing to shrink the remider by dy and dx in one step
                 // making Bresenham's line algorithm exceptionally efficient.
+                // at chrinking the line towards the endpoint on x and y right direction
+                // for an orientation given.
                 let e2 = 2 * err;
                 if e2 > -dy {
                     err -= dy; // shrink reminder
