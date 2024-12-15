@@ -553,7 +553,7 @@ mod rust_3d {
                 // allowing to shrink the remider by dy and dx in one step
                 // making Bresenham's line algorithm exceptionally efficient.
                 // at chrinking the line towards the endpoint on x and y right direction
-                // for an orientation given.
+                // for a given orientation.
                 let e2 = 2 * err;
                 if e2 > -dy {
                     err -= dy; // shrink reminder
