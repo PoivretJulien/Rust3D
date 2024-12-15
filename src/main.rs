@@ -43,7 +43,7 @@ fn main() {
     /*
      * for now render view dimension need to be calibrated (work with small values)
      */
-    // Define cube 8 point (with a 9th point in the center)
+    // Define a cube with 8 points (with a 9th point in the center)
     let points = vec![
         Point3d::new(0.0, 0.0, 0.0),
         Point3d::new(0.1, 0.0, 0.0),
