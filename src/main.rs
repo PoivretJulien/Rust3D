@@ -532,7 +532,7 @@ mod rust_3d {
             let mut y = y0;
             
             loop {
-                // Write mutable buffer. 
+                // Write mutable buffer inputs condition are met. 
                 if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
                     buffer[y as usize * width + x as usize] = color;
                 }
