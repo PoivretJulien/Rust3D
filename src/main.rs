@@ -501,8 +501,13 @@ mod rust_3d {
         }
     }
     pub mod draw {
-        // (more on this later)
-        // Draw a line between two 2d point on screen.
+        // Bresenham's line algorithm.
+        // Draw a line between two 2d points on screen.
+        // it's a clever algorithm dynamicly plotting 
+        // the distance between two points. 
+        // - he compute at each loop the direction x or y 
+        //   of next point to plot and so, draw a line in 
+        //   a 2d space efficiently.
         pub fn draw_line(
             buffer: &mut Vec<u32>,
             width: usize,
@@ -510,18 +515,23 @@ mod rust_3d {
             end: (usize, usize),
             color: u32,
         ) {
+            // Assign reference for readability
             let (x0, y0) = (start.0 as isize, start.1 as isize);
             let (x1, y1) = (end.0 as isize, end.1 as isize);
-
+            
+            // Compute absolute distance differance.
             let dx = (x1 - x0).abs();
             let dy = (y1 - y0).abs();
+            
+            // Evaluate the (x and y) direction. 
             let sx = if x0 < x1 { 1 } else { -1 };
             let sy = if y0 < y1 { 1 } else { -1 };
-            let mut err = dx - dy;
 
+            // Make mutable reference for iteration.
+            let mut err = dx - dy;
             let mut x = x0;
             let mut y = y0;
-
+            
             loop {
                 // Write mutable buffer. 
                 if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
@@ -531,14 +541,12 @@ mod rust_3d {
                 if x == x1 && y == y1 {
                     break;
                 }
-                
+                // Evaluate the next x or y direction.
                 let e2 = 2 * err;
-                
                 if e2 > -dy {
                     err -= dy;
                     x += sx;
                 }
-                
                 if e2 < dx {
                     err += dx;
                     y += sy;
