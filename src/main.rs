@@ -178,9 +178,10 @@ mod rust_3d {
             ///  (x:f64, y:f64, z:f64)
             ///  # Returns
             ///  a new Vector 3d from x,y,z values.
-            ///  ( the vector Length is automatically
-            ///  computed at vector creation or 
-            ///  modification of one of it's x,y,z components ).
+            ///  /////////////////////////////////////////////////////////
+            ///   the vector Length is automatically computed at vector 
+            ///   creation or modification of one of it's X,Y,Z components 
+            ///  //////////////////////////////////////////////////////////
             pub fn new(x: f64, y: f64, z: f64) -> Self {
                 Self {
                     X: x,
