@@ -374,7 +374,7 @@ mod rust_3d {
     }
     pub mod draw {
         // (more on this later)
-        // Draw a line between two 2d point on screen.
+        // Draw a line between two 2d points on screen.
         fn draw_line(
             buffer: &mut Vec<u32>,
             width: usize,
