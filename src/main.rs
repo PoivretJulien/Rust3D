@@ -1,6 +1,8 @@
-use minifb::{Key, Window, WindowOptions};
-use rust_3d::Geometry::{Point3d, Vector3d};
-use rust_3d::visualization::*;
+use minifb::{Key, Window, WindowOptions};      // render a 2d point in color on a defined screen size.
+
+// My 3d lib for computational processing (resource mcneel.com)
+use rust_3d::Geometry::{Point3d, Vector3d};   
+use rust_3d::visualization::*;                 
 use rust_3d::transformation::*;
 use rust_3d::draw::*;
 
@@ -19,10 +21,12 @@ fn main()
         HEIGHT,
         WindowOptions::default(),
     )
-    .unwrap_or_else(|e| {
+    .unwrap_or_else(|e| { // panic on error (unwind stack and clean memory)
         panic!("{}", e);
     });
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    // a simple allocated array of u32 initialized at 0
+    // representing the color and the 2d position of points.
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT]; 
 
     // Define the camera
     let camera = Camera::new(
@@ -37,7 +41,7 @@ fn main()
         );
 
     /*
-     * for now render view dimension need to be calibrated
+     * for now render view dimension need to be calibrated (work with small values)
     */
     // Define cube 8 point (with a 9th point in the center)
     let points = vec![
@@ -51,24 +55,28 @@ fn main()
         Point3d::new(0.1,0.1,0.1),
         Point3d::new(0.05,0.05,0.05)
         ];
-
+    
     let mut angle = 0.0; // Angle in radian.
-                              //
+                              
     // mini frame buffer runtime class initialization.
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // Clear the screen
+        // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
-            *pixel = 0;
+            *pixel = 0x0;
         }
-        // define 'static' origin 3d point
+        // Define 'static' origin 3d point
         let origin = Point3d::new(0.0,0.0,0.0);
         // Project animated point on the 2d screen.
         for (i, p) in points.iter().enumerate() {
-            // Project the point into 2D
+            // walk the array of point (Vector<Point3d>)
+            // and rotate a copy of the 3dPoint by an angle value.
             let rotated_point = rotate_z(*p, angle);
+            // Unbox projected point if a value is present an draw 3d points 
+            // and Lines in 2d projected space. (3d engine have there completed his task).
+            // (a more fancy algorithm may use GPU for such operation rather than CPU)
             if let Some(projected_point) = camera.project(rotated_point) {
-                //Draw world X and Y axis (they are rotating...)
-                if i == 1 {
+                // Draw world X and Y axis (they are rotating...)
+                if i == 1 { // if first point in Vector<Point3d> array. 
                     draw_line(
                         &mut buffer,
                         WIDTH,
@@ -78,7 +86,7 @@ fn main()
                         camera.project(rotated_point).unwrap(),
                         0x00FF00,
                     );
-                } else if i == 2 {
+                } else if i == 2 { // if third point in Vector<Point3d> array. 
                     draw_line(
                         &mut buffer,
                         WIDTH,
@@ -88,7 +96,7 @@ fn main()
                         camera.project(rotated_point).unwrap(),
                         0xFF0000,
                     );
-                } else if i == 8 {
+                } else if i == 8 { // if 9th (zero based) point in Vector<Point3d> array. 
                     // Draw an example line in orange. 
                     draw_line(
                         &mut buffer,
@@ -97,7 +105,7 @@ fn main()
                             .project(origin)
                             .unwrap(),
                         camera.project(rotated_point).unwrap(),
-                        0xFA7600,
+                        0xFA7600,// Orange color (see hexadecimal value).
                     );
                 }
                 // Draw the point as a white pixel
