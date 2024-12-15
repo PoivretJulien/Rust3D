@@ -526,7 +526,7 @@ mod rust_3d {
             let sx = if x0 < x1 { 1 } else { -1 };
             let sy = if y0 < y1 { 1 } else { -1 };
 
-            // Make mutable reference for iteration.
+            // Make mutable copy for iteration.
             let mut err = dx - dy;
             let mut x = x0;
             let mut y = y0;
