@@ -402,7 +402,6 @@ mod rust_3d {
                 let aspect_ratio = self.width / self.height;
                 let fov_rad = self.fov.to_radians();
                 let f = 1.0 / (fov_rad / 2.0).tan();
-
                 [
                     [f / aspect_ratio, 0.0, 0.0, 0.0],
                     [0.0, f, 0.0, 0.0],
