@@ -59,6 +59,7 @@ fn main() {
     let mut angle = 0.0; // Angle in radian.
 
     // mini frame buffer runtime class initialization.
+    // loop infinitly until the windows is closed or the escape key is pressed.
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
@@ -121,8 +122,8 @@ fn main() {
                 .unwrap(),
             0x0000FF
         );
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();// update the buffer
-        angle += 0.005; // increment angle for animated projection in the next loop
+        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
+        angle += 0.005; // increment angle for animated projection in the next loop (will overflow and panic at some point ok for testing...)
     }
 }
 
