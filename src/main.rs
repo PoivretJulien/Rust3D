@@ -1,17 +1,16 @@
-use minifb::{Key, Window, WindowOptions};      // render a 2d point in color on a defined screen size.
+use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a defined screen size.
 
-// My 3d lib for computational processing (resource mcneel.com)
-use rust_3d::Geometry::{Point3d, Vector3d};   
-use rust_3d::visualization::*;                 
-use rust_3d::transformation::*;
+// My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
 use rust_3d::draw::*;
+use rust_3d::transformation::*;
+use rust_3d::visualization::*;
+use rust_3d::Geometry::{Point3d, Vector3d};
 
-fn main() 
-{
+fn main() {
     /*
      * First projection of the rust_3d module 3d Point
      * with a very basic but mysterious 3d engine in rust.
-    */
+     */
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
     // Init a widows class.
@@ -21,43 +20,44 @@ fn main()
         HEIGHT,
         WindowOptions::default(),
     )
-    .unwrap_or_else(|e| { // panic on error (unwind stack and clean memory)
+    .unwrap_or_else(|e| {
+        // panic on error (unwind stack and clean memory)
         panic!("{}", e);
     });
     // a simple allocated array of u32 initialized at 0
     // representing the color and the 2d position of points.
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT]; 
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     // Define the camera
     let camera = Camera::new(
-        Vector3d::new(0.0,-1.0,0.2), // Camera position
-        Vector3d::new( 0.0,0.0,-0.1), // Camera target (looking at the origin)
-        Vector3d::new(0.0,0.0,1.0), // Camera up vector
+        Vector3d::new(0.0, -1.0, 0.2), // Camera position
+        Vector3d::new(0.0, 0.0, -0.1), // Camera target (looking at the origin)
+        Vector3d::new(0.0, 0.0, 1.0),  // Camera up vector
         WIDTH as f64,
         HEIGHT as f64,
         35.0,  // FOV
         0.5,   // Near plane
         100.0, // Far plane
-        );
+    );
 
     /*
      * for now render view dimension need to be calibrated (work with small values)
-    */
+     */
     // Define cube 8 point (with a 9th point in the center)
     let points = vec![
-        Point3d::new(0.0,0.0,0.0),
-        Point3d::new(0.1,0.0,0.0),
-        Point3d::new(0.0,0.1,0.0),
-        Point3d::new(0.1,0.1,0.0),
-        Point3d::new(0.0,0.0,0.1),
-        Point3d::new(0.1,0.0,0.1),
-        Point3d::new(0.0,0.1,0.1),
-        Point3d::new(0.1,0.1,0.1),
-        Point3d::new(0.05,0.05,0.05)
-        ];
-    
+        Point3d::new(0.0, 0.0, 0.0),
+        Point3d::new(0.1, 0.0, 0.0),
+        Point3d::new(0.0, 0.1, 0.0),
+        Point3d::new(0.1, 0.1, 0.0),
+        Point3d::new(0.0, 0.0, 0.1),
+        Point3d::new(0.1, 0.0, 0.1),
+        Point3d::new(0.0, 0.1, 0.1),
+        Point3d::new(0.1, 0.1, 0.1),
+        Point3d::new(0.05, 0.05, 0.05),
+    ];
+
     let mut angle = 0.0; // Angle in radian.
-                              
+
     // mini frame buffer runtime class initialization.
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Clear the screen (0x0 = Black)
@@ -65,51 +65,48 @@ fn main()
             *pixel = 0x0;
         }
         // Define 'static' origin 3d point
-        let origin = Point3d::new(0.0,0.0,0.0);
+        let origin = Point3d::new(0.0, 0.0, 0.0);
         // Project animated point on the 2d screen.
         for (i, p) in points.iter().enumerate() {
             // walk the array of point (Vector<Point3d>)
             // and rotate a copy of the 3dPoint by an angle value.
             let rotated_point = rotate_z(*p, angle);
-            // Unbox projected point if a value is present an draw 3d points 
+            // Unbox projected point if a value is present an draw 3d points
             // and Lines in 2d projected space. (3d engine have there completed his task).
             // (a more fancy algorithm may use GPU for such operation rather than CPU)
             if let Some(projected_point) = camera.project(rotated_point) {
-                // Draw world X and Y axis (they are rotating...)
-                if i == 1 { // if first point in Vector<Point3d> array. 
-                    draw_line(
-                        &mut buffer,
-                        WIDTH,
-                        camera
-                            .project(origin)
-                            .unwrap(),
-                        camera.project(rotated_point).unwrap(),
-                        0x00FF00,
-                    );
-                } else if i == 2 { // if third point in Vector<Point3d> array. 
-                    draw_line(
-                        &mut buffer,
-                        WIDTH,
-                        camera
-                            .project(origin)
-                            .unwrap(),
-                        camera.project(rotated_point).unwrap(),
-                        0xFF0000,
-                    );
-                } else if i == 8 { // if 9th (zero based) point in Vector<Point3d> array. 
-                    // Draw an example line in orange. 
-                    draw_line(
-                        &mut buffer,
-                        WIDTH,
-                        camera
-                            .project(origin)
-                            .unwrap(),
-                        camera.project(rotated_point).unwrap(),
-                        0xFA7600,// Orange color (see hexadecimal value).
-                    );
-                }
                 // Draw the point as a white pixel
                 buffer[projected_point.1 * WIDTH + projected_point.0] = 0xFFFFFF;
+            }
+            // Draw world X and Y axis (they are rotating...)
+            if i == 1 {
+                // if first point in Vector<Point3d> array.
+                draw_line(
+                    &mut buffer,
+                    WIDTH,
+                    camera.project(origin).unwrap(),
+                    camera.project(rotated_point).unwrap(),
+                    0x00FF00,
+                );
+            } else if i == 2 {
+                // if third point in Vector<Point3d> array.
+                draw_line(
+                    &mut buffer,
+                    WIDTH,
+                    camera.project(origin).unwrap(),
+                    camera.project(rotated_point).unwrap(),
+                    0xFF0000,
+                );
+            } else if i == 8 {
+                // if 9th (zero based) point in Vector<Point3d> array.
+                // Draw an example line in orange.
+                draw_line(
+                    &mut buffer,
+                    WIDTH,
+                    camera.project(origin).unwrap(),
+                    camera.project(rotated_point).unwrap(),
+                    0xFA7600, // Orange color (see hexadecimal value).
+                );
             }
         }
         // Draw the static (not moving) z Axis in blue.
@@ -117,26 +114,16 @@ fn main()
             &mut buffer,
             WIDTH,
             camera
-                .project(Point3d {
-                    X: 0.0,
-                    Y: 0.0,
-                    Z: 0.0,
-                })
+                .project(Point3d::new(0.0, 0.0,0.0))
                 .unwrap(),
             camera
-                .project(Point3d {
-                    X: 0.0,
-                    Y: 0.0,
-                    Z: 0.1,
-                })
+                .project(Point3d::new(0.0,0.0,0.1))
                 .unwrap(),
             0x0000FF,
         );
-        
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();// update the buffer
         angle += 0.005; // increment angle for animated projection in the next loop
     }
-
 }
 
 // ************************************************************************
