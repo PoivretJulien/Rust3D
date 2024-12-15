@@ -94,7 +94,7 @@ mod rust_3d {
             pub fn compute_vector_length_b(x: f64, y: f64, z: f64) -> f64 {
                 (x.powi(2) + y.powi(2) + z.powi(2)).sqrt()
             }
-
+            
             // Vector3d Cross Product.
             pub fn cross_product(vector_a: Vector3d, vector_b: Vector3d) -> Self {
                 Vector3d::new(
@@ -103,7 +103,7 @@ mod rust_3d {
                     vector_a.X * vector_b.Y - vector_a.Y * vector_b.X,
                 )
             }
-
+            
             // Unitize the Vector3d.
             pub fn unitize(&mut self) {
                 self.X /= self.Length;
