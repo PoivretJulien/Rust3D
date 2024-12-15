@@ -114,7 +114,7 @@ fn main() {
             &mut buffer,
             WIDTH,
             camera
-                .project(Point3d::new(0.0, 0.0,0.0))
+                .project(origin)
                 .unwrap(),
             camera
                 .project(Point3d::new(0.0,0.0,0.1))
