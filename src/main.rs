@@ -527,7 +527,7 @@ mod rust_3d {
             let sy = if y0 < y1 { 1 } else { -1 };
 
             // Make mutable copy for iteration.
-            let mut err = dx - dy;
+            let mut err = dx - dy;  
             let mut x = x0;
             let mut y = y0;
             
@@ -540,15 +540,18 @@ mod rust_3d {
                 if x == x1 && y == y1 {
                     break;
                 }
-                // Evaluate the next x or y direction.
+                // Evaluate the next x or y direction (we are only in 2D space).
+                // algorithm key point by doubling the reminder by two
+                // allow to shrink the remider by dy or dx in one step
+                // making Bresenham's line algorithm exceptionally efficient.
                 let e2 = 2 * err;
                 if e2 > -dy {
-                    err -= dy;
-                    x += sx;
+                    err -= dy; // shrink reminder
+                    x += sx; // adjust x cursor position (+/-)1
                 }
                 if e2 < dx {
-                    err += dx;
-                    y += sy;
+                    err += dx; // shrink reminder
+                    y += sy; // adjust y cursor position (+/-)1
                 }
             }
         }
