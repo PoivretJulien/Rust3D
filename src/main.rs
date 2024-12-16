@@ -430,7 +430,7 @@ mod rust_3d {
                     [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
                     [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
                     [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
-                    // Compute dot product manually... (i dont plan to implemented 'Vector3d*Point3d'). 
+                    // Compute dot product manually... (i don't plan to implemented 'Vector3d*Point3d'). 
                     [
                         (right.get_X() * translation.X) + (right.get_Y() * translation.Y) + (right.get_Z() * translation.Z),
                         (up.get_X() * translation.X) + (up.get_Y() * translation.Y) + (right.get_Z() * translation.Z),
