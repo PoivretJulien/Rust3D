@@ -377,6 +377,8 @@ mod rust_3d {
 
             // Compute the view matrix
             // (transforms world coordinates to camera coordinates)
+            // TODO: Vector3d struct use a menber 'Length' not required in this 
+            // Context.
             fn get_view_matrix(&self) -> [[f64; 4]; 4] {
                 let forward = Vector3d::new(
                     self.target.get_X() - self.position.get_X(),
