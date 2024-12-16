@@ -123,10 +123,10 @@ fn main() {
             0x0000FF
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
-         if angle >= (std::f64::MAX - 0.005){ // prevent panic in case of f64 overflow (substraction will be optimized at compile time)
+         if angle >= (std::f64::MAX - 0.005){ // prevent to panic in case of f64 overflow (substraction will be optimized at compile time)
             angle = 0.0;
         } else {
-            angle += 0.005; // increment angle rotation for animation in loop
+            angle += 0.005; // increment angle rotation for the animation in loop
         }// enjoy.
     }
 }
