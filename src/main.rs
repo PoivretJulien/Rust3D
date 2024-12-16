@@ -379,7 +379,7 @@ mod rust_3d {
             // (transforms world coordinates to camera coordinates)
             // TODO: Vector3d struct use a menber 'Length' not required in this 
             // Context.
-            fn get_view_matrix(&self) -> [[f64; 4]; 4] {
+            fn get_view_matrix_deprecated(&self) -> [[f64; 4]; 4] {
                 let forward = Vector3d::new(
                     self.target.get_X() - self.position.get_X(),
                     self.target.get_Y() - self.position.get_Y(),
@@ -405,7 +405,40 @@ mod rust_3d {
                     ]
                 ]
             }
-
+            /// Same as above slightly faster.
+            /// ( Vector Length is not automatically computed )
+            /// - i have used manual dot product between Point3d and Vector3d 
+            /// without overhead cost at runtime..
+            fn get_view_matrix(&self)->[[f64;4];4]
+            {
+                let forward = Vector3d::new(
+                    self.target.get_X() - self.position.get_X(),
+                    self.target.get_Y() - self.position.get_Y(),
+                    self.target.get_Z() - self.position.get_Z()
+                )
+                .unitize_b();
+                let right = Vector3d::cross_product(forward, self.up).unitize_b();
+                let up = Vector3d::cross_product(right, forward).unitize_b();
+                // a Point3d is used there instead of Vector3d to avoid 
+                // computing unused vector length automatically.
+                let translation = Point3d::new( 
+                    -self.position.get_X(),
+                    -self.position.get_Y(),
+                    -self.position.get_Z()
+                );
+                [
+                    [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
+                    [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
+                    [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
+                    // Compute dot product manually... (i dont plan to implemented 'Vector3d*Point3d'). 
+                    [
+                        (right.get_X() * translation.X) + (right.get_Y() * translation.Y) + (right.get_Z() * translation.Z),
+                        (up.get_X() * translation.X) + (up.get_Y() * translation.Y) + (right.get_Z() * translation.Z),
+                        (forward.get_X() * translation.X) + (forward.get_Y() * translation.Y) + (forward.get_Z() * translation.Z),
+                        1.0
+                    ]
+                ]
+            }
             // Create a perspective projection matrix
             fn get_projection_matrix(&self) -> [[f64; 4]; 4] {
                 let aspect_ratio = self.width / self.height;
