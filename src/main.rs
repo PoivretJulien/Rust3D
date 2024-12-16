@@ -1,11 +1,12 @@
 use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a defined screen size.
 
 // My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
-use rust_3d::draw::*;
-use rust_3d::transformation::*;
-use rust_3d::visualization::*;
-use rust_3d::Geometry::{Point3d, Vector3d};
-
+use rust_3d::Geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.  
+use rust_3d::transformation::*; // Basic 3d treansformation of 3dPoint.
+use rust_3d::visualization::*; // a basic 3d engine ploting a 3d point on 2d screen.
+use rust_3d::draw::*;// Draw 2d element on screen ^^
+// Basic Rust program using CPU for animating 9 3d points on screen 
+// representing a cube with a dot in the midle 3 colors axies are also represented.
 fn main() {
     /*
      * First projection of the rust_3d module 3d Point
