@@ -5,6 +5,7 @@ use rust_3d::draw::*;
 use rust_3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
 use rust_3d::transformation::*; // Basic 3d treansformation of 3dPoint.
 use rust_3d::visualization::*; // a basic 3d engine ploting a 3d point on 2d screen.
+
                                
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
@@ -683,11 +684,27 @@ mod test {
     }
     use super::rust_3d::intersection::*;
     #[test]
-    fn test_intersection(){
+    fn test_intersection_a(){
         let p1 = Point3d::new(0.0, 1.0, 0.0);
         let d1 = Vector3d::new(0.0,-1.0,0.0);
         let p2 = Point3d::new(1.0,0.0,0.0);
         let d2 = Vector3d::new(-1.0,0.0,0.0);
         assert_eq!(Point3d::new(0.0,0.0,0.0),compute_intersection_cad(&p1, &d1, &p2, &d2).unwrap());
+    }
+    #[test]
+    fn test_intersection_b(){
+        let p1 = Point3d::new(82.157, 30.323, 0.0);
+        let d1 = Vector3d::new(0.643,-0.766,0.0);
+        let p2 = Point3d::new(80.09,19.487,0.0);
+        let d2 = Vector3d::new(0.94,0.342,0.0);
+        let expected_result = Point3d::new(88.641361,22.59824,0.0); 
+        if let Some(result) = compute_intersection_cad(&p1, &d1, &p2, &d2){
+            if (result-expected_result).Length() < 26e-6
+            {
+                assert!(true);
+            }else{
+                assert!(false)
+            }
+        } 
     }
 }
