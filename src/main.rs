@@ -233,11 +233,11 @@ mod rust_3d {
             }
 
             // Vector3d Cross Product.
-            pub fn cross_product(vector_a: Vector3d, vector_b: Vector3d) -> Self {
+            pub fn cross_product(vector_a: &Vector3d, vector_b: &Vector3d) -> Self {
                 Vector3d::new(
-                    vector_a.Y * vector_b.Z - vector_a.Z * vector_b.Y,
-                    vector_a.Z * vector_b.X - vector_a.X * vector_b.Z,
-                    vector_a.X * vector_b.Y - vector_a.Y * vector_b.X,
+                    (*vector_a).Y * (*vector_b).Z - (*vector_a).Z * (*vector_b).Y,
+                        (*vector_a).Z * (*vector_b).X - (*vector_a).X * (*vector_b).Z,
+                            (*vector_a).X * (*vector_b).Y - (*vector_a).Y * (*vector_b).X,
                 )
             }
 
@@ -349,13 +349,13 @@ mod rust_3d {
             p2: &Point3d,
             d2: &Vector3d,
         ) -> Option<Point3d> {
-            let cross_d1_d2 = Vector3d::cross_product(*d1, *d2);
+            let cross_d1_d2 = Vector3d::cross_product(d1, d2);
             let denom = cross_d1_d2 * cross_d1_d2; // dot product (squere of cross product vector)
             if f64::abs(denom) < 1e-10 {
                 None // if lines never intersect.
             } else {
                 let diff = *p2 - *p1; // Make vector delta.
-                let t1 = Vector3d::cross_product(diff, *d2) * cross_d1_d2 / denom; // Compute intersection from formula. 
+                let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Compute intersection from formula. 
                 Some(*p1 + ((*d1) * t1)) // Return result.
             }
         }
@@ -415,8 +415,8 @@ mod rust_3d {
                     self.target.get_Z() - self.position.get_Z(),
                 )
                 .unitize_b();
-                let right = Vector3d::cross_product(forward, self.up).unitize_b();
-                let up = Vector3d::cross_product(right, forward).unitize_b();
+                let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+                let up = Vector3d::cross_product(&right, &forward).unitize_b();
                 let translation = Vector3d::new(
                     -self.position.get_X(),
                     -self.position.get_Y(),
@@ -445,8 +445,8 @@ mod rust_3d {
                     self.target.get_Z() - self.position.get_Z(),
                 )
                 .unitize_b();
-                let right = Vector3d::cross_product(forward, self.up).unitize_b();
-                let up = Vector3d::cross_product(right, forward).unitize_b();
+                let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+                let up = Vector3d::cross_product(&right, &forward).unitize_b();
                 // a Point3d is used there instead of Vector3d to avoid
                 // computing unused vector length automatically.
                 let translation = Point3d::new(
@@ -647,7 +647,7 @@ mod test {
         let vec_b = Vector3d::new(0.0, 1.0, 0.0);
         assert_eq!(
             Vector3d::new(0.0, 0.0, 1.0),
-            Vector3d::cross_product(vec_a, vec_b)
+            Vector3d::cross_product(&vec_a, &vec_b)
         );
     }
     #[test]
