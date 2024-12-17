@@ -340,7 +340,7 @@ mod rust_3d {
         /// None if vectors never intersect or a Point3d on Success.
         /// ***** this is a CAD version of the function using full fledged vectors feature. *****
         /// note: a perfomance drawing optimized function will be added just next.
-        pub fn compute_intersection(
+        pub fn compute_intersection_cad(
             p1: &Point3d,
             d1: &Vector3d,
             p2: &Point3d,
@@ -686,6 +686,6 @@ mod test {
         let d1 = Vector3d::new(0.0,-1.0,0.0);
         let p2 = Point3d::new(1.0,0.0,0.0);
         let d2 = Vector3d::new(-1.0,0.0,0.0);
-        assert_eq!(Point3d::new(0.0,0.0,0.0),compute_intersection(&p1, &d1, &p2, &d2).unwrap());
+        assert_eq!(Point3d::new(0.0,0.0,0.0),compute_intersection_cad(&p1, &d1, &p2, &d2).unwrap());
     }
 }
