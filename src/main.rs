@@ -340,7 +340,7 @@ mod rust_3d {
         /// p1 first points (Point3d), d1 first direction (Vector3d)
         /// p2 first points (Point3d), d2 first direction (Vector3d)
         /// # Returns
-        /// None if vectors never intersect or a Point3d on Success.
+        /// None if vectors never intersect or Point3d of intersection on Success.
         /// ***** this is a CAD version of the function using full fledged vectors feature. *****
         /// note: a perfomance drawing optimized function will be added just next.
         pub fn compute_intersection_cad(
