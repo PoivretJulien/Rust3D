@@ -582,8 +582,8 @@ mod rust_3d {
         // it's a clever algorithm dynamicly plotting
         // the distance between two points.
         // - Bresenham's algorithm compute at each loop the direction (x,y)
-        //   of next point to plot and so, draw a line in
-        //   a 2d space and efficiently create the illusion of
+        //   of the next 2d point to plot and so, draw a line in
+        //   a (x,y) space and efficiently create the illusion of
         ///  a 3d line moving or rotating (if created with a 3d point projected in 2d).
         pub fn draw_line(
             buffer: &mut Vec<u32>,
