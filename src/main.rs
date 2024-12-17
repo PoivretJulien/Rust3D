@@ -584,7 +584,7 @@ mod rust_3d {
         // - Bresenham's algorithm compute at each loop the direction (x,y)
         //   of the next 2d point to plot and so, draw a line in
         //   a (x,y) space and efficiently create the illusion of
-        ///  a 3d line moving or rotating (if created with a 3d point projected in 2d).
+        //   a 3d line moving or rotating (if created with a 3d point projected in 2d).
         pub fn draw_line(
             buffer: &mut Vec<u32>,
             width: usize,
