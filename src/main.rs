@@ -584,7 +584,7 @@ mod rust_3d {
         // - Bresenham's algorithm compute at each loop the direction (x,y)
         //   of next point to plot and so, draw a line in
         //   a 2d space and efficiently create the illusion of
-        ///  a 3d line moving or rotating.
+        ///  a 3d line moving or rotating (if created with a 3d point projected in 2d).
         pub fn draw_line(
             buffer: &mut Vec<u32>,
             width: usize,
@@ -610,7 +610,8 @@ mod rust_3d {
             let mut y = y0;
 
             loop {
-                // Write mutable buffer if inputs condition are met.
+                // Write the pixel color value in the mutable buffer (memory block) at x and y position offset 
+                // this if screen matrice condition are met (see memory block allocation syntax for cursor positioning)
                 if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
                     buffer[y as usize * width + x as usize] = color;
                 }
@@ -619,11 +620,11 @@ mod rust_3d {
                     break;
                 }
                 // Evaluate the next x and y direction (we are only in 2D space).
-                // algorithm key point: is to  double the reminder by two
+                // algorithm key point: is to double the reminder by two
                 // allowing to shrink the remider by dy and dx in one step
-                // making Bresenham's line algorithm exceptionally efficient.
-                // at chrinking the line towards the endpoint on x and y right direction
-                // for a given orientation.
+                // making Bresenham's line algorithm efficient.
+                // at chrinking the line distance to compute towards the endpoint
+                // on x and y right direction for a given orientation.
                 let e2 = 2 * err;
                 if e2 > -dy {
                     err -= dy; // shrink reminder
