@@ -249,7 +249,7 @@ mod rust_3d {
                 self.update_length();
             }
 
-            pub fn unitize_b(&mut self) -> Vector3d {
+            pub fn unitize_b(&self) -> Vector3d {
                 Vector3d::new(
                     self.X / self.Length,
                     self.Y / self.Length,
