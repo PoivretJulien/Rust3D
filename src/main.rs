@@ -258,12 +258,12 @@ mod rust_3d {
             }
 
             /// return the angle between two vectors
-            pub fn compute_angle(vector_a: Vector3d, vector_b: Vector3d) -> f64 {
+            pub fn compute_angle(vector_a: &Vector3d, vector_b: &Vector3d) -> f64 {
                 f64::acos(
-                    (vector_a * vector_b)
-                        / (f64::sqrt(vector_a.X.powi(2) + vector_a.Y.powi(2) + vector_a.Z.powi(2))
+                    ((*vector_a) * (*vector_b))
+                        / (f64::sqrt((*vector_a).X.powi(2) + (*vector_a).Y.powi(2) + (*vector_a).Z.powi(2))
                             * f64::sqrt(
-                                vector_b.X.powi(2) + vector_b.Y.powi(2) + vector_b.Z.powi(2),
+                                (*vector_b).X.powi(2) + (*vector_b).Y.powi(2) + (*vector_b).Z.powi(2),
                             )),
                 )
             }
@@ -677,9 +677,11 @@ mod test {
     use std::f64::consts::PI;
     #[test]
     fn test_vector3d_angle() {
+        let v1 = Vector3d::new(0.0,1.0,0.0);
+        let v2 = Vector3d::new(1.0,0.0,0.0);
         assert_eq!(
             PI / 2.0,
-            Vector3d::compute_angle(Vector3d::new(0.0, 1.0, 0.0), Vector3d::new(1.0, 0.0, 0.0))
+            Vector3d::compute_angle(&v1,&v2)
         );
     }
     use super::rust_3d::intersection::*;
