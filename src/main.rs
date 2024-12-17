@@ -347,13 +347,13 @@ mod rust_3d {
             d2: &Vector3d,
         ) -> Option<Point3d> {
             let cross_d1_d2 = Vector3d::cross_product(*d1, *d2);
-            let denom = cross_d1_d2 * cross_d1_d2;
+            let denom = cross_d1_d2 * cross_d1_d2; // dot product (squere of cross product vector)
             if f64::abs(denom) < 1e-10 {
-                None //Line never intersect.
+                None // if lines never intersect.
             } else {
-                let diff = *p2 - *p1;
-                let t1 = Vector3d::cross_product(diff, *d2) * cross_d1_d2 / denom;
-                Some(*p1 + ((*d1) * t1))
+                let diff = *p2 - *p1; // Make vector delta.
+                let t1 = Vector3d::cross_product(diff, *d2) * cross_d1_d2 / denom; // Compute intersection from formula. 
+                Some(*p1 + ((*d1) * t1)) // Return result.
             }
         }
     }
