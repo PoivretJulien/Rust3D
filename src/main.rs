@@ -161,7 +161,6 @@ mod rust_3d {
             }
 
             /// Test if a point is on a plane.
-            ///TODO: need to validate input plane.
             pub fn is_on_plane(&self, plane: &[Point3d; 4]) -> bool {
                 let normal = Vector3d::cross_product(
                     &((*plane)[1] - (*plane)[0]),
