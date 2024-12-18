@@ -176,7 +176,35 @@ mod rust_3d {
                 }
             }
         }
+// Implementation of + and - operator for Point3d.
+        impl Add for Point3d {
+            type Output = Self; // Specify the result type of the addition
+            fn add(self, other: Self) -> Self {
+                Self {
+                    X: self.X + other.X,
+                    Y: self.Y + other.Y,
+                    Z: self.Z + other.Z,
+                }
+            }
+        }
 
+        impl Sub for Point3d {
+            type Output = Vector3d; // Specify the result type of the addition
+            fn sub(self, other: Self) -> Vector3d {
+                Vector3d::new(self.X - other.X, self.Y - other.Y, self.Z - other.Z)
+            }
+        }
+
+        impl Add<Vector3d> for Point3d {
+            type Output = Point3d;
+            fn add(self, vector: Vector3d) -> Point3d {
+                Point3d {
+                    X: self.X + vector.X,
+                    Y: self.Y + vector.Y,
+                    Z: self.Z + vector.Z,
+                }
+            }
+        }
         // Vector 3d definition.
         #[allow(non_snake_case)]
         #[derive(Debug, Clone, Copy, PartialEq)]
@@ -340,36 +368,6 @@ mod rust_3d {
                     Some((*self) - (normal * ((*self) * normal)))
                 } else {
                     None
-                }
-            }
-        }
-
-        // Implementation of + and - operator for Point3d.
-        impl Add for Point3d {
-            type Output = Self; // Specify the result type of the addition
-            fn add(self, other: Self) -> Self {
-                Self {
-                    X: self.X + other.X,
-                    Y: self.Y + other.Y,
-                    Z: self.Z + other.Z,
-                }
-            }
-        }
-
-        impl Sub for Point3d {
-            type Output = Vector3d; // Specify the result type of the addition
-            fn sub(self, other: Self) -> Vector3d {
-                Vector3d::new(self.X - other.X, self.Y - other.Y, self.Z - other.Z)
-            }
-        }
-
-        impl Add<Vector3d> for Point3d {
-            type Output = Point3d;
-            fn add(self, vector: Vector3d) -> Point3d {
-                Point3d {
-                    X: self.X + vector.X,
-                    Y: self.Y + vector.Y,
-                    Z: self.Z + vector.Z,
                 }
             }
         }
