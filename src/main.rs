@@ -317,6 +317,11 @@ mod rust_3d {
 
                 (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
             }
+            /// Project a vector on a plane.
+            pub fn project_on_plane(&self,plane:&[Vector3d;2])->Vector3d{
+                let normal = Vector3d::cross_product(&(*plane)[0],&(*plane)[1]).unitize_b();
+                (*self) - (normal *((*self)*normal))
+            }
         }
 
         // Implementation of + and - operator for Point3d.
@@ -605,7 +610,8 @@ mod rust_3d {
      *  of Point3d from world axis and Angles.
      */
     pub mod transformation {
-        use super::geometry::Point3d;
+
+        use super::geometry::{Point3d,Vector3d};
         /// Rotate the point from Y world axis.
         /// # Arguments
         /// Point3d to transform and angle in radian (in f64)
@@ -639,6 +645,11 @@ mod rust_3d {
                 Y: point.X * sin_theta + point.Y * cos_theta,
                 Z: point.Z,
             }
+        }
+
+        pub fn project_point_on_plane()->Point3d
+        {
+           unimplemented!("This functionality is not implemented");
         }
     }
 
