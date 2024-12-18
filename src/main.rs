@@ -268,6 +268,7 @@ mod rust_3d {
             }
             /// Test if tree vectors are coplanar with the scalar triple product.
             /// (if the volume of the AxB (cross product) * C == 0 they are coplanar)
+            /// notes: two vectors addition make a third vector.
             pub fn are_coplanar(
                 vector_a: &Vector3d,
                 vector_b: &Vector3d,
