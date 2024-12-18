@@ -276,10 +276,6 @@ mod rust_3d {
                 if (Vector3d::cross_product(vector_a, vector_b) * (*vector_c)).abs() <= 1e-5 {
                     true
                 } else {
-                    println!(
-                        "feed back: {0}",
-                        Vector3d::cross_product(vector_a, vector_b) * (*vector_c)
-                    );
                     false
                 }
             }
@@ -358,7 +354,7 @@ mod rust_3d {
         /// # Returns
         /// None if vectors never intersect or Point3d of intersection on Success.
         /// ***** this is a CAD version of the function using full fledged vectors feature. *****
-        /// note: a perfomance drawing optimized function will be added just next.
+        /// note: a performance drawing optimized function will be added just next.
         pub fn compute_intersection_coplanar(
             p1: &Point3d,
             d1: &Vector3d,
@@ -367,8 +363,8 @@ mod rust_3d {
         ) -> Option<Point3d> {
             let cross_d1_d2 = Vector3d::cross_product(d1, d2);
             let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
-            let d3 = (*p2) - (*p1);// needed for coplanarity test.
-            if (f64::abs(denom) == 0f64) || !Vector3d::are_coplanar(d1, d2, &d3) {
+            let d3 = (*p2) - (*p1); // needed for coplanarity test.
+            if (f64::abs(denom) == 0f64) && !Vector3d::are_coplanar(d1, d2, &d3) {
                 None // if lines never intersect.
             } else {
                 let diff = *p2 - *p1; // Make vector delta.
@@ -727,7 +723,7 @@ mod test {
         }
     }
     #[test]
-    fn test_coplanar_vectors() {
+    fn test_coplanar_vectors_a() {
         let pt1 = Point3d::new(82.832047, 36.102125, -3.214695);
         let pt2 = Point3d::new(85.341596, 34.653236, -2.539067);
         let pt3 = Point3d::new(82.0, 34.0, -4.040822);
@@ -736,5 +732,17 @@ mod test {
         let v2 = pt4 - pt3;
         let v3 = pt3 - pt1;
         assert_eq!(true, Vector3d::are_coplanar(&v1, &v2, &v3));
+    }
+    
+    #[test]
+    fn test_coplanar_vectors_b() {
+        let pt1 = Point3d::new(82.832047, 36.102125, -3.214695);
+        let pt2 = Point3d::new(85.341596, 34.653236, -2.139067);
+        let pt3 = Point3d::new(82.0, 34.0, -4.040822);
+        let pt4 = Point3d::new(85.0, 34.0, -2.82932);
+        let v1 = pt2 - pt1;
+        let v2 = pt4 - pt3;
+        let v3 = pt3 - pt1;
+        assert_eq!(false, Vector3d::are_coplanar(&v1, &v2, &v3));
     }
 }
