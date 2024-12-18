@@ -132,7 +132,7 @@ fn main() {
 }
 
 // *************************************************************************
-// ******* First scratch of a basic computational components class *********
+// ******   First scratch of my basic lib for my computational need  *******
 // *************************************************************************
 #[allow(dead_code)]
 mod rust_3d {
