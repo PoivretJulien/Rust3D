@@ -367,7 +367,7 @@ mod rust_3d {
         ) -> Option<Point3d> {
             let cross_d1_d2 = Vector3d::cross_product(d1, d2);
             let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
-            let d3 = (*p2) - (*p1);
+            let d3 = (*p2) - (*p1);// needed for coplanarity test.
             if (f64::abs(denom) == 0f64) || !Vector3d::are_coplanar(d1, d2, &d3) {
                 None // if lines never intersect.
             } else {
