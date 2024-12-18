@@ -159,6 +159,22 @@ mod rust_3d {
             pub fn new(x: f64, y: f64, z: f64) -> Self {
                 Self { X: x, Y: y, Z: z }
             }
+
+            /// Test if a point is on a plane.
+            pub fn is_on_plane(&self, plane: &[Point3d; 4]) -> bool {
+                let normal = Vector3d::cross_product(
+                    &((*plane)[1] - (*plane)[0]),
+                    &((*plane)[3] - (*plane)[0]),
+                );
+                let d = -(normal.X * (*plane)[0].X
+                    + normal.Y * (*plane)[0].Y
+                    + normal.Z * (*plane)[0].Z);
+                if ((normal.X * self.X + normal.Y * self.Y + normal.Z * self.Z) + d).abs() < 1e-5 {
+                    true
+                } else {
+                    false
+                }
+            }
         }
 
         // Vector 3d definition.
@@ -651,18 +667,24 @@ mod rust_3d {
             }
         }
         /// Project a 3d point on infinite plane.
-        pub fn project_3d_point_on_infinite_plane(
+        pub fn project_3d_point_on_plane(
             point: &Point3d,
             plane_pt: &[Point3d; 4],
         ) -> Option<Point3d> {
-            // make a plane vectors.
+            // Make a plane vectors.
             let plane = [
                 (*plane_pt)[0] - (*plane_pt)[1],
                 (*plane_pt)[3] - (*plane_pt)[0],
             ];
             if let Some(projection) = ((*point) - (*plane_pt)[0]).project_on_infinite_plane(&plane)
             {
-                Some((*plane_pt)[0] + projection)
+                let result_point = (*plane_pt)[0] + projection;
+                // Test if point is on plane.
+                if result_point.is_on_plane(&plane_pt) {
+                    Some(result_point)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -714,9 +736,9 @@ mod rust_3d {
                 }
                 // Evaluate the next x and y direction (we are only in 2D space).
                 // algorithm key point: is to double the reminder by two
-                // allowing to shrink the remider by dy and dx in one step
+                // allowing to shrink the reminder by dy and dx in one step
                 // making Bresenham's line algorithm efficient.
-                // at chrinking the line distance to compute towards the endpoint
+                // at shrinking the line distance to compute towards the endpoint
                 // on x and y right direction for a given orientation.
                 let e2 = 2 * err;
                 if e2 > -dy {
@@ -868,12 +890,23 @@ mod test {
         let pt_to_project = Point3d::new(-4.781863, 14.083874, 1.193872);
         let expected_result = Point3d::new(-2.571911, 13.271809, 8.748913);
         //assert_eq!(expected_result,project_3d_point_on_infinite_plane(&pt_to_project, &plane).unwrap());
-        if let Some(point) = project_3d_point_on_infinite_plane(&pt_to_project, &plane) {
+        if let Some(point) = project_3d_point_on_plane(&pt_to_project, &plane) {
             if (point - expected_result).Length() < 1e-6 {
                 assert!(true);
             } else {
                 assert!(false);
             }
         }
+    }
+    #[test]
+    fn test_if_point_is_on_plane() {
+        let plane = [
+            Point3d::new(0.0, 4.0, 7.0),
+            Point3d::new(6.775301, 11.256076, 5.798063),
+            Point3d::new(-2.169672, 21.088881, 9.471482),
+            Point3d::new(-5.0, 9.0, 9.0),
+        ];
+        let point_to_test = Point3d::new(-2.571911, 13.271809, 8.748913);
+        assert_eq!(true, point_to_test.is_on_plane(&plane));
     }
 }
