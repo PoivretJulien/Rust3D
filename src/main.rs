@@ -6,10 +6,8 @@ use rust_3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d 
 use rust_3d::transformation::*; // Basic 3d treansformation of 3dPoint.
 use rust_3d::visualization::*; // a basic 3d engine ploting a 3d point on 2d screen.
 
-                               
-
 // - a basic Rust program using CPU for animating 9 3d points on screen
-//   representing a cube with a dot in the midle + 3 colors axies are 
+//   representing a cube with a dot in the midle + 3 colors axies are
 //   also represented + one arbitrary segment in orange.
 fn main() {
     /*
@@ -236,8 +234,8 @@ mod rust_3d {
             pub fn cross_product(vector_a: &Vector3d, vector_b: &Vector3d) -> Self {
                 Vector3d::new(
                     (*vector_a).Y * (*vector_b).Z - (*vector_a).Z * (*vector_b).Y,
-                        (*vector_a).Z * (*vector_b).X - (*vector_a).X * (*vector_b).Z,
-                            (*vector_a).X * (*vector_b).Y - (*vector_a).Y * (*vector_b).X,
+                    (*vector_a).Z * (*vector_b).X - (*vector_a).X * (*vector_b).Z,
+                    (*vector_a).X * (*vector_b).Y - (*vector_a).Y * (*vector_b).X,
                 )
             }
 
@@ -261,11 +259,29 @@ mod rust_3d {
             pub fn compute_angle(vector_a: &Vector3d, vector_b: &Vector3d) -> f64 {
                 f64::acos(
                     ((*vector_a) * (*vector_b))
-                        / (f64::sqrt((*vector_a).X.powi(2) + (*vector_a).Y.powi(2) + (*vector_a).Z.powi(2))
-                            * f64::sqrt(
-                                (*vector_b).X.powi(2) + (*vector_b).Y.powi(2) + (*vector_b).Z.powi(2),
-                            )),
+                        / (f64::sqrt(
+                            (*vector_a).X.powi(2) + (*vector_a).Y.powi(2) + (*vector_a).Z.powi(2),
+                        ) * f64::sqrt(
+                            (*vector_b).X.powi(2) + (*vector_b).Y.powi(2) + (*vector_b).Z.powi(2),
+                        )),
                 )
+            }
+            /// Test if tree vectors are coplanar with the scalar triple product.
+            /// (if the volume of the AxB (cross product) * C == 0 they are coplanar)
+            pub fn are_coplanar(
+                vector_a: &Vector3d,
+                vector_b: &Vector3d,
+                vector_c: &Vector3d,
+            ) -> bool {
+                if (Vector3d::cross_product(vector_a, vector_b) * (*vector_c)).abs() <= 1e-5 {
+                    true
+                } else {
+                    println!(
+                        "feed back: {0}",
+                        Vector3d::cross_product(vector_a, vector_b) * (*vector_c)
+                    );
+                    false
+                }
             }
         }
 
@@ -336,27 +352,28 @@ mod rust_3d {
     pub mod intersection {
         use super::geometry::{Point3d, Vector3d};
         /// Compute intersection of two point by two vectors
-        /// # Arguments 
+        /// # Arguments
         /// p1 first points (Point3d), d1 first direction (Vector3d)
         /// p2 first points (Point3d), d2 first direction (Vector3d)
         /// # Returns
         /// None if vectors never intersect or Point3d of intersection on Success.
         /// ***** this is a CAD version of the function using full fledged vectors feature. *****
         /// note: a perfomance drawing optimized function will be added just next.
-        pub fn compute_intersection_cad(
+        pub fn compute_intersection_coplanar(
             p1: &Point3d,
             d1: &Vector3d,
             p2: &Point3d,
             d2: &Vector3d,
         ) -> Option<Point3d> {
             let cross_d1_d2 = Vector3d::cross_product(d1, d2);
-            let denom = cross_d1_d2 * cross_d1_d2; // dot product (squere of cross product vector)
-            if f64::abs(denom) == 0f64 {
+            let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
+            let d3 = (*p2) - (*p1);
+            if (f64::abs(denom) == 0f64) || !Vector3d::are_coplanar(d1, d2, &d3) {
                 None // if lines never intersect.
             } else {
                 let diff = *p2 - *p1; // Make vector delta.
-                let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Solve t1 (where t1==t2) 
-                Some(*p1 + ((*d1) * t1)) // Return result by scaling d1 by t1.
+                let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Compute intersection from formula.
+                Some(*p1 + ((*d1) * t1)) // Return result.
             }
         }
     }
@@ -610,7 +627,7 @@ mod rust_3d {
             let mut y = y0;
 
             loop {
-                // Write the pixel color value in the mutable buffer (memory block) at x and y position offset 
+                // Write the pixel color value in the mutable buffer (memory block) at x and y position offset
                 // this if screen matrice condition are met (see memory block allocation syntax for cursor positioning)
                 if x >= 0 && x < width as isize && y >= 0 && y < (buffer.len() / width) as isize {
                     buffer[y as usize * width + x as usize] = color;
@@ -678,36 +695,46 @@ mod test {
     use std::f64::consts::PI;
     #[test]
     fn test_vector3d_angle() {
-        let v1 = Vector3d::new(0.0,1.0,0.0);
-        let v2 = Vector3d::new(1.0,0.0,0.0);
-        assert_eq!(
-            PI / 2.0,
-            Vector3d::compute_angle(&v1,&v2)
-        );
+        let v1 = Vector3d::new(0.0, 1.0, 0.0);
+        let v2 = Vector3d::new(1.0, 0.0, 0.0);
+        assert_eq!(PI / 2.0, Vector3d::compute_angle(&v1, &v2));
     }
     use super::rust_3d::intersection::*;
     #[test]
-    fn test_intersection_a(){
+    fn test_intersection_a() {
         let p1 = Point3d::new(0.0, 1.0, 0.0);
-        let d1 = Vector3d::new(0.0,-1.0,0.0);
-        let p2 = Point3d::new(1.0,0.0,0.0);
-        let d2 = Vector3d::new(-1.0,0.0,0.0);
-        assert_eq!(Point3d::new(0.0,0.0,0.0),compute_intersection_cad(&p1, &d1, &p2, &d2).unwrap());
+        let d1 = Vector3d::new(0.0, -1.0, 0.0);
+        let p2 = Point3d::new(1.0, 0.0, 0.0);
+        let d2 = Vector3d::new(-1.0, 0.0, 0.0);
+        assert_eq!(
+            Point3d::new(0.0, 0.0, 0.0),
+            compute_intersection_coplanar(&p1, &d1, &p2, &d2).unwrap()
+        );
     }
     #[test]
-    fn test_intersection_b(){
+    fn test_intersection_b() {
         let p1 = Point3d::new(82.157, 30.323, 0.0);
-        let d1 = Vector3d::new(0.643,-0.766,0.0);
-        let p2 = Point3d::new(80.09,19.487,0.0);
-        let d2 = Vector3d::new(0.94,0.342,0.0);
-        let expected_result = Point3d::new(88.641361,22.59824,0.0); 
-        if let Some(result) = compute_intersection_cad(&p1, &d1, &p2, &d2){
-            if (result-expected_result).Length() < 26e-6
-            {
+        let d1 = Vector3d::new(0.643, -0.766, 0.0);
+        let p2 = Point3d::new(80.09, 19.487, 0.0);
+        let d2 = Vector3d::new(0.94, 0.342, 0.0);
+        let expected_result = Point3d::new(88.641361, 22.59824, 0.0);
+        if let Some(result) = compute_intersection_coplanar(&p1, &d1, &p2, &d2) {
+            if (result - expected_result).Length() < 26e-6 {
                 assert!(true);
-            }else{
+            } else {
                 assert!(false)
             }
-        } 
+        }
+    }
+    #[test]
+    fn test_coplanar_vectors() {
+        let pt1 = Point3d::new(82.832047, 36.102125, -3.214695);
+        let pt2 = Point3d::new(85.341596, 34.653236, -2.539067);
+        let pt3 = Point3d::new(82.0, 34.0, -4.040822);
+        let pt4 = Point3d::new(85.0, 34.0, -2.82932);
+        let v1 = pt2 - pt1;
+        let v2 = pt4 - pt3;
+        let v3 = pt3 - pt1;
+        assert_eq!(true, Vector3d::are_coplanar(&v1, &v2, &v3));
     }
 }
