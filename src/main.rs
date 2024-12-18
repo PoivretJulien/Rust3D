@@ -879,7 +879,7 @@ mod test {
         }
     }
     #[test]
-    fn test_project_point_on_infinite_plane() {
+    fn test_project_point_on_plane() {
         use super::rust_3d::transformation::*;
         let plane = [
             Point3d::new(0.0, 4.0, 7.0),
