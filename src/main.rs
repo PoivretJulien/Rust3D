@@ -737,7 +737,7 @@ mod test {
     #[test]
     fn test_coplanar_vectors_b() {
         let pt1 = Point3d::new(82.832047, 36.102125, -3.214695);
-        let pt2 = Point3d::new(85.341596, 34.653236, -2.139067);
+        let pt2 = Point3d::new(85.341596, 34.653236, -2.139067); // (this point is changed)
         let pt3 = Point3d::new(82.0, 34.0, -4.040822);
         let pt4 = Point3d::new(85.0, 34.0, -2.82932);
         let v1 = pt2 - pt1;
