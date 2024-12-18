@@ -269,7 +269,7 @@ mod rust_3d {
             /// Test if tree vectors are coplanar with the scalar triple product.
             /// (if the volume of the AxB (cross product) * C == 0 they are coplanar)
             /// notes: two vectors addition make a third vector.
-            pub fn are_coplanar(
+            pub fn are_coplanar_b(
                 vector_a: &Vector3d,
                 vector_b: &Vector3d,
                 vector_c: &Vector3d,
@@ -280,6 +280,19 @@ mod rust_3d {
                     false
                 }
             }
+            
+            pub fn are_coplanar_a(
+                vector_a: &Vector3d,
+                vector_b: &Vector3d
+            ) -> bool {
+                let vector_c = (*vector_b)-(*vector_a);
+                if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
+                    true
+                } else {
+                    false
+                }
+            }
+
             /// Test if two vectors are perpendicular.
             pub fn are_perpandicular(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
                 if (*vector_a) * (*vector_b) == 0.0 {
@@ -404,8 +417,7 @@ mod rust_3d {
         ) -> Option<Point3d> {
             let cross_d1_d2 = Vector3d::cross_product(d1, d2);
             let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
-            let d3 = (*p2) - (*p1); // needed for coplanarity test.
-            if (f64::abs(denom) == 0f64) && !Vector3d::are_coplanar(d1, d2, &d3) {
+            if (f64::abs(denom) == 0f64) && !Vector3d::are_coplanar_a(d1, d2) {
                 None // if lines never intersect.
             } else {
                 let diff = *p2 - *p1; // Make vector delta.
@@ -460,7 +472,7 @@ mod rust_3d {
 
             // Compute the view matrix
             // (transforms world coordinates to camera coordinates)
-            // TODO: Vector3d struct use a menber 'Length' not required in this
+            // TODO: Vector3d struct use a member 'Length' not required in this
             // Context.
             fn get_view_matrix_deprecated(&self) -> [[f64; 4]; 4] {
                 let forward = Vector3d::new(
@@ -633,7 +645,7 @@ mod rust_3d {
     pub mod draw {
         // Bresenham's line algorithm.
         // Draw a line between two 2d points on screen.
-        // it's a clever algorithm dynamicly plotting
+        // it's a clever algorithm dynamically plotting
         // the distance between two points.
         // - Bresenham's algorithm compute at each loop the direction (x,y)
         //   of the next 2d point to plot and so, draw a line in
@@ -650,7 +662,7 @@ mod rust_3d {
             let (x0, y0) = (start.0 as isize, start.1 as isize);
             let (x1, y1) = (end.0 as isize, end.1 as isize);
 
-            // Compute absolute distance differance.
+            // Compute absolute distance difference.
             let dx = (x1 - x0).abs();
             let dy = (y1 - y0).abs();
 
@@ -772,7 +784,7 @@ mod test {
         let v1 = pt2 - pt1;
         let v2 = pt4 - pt3;
         let v3 = pt3 - pt1;
-        assert_eq!(true, Vector3d::are_coplanar(&v1, &v2, &v3));
+        assert_eq!(true, Vector3d::are_coplanar_b(&v1, &v2, &v3));
     }
 
     #[test]
@@ -784,7 +796,7 @@ mod test {
         let v1 = pt2 - pt1;
         let v2 = pt4 - pt3;
         let v3 = pt3 - pt1;
-        assert_eq!(false, Vector3d::are_coplanar(&v1, &v2, &v3));
+        assert_eq!(false, Vector3d::are_coplanar_b(&v1, &v2, &v3));
     }
 
     #[test]
