@@ -176,6 +176,7 @@ mod rust_3d {
                 }
             }
         }
+        
         // Implementation of + and - operator for Point3d.
         impl Add for Point3d {
             type Output = Self; // Specify the result type of the addition
