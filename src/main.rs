@@ -463,7 +463,7 @@ mod rust_3d {
             }
 
             /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
-            /// Also offsets the point along the plane's normal by `z_value`
+            /// Also offsets the point along the plane's normal by z value.
             pub fn point_on_plane(&self, x: f64, y: f64, z: f64) -> Point3d {
                 Point3d {
                     X: self.origin.X + self.u.X * x + self.v.X * y + self.normal.X * z,
