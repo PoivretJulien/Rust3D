@@ -279,6 +279,30 @@ mod rust_3d {
                     false
                 }
             }
+            /// Test if two vectors are perpendicular.
+            pub fn are_perpandicular(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
+                if (*vector_a) * (*vector_b) == 0.0 {
+                    true
+                } else {
+                    false
+                }
+            }
+
+            /// Rotate a vector around an axis using Rodrigues' rotation formula.
+            pub fn rotate_around_axis(self, axis: &Vector3d, angle: f64) -> Vector3d {
+                let unit_axis = (*axis).unitize_b();
+                let cos_theta = angle.cos();
+                let sin_theta = angle.sin();
+
+                let v_parallel = unit_axis * (self * unit_axis); // Projection of v onto axis
+                let v_perpendicular = self - v_parallel; // Perpendicular component of v
+
+                // Rotated perpendicular component
+                let v_rotated_perpendicular =
+                    Vector3d::cross_product(&self, &unit_axis) * sin_theta;
+
+                (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
+            }
         }
 
         // Implementation of + and - operator for Point3d.
@@ -317,6 +341,21 @@ mod rust_3d {
                 self.X * vector.X + self.Y * vector.Y + self.Z * vector.Z
             }
         }
+
+        impl Sub for Vector3d {
+            type Output = Self; // Specify the result type of the addition
+            fn sub(self, other: Self) -> Self {
+                Vector3d::new(self.X - other.X, self.Y - other.Y, self.Z - other.Z)
+            }
+        }
+
+        impl Add for Vector3d {
+            type Output = Self;
+            fn add(self, vector: Vector3d) -> Self {
+                Vector3d::new(self.X + vector.X, self.Y + vector.Y, self.Z + vector.Z)
+            }
+        }
+
         impl Mul<f64> for Vector3d {
             type Output = Vector3d;
             fn mul(self, scalar: f64) -> Self {
@@ -336,6 +375,7 @@ mod rust_3d {
                 Vector3d::new(v_x, v_y, v_z)
             }
         }
+
         impl MulAssign<f64> for Vector3d {
             fn mul_assign(&mut self, scalar: f64) {
                 self.X *= scalar;
@@ -733,7 +773,7 @@ mod test {
         let v3 = pt3 - pt1;
         assert_eq!(true, Vector3d::are_coplanar(&v1, &v2, &v3));
     }
-    
+
     #[test]
     fn test_coplanar_vectors_b() {
         let pt1 = Point3d::new(82.832047, 36.102125, -3.214695);
@@ -744,5 +784,34 @@ mod test {
         let v2 = pt4 - pt3;
         let v3 = pt3 - pt1;
         assert_eq!(false, Vector3d::are_coplanar(&v1, &v2, &v3));
+    }
+
+    #[test]
+    fn test_rotated_vector_a() {
+        let vector_a = Vector3d::new(0.0, 1.0, 0.0);
+        let axis = Vector3d::new(0.0, 0.0, 1.0);
+        let rotated_vector = vector_a.rotate_around_axis(&axis, PI / 4.0);
+        // make a unit 45 deg vector.
+        let expected_vector = Vector3d::new(1.0, 1.0, 0.0).unitize_b();
+        if (expected_vector - rotated_vector).Length().abs() < 1e-6 {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn test_rotated_vector_b() {
+        let vector_a = Vector3d::new(-5.0, 4.0, 3.0);
+        let axis = Vector3d::new(30.0, 3.0, 46.0);
+        let rotated_vector = vector_a.rotate_around_axis(&axis,1.047198);
+        // make a unit 45 deg vector.
+        let expected_vector = Vector3d::new(0.255535, 7.038693, -0.625699);
+        //assert_eq!(rotated_vector,expected_vector);
+        if (expected_vector - rotated_vector).Length().abs() < 1e-5 {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
     }
 }
