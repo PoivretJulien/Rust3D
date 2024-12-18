@@ -351,7 +351,7 @@ mod rust_3d {
         ) -> Option<Point3d> {
             let cross_d1_d2 = Vector3d::cross_product(d1, d2);
             let denom = cross_d1_d2 * cross_d1_d2; // dot product (squere of cross product vector)
-            if f64::abs(denom) < 1e-10 {
+            if f64::abs(denom) == 0f64 {
                 None // if lines never intersect.
             } else {
                 let diff = *p2 - *p1; // Make vector delta.
