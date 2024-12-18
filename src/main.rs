@@ -355,8 +355,8 @@ mod rust_3d {
                 None // if lines never intersect.
             } else {
                 let diff = *p2 - *p1; // Make vector delta.
-                let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Compute intersection from formula. 
-                Some(*p1 + ((*d1) * t1)) // Return result.
+                let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Solve t1 (where t1==t2) 
+                Some(*p1 + ((*d1) * t1)) // Return result by scaling d1 by t1.
             }
         }
     }
