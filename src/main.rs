@@ -3,11 +3,11 @@ use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a def
 // My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
 use rust_3d::draw::*;
 use rust_3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
-use rust_3d::transformation::*; // Basic 3d treansformation of 3dPoint.
-use rust_3d::visualization::*; // a basic 3d engine ploting a 3d point on 2d screen.
+use rust_3d::transformation::*; // Basic 3d transformation of 3dPoint.
+use rust_3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
-//   representing a cube with a dot in the midle + 3 colors axies are
+//   representing a cube with a dot in the middle + 3 colors axis are
 //   also represented + one arbitrary segment in orange.
 fn main() {
     /*
@@ -280,12 +280,9 @@ mod rust_3d {
                     false
                 }
             }
-            
-            pub fn are_coplanar_a(
-                vector_a: &Vector3d,
-                vector_b: &Vector3d
-            ) -> bool {
-                let vector_c = (*vector_b)-(*vector_a);
+
+            pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
+                let vector_c = (*vector_b) - (*vector_a);
                 if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
                     true
                 } else {
@@ -317,10 +314,17 @@ mod rust_3d {
 
                 (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
             }
-            /// Project a vector on a plane.
-            pub fn project_on_plane(&self,plane:&[Vector3d;2])->Vector3d{
-                let normal = Vector3d::cross_product(&(*plane)[0],&(*plane)[1]).unitize_b();
-                (*self) - (normal *((*self)*normal))
+            /// Project a vector on an infinite plane.
+            /// # Returns
+            ///  - an Option<Vector3d>
+            ///  - the projected Vector on success or  None on failure.
+            pub fn project_on_infinite_plane(&self, plane: &[Vector3d; 2]) -> Option<Vector3d> {
+                if Vector3d::are_coplanar_a(&((*plane)[0]), &((*plane)[1])) {
+                    let normal = Vector3d::cross_product(&(*plane)[0], &(*plane)[1]).unitize_b();
+                    Some((*self) - (normal * ((*self) * normal)))
+                } else {
+                    None
+                }
             }
         }
 
@@ -611,7 +615,7 @@ mod rust_3d {
      */
     pub mod transformation {
 
-        use super::geometry::{Point3d,Vector3d};
+        use super::geometry::Point3d;
         /// Rotate the point from Y world axis.
         /// # Arguments
         /// Point3d to transform and angle in radian (in f64)
@@ -646,10 +650,22 @@ mod rust_3d {
                 Z: point.Z,
             }
         }
-
-        pub fn project_point_on_plane()->Point3d
-        {
-           unimplemented!("This functionality is not implemented");
+        /// Project a 3d point on infinite plane.
+        pub fn project_3d_point_on_infinite_plane(
+            point: &Point3d,
+            plane_pt: &[Point3d; 4],
+        ) -> Option<Point3d> {
+            // make a plane vectors.
+            let plane = [
+                (*plane_pt)[0] - (*plane_pt)[1],
+                (*plane_pt)[3] - (*plane_pt)[0],
+            ];
+            if let Some(projection) = ((*point) - (*plane_pt)[0]).project_on_infinite_plane(&plane)
+            {
+                Some((*plane_pt)[0] + projection)
+            } else {
+                None
+            }
         }
     }
 
@@ -718,6 +734,8 @@ mod rust_3d {
 
 #[cfg(test)]
 mod test {
+    use crate::rust_3d::transformation;
+
     use super::rust_3d::geometry::*;
     #[test]
     fn test_cross_product() {
@@ -828,7 +846,7 @@ mod test {
     fn test_rotated_vector_b() {
         let vector_a = Vector3d::new(-5.0, 4.0, 3.0);
         let axis = Vector3d::new(30.0, 3.0, 46.0);
-        let rotated_vector = vector_a.rotate_around_axis(&axis,1.047198);
+        let rotated_vector = vector_a.rotate_around_axis(&axis, 1.047198);
         // make a unit 45 deg vector.
         let expected_vector = Vector3d::new(0.255535, 7.038693, -0.625699);
         //assert_eq!(rotated_vector,expected_vector);
@@ -836,6 +854,26 @@ mod test {
             assert!(true);
         } else {
             assert!(false);
+        }
+    }
+    #[test]
+    fn test_project_point_on_infinite_plane() {
+        use super::rust_3d::transformation::*;
+        let plane = [
+            Point3d::new(0.0, 4.0, 7.0),
+            Point3d::new(6.775301, 11.256076, 5.798063),
+            Point3d::new(-2.169672, 21.088881, 9.471482),
+            Point3d::new(-5.0, 9.0, 9.0),
+        ];
+        let pt_to_project = Point3d::new(-4.781863, 14.083874, 1.193872);
+        let expected_result = Point3d::new(-2.571911, 13.271809, 8.748913);
+        //assert_eq!(expected_result,project_3d_point_on_infinite_plane(&pt_to_project, &plane).unwrap());
+        if let Some(point) = project_3d_point_on_infinite_plane(&pt_to_project, &plane) {
+            if (point - expected_result).Length() < 1e-6 {
+                assert!(true);
+            } else {
+                assert!(false);
+            }
         }
     }
 }
