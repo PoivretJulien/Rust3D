@@ -423,7 +423,58 @@ mod rust_3d {
                 self.update_length();
             }
         }
+
+        pub struct CPlane {
+            origin: Point3d,
+            normal: Vector3d,
+            u: Vector3d, // Local X axis on the plane
+            v: Vector3d, // Local Y axis on the plane
+        }
+
+        impl CPlane {
+            /// Constructs a plane from an origin and a normal vector
+            pub fn new(origin: Point3d, normal: Vector3d) -> Self {
+                let normalized_normal = normal.unitize_b();
+
+                // Find a vector that is not parallel to the normal
+                let mut arbitrary_vector = Vector3d::new(1.0, 0.0, 0.0);
+                if normal.X.abs() > 0.99 {
+                    arbitrary_vector = Vector3d::new(0.0, 1.0, 0.0);
+                }
+
+                // Compute two orthogonal vectors on the plane using the cross product
+                let u = Vector3d::cross_product(&normalized_normal, &arbitrary_vector).unitize_b();
+                let v = Vector3d::cross_product(&normalized_normal, &u).unitize_b();
+
+                Self {
+                    origin,
+                    normal: normalized_normal,
+                    u,
+                    v,
+                }
+            }
+
+            /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
+            pub fn point_on_plane_uv(&self, u: f64, v: f64) -> Point3d {
+                Point3d {
+                    X: self.origin.X + self.u.X * u + self.v.X * v,
+                    Y: self.origin.Y + self.u.Y * u + self.v.Y * v,
+                    Z: self.origin.Z + self.u.Z * u + self.v.Z * v,
+                }
+            }
+
+            /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
+            /// Also offsets the point along the plane's normal by `z_value`
+            pub fn point_on_plane(&self, x: f64, y: f64, z: f64) -> Point3d {
+                Point3d {
+                    X: self.origin.X + self.u.X * x + self.v.X * y + self.normal.X * z,
+                    Y: self.origin.Y + self.u.Y * x + self.v.Y * y + self.normal.Y * z,
+                    Z: self.origin.Z + self.u.Z * x + self.v.Z * y + self.normal.Z * z,
+                }
+            }
+        }
     }
+
     pub mod intersection {
         use super::geometry::{Point3d, Vector3d};
         /// Compute intersection of two point by two vectors
@@ -876,7 +927,7 @@ mod test {
             assert!(false);
         }
     }
-    
+
     #[test]
     fn test_project_point_on_plane() {
         use super::rust_3d::transformation::*;
