@@ -756,8 +756,6 @@ mod rust_3d {
 
 #[cfg(test)]
 mod test {
-    use crate::rust_3d::transformation;
-
     use super::rust_3d::geometry::*;
     #[test]
     fn test_cross_product() {
@@ -878,6 +876,7 @@ mod test {
             assert!(false);
         }
     }
+    
     #[test]
     fn test_project_point_on_plane() {
         use super::rust_3d::transformation::*;
@@ -898,6 +897,7 @@ mod test {
             }
         }
     }
+
     #[test]
     fn test_if_point_is_on_plane() {
         let plane = [
