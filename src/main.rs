@@ -548,36 +548,7 @@ mod rust_3d {
                 }
             }
 
-            // Compute the view matrix
-            // (transforms world coordinates to camera coordinates)
-            // TODO: Vector3d struct use a member 'Length' not required in this
-            // Context.
-            fn get_view_matrix_deprecated(&self) -> [[f64; 4]; 4] {
-                let forward = Vector3d::new(
-                    self.target.get_X() - self.position.get_X(),
-                    self.target.get_Y() - self.position.get_Y(),
-                    self.target.get_Z() - self.position.get_Z(),
-                )
-                .unitize_b();
-                let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
-                let up = Vector3d::cross_product(&right, &forward).unitize_b();
-                let translation = Vector3d::new(
-                    -self.position.get_X(),
-                    -self.position.get_Y(),
-                    -self.position.get_Z(),
-                );
-                [
-                    [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
-                    [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
-                    [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
-                    [
-                        right * translation,
-                        up * translation,
-                        forward * translation,
-                        1.0,
-                    ],
-                ]
-            }
+            
             /// Same as above slightly faster.
             /// ( Vector Length is not automatically computed )
             /// - i have used manual dot product between Point3d and Vector3d
