@@ -176,7 +176,7 @@ mod rust_3d {
                 }
             }
         }
-        
+
         // Implementation of + and - operator for Point3d.
         impl Add for Point3d {
             type Output = Self; // Specify the result type of the addition
@@ -362,7 +362,7 @@ mod rust_3d {
             /// Project a vector on an infinite plane.
             /// # Arguments
             /// takes plane as an array of two coplanar vectors from a same origin 3d point
-            /// defining the egdge of the parallelepiped.
+            /// defining the edge of the parallelepiped.
             /// # Returns
             ///  - an Option<Vector3d>
             ///  - the projected Vector on success or  None on failure.
@@ -435,12 +435,12 @@ mod rust_3d {
 
         impl CPlane {
             /// Constructs a plane from an origin and a normal vector
-            pub fn new(origin: Point3d, normal: Vector3d) -> Self {
-                let normalized_normal = normal.unitize_b();
+            pub fn new(origin: &Point3d, normal: &Vector3d) -> Self {
+                let normalized_normal = (*normal).unitize_b();
 
                 // Find a vector that is not parallel to the normal
                 let mut arbitrary_vector = Vector3d::new(1.0, 0.0, 0.0);
-                if normal.X.abs() > 0.99 {
+                if (*normal).X.abs() > 0.99 {
                     arbitrary_vector = Vector3d::new(0.0, 1.0, 0.0);
                 }
 
@@ -449,7 +449,7 @@ mod rust_3d {
                 let v = Vector3d::cross_product(&normalized_normal, &u).unitize_b();
 
                 Self {
-                    origin,
+                    origin: Point3d::new((*origin).X,(*origin).Y,(*origin).Z),
                     normal: normalized_normal,
                     u,
                     v,
@@ -457,21 +457,21 @@ mod rust_3d {
             }
 
             /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
-            pub fn point_on_plane_uv(&self, u: f64, v: f64) -> Point3d {
+            pub fn point_on_plane_uv(&self, u: &f64, v: &f64) -> Point3d {
                 Point3d {
-                    X: self.origin.X + self.u.X * u + self.v.X * v,
-                    Y: self.origin.Y + self.u.Y * u + self.v.Y * v,
-                    Z: self.origin.Z + self.u.Z * u + self.v.Z * v,
+                    X: self.origin.X + self.u.X * (*u) + self.v.X * (*v),
+                    Y: self.origin.Y + self.u.Y * (*u) + self.v.Y * (*v),
+                    Z: self.origin.Z + self.u.Z * (*u) + self.v.Z * (*v),
                 }
             }
 
             /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
             /// Also offsets the point along the plane's normal by z value.
-            pub fn point_on_plane(&self, x: f64, y: f64, z: f64) -> Point3d {
+            pub fn point_on_plane(&self, x: &f64, y: &f64, z: &f64) -> Point3d {
                 Point3d {
-                    X: self.origin.X + self.u.X * x + self.v.X * y + self.normal.X * z,
-                    Y: self.origin.Y + self.u.Y * x + self.v.Y * y + self.normal.Y * z,
-                    Z: self.origin.Z + self.u.Z * x + self.v.Z * y + self.normal.Z * z,
+                    X: self.origin.X + self.u.X * (*x) + self.v.X * (*y) + self.normal.X * (*z),
+                    Y: self.origin.Y + self.u.Y * (*x) + self.v.Y * (*y) + self.normal.Y * (*z),
+                    Z: self.origin.Z + self.u.Z * (*x) + self.v.Z * (*y) + self.normal.Z * (*z),
                 }
             }
         }
@@ -961,5 +961,20 @@ mod test {
         ];
         let point_to_test = Point3d::new(-2.571911, 13.271809, 8.748913);
         assert_eq!(true, point_to_test.is_on_plane(&plane));
+    }
+    #[test]
+    fn test_local_point(){
+        let plane_origin_pt = Point3d::new(4.330127,10.0,-15.5);
+        let plane_normal = Vector3d::new(0.5,0.0,-0.866025);
+        let point = Point3d::new(5.0,5.0,5.0);
+        let expected_result = Point3d::new(2.5,5.0,-22.330127);
+        let cp = CPlane::new(&plane_origin_pt,&plane_normal);
+        let result = cp.point_on_plane(&(point.X), &(point.Y), &(point.Z));
+        // assert_eq!(expected_result,result);
+        if (expected_result-result).Length().abs() <= 1e-5{
+            assert!(true);
+        }else{
+            assert!(false);
+        }
     }
 }
