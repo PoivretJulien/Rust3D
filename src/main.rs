@@ -360,6 +360,9 @@ mod rust_3d {
                 (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
             }
             /// Project a vector on an infinite plane.
+            /// # Arguments
+            /// takes plane as an array of two coplanar vectors from a same origin 3d point
+            /// defining the egdge of the parallelepiped.
             /// # Returns
             ///  - an Option<Vector3d>
             ///  - the projected Vector on success or  None on failure.
