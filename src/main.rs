@@ -7,7 +7,7 @@ use rust3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d s
 use rust3d::transformation::*; // Basic 3d transformation of 3dPoint.
 use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
 
-mod models_3d; // external file where 3d model ares conveniently stored. 
+mod models_3d; // external file where 3d model(s) are conveniently stored. 
 use models_3d::NUKE_3D_MODEL;
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
