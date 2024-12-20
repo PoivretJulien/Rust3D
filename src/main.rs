@@ -197,7 +197,7 @@ let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone(); // copy static memory on 
         (*p)*=scale_ratio;// scale it down in world display scale unit.
         let pt_rotated = rotate_z(*p,angle); // rotate selected 3d point.
         if let Some(projected_point) = camera.project(pt_rotated) {   // use 3d engine to project point.
-                buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; /// mutate the buffer (we are in a single thread configuration)
+                buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration)
         }
     }
 }
