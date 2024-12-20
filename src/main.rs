@@ -14,10 +14,10 @@ fn main() {
      * First projection of the rust_3d module 3d Point
      * with a very basic but mysterious 3d engine in rust.
      */
-    
+
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
-    const DISPLAY_RATIO:f64 = 0.1; // scale model dimension to fit in screen.
+    const DISPLAY_RATIO: f64 = 0.15; // scale model dimension to fit in screen.
 
     // Init a widows class.
     let mut window = Window::new(
@@ -36,9 +36,9 @@ fn main() {
 
     // Define the camera
     let camera = Camera::new(
-        Vector3d::new(0.0, 1.0, 0.1), // Camera position
-        Vector3d::new(0.0, 0.0, 0.0),   // Camera target (looking at the origin)
-        Vector3d::new(0.0,1.0, 0.0),   // Camera up vector
+        Vector3d::new(0.0, 1.0, 0.25), // Camera position
+        Vector3d::new(0.0, 0.0, 0.0), // Camera target (looking at the origin)
+        Vector3d::new(0.0, 1.0, 0.0), // Camera up vector
         WIDTH as f64,
         HEIGHT as f64,
         35.0,  // FOV
@@ -62,9 +62,8 @@ fn main() {
         Point3d::new(0.50, 0.50, 0.50),
     ];
 
-
     //Scale the 3d model to model space ratio.
-    for pt in points.iter_mut(){
+    for pt in points.iter_mut() {
         (*pt) *= DISPLAY_RATIO;
     }
 
@@ -127,7 +126,9 @@ fn main() {
             &mut buffer,
             WIDTH,
             camera.project(origin).unwrap(),
-            camera.project(Point3d::new(0.0, 0.0, 1.0 * DISPLAY_RATIO)).unwrap(),
+            camera
+                .project(Point3d::new(0.0, 0.0, 1.0 * DISPLAY_RATIO))
+                .unwrap(),
             0x0000FF,
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
@@ -215,6 +216,7 @@ mod rust_3d {
                 }
             }
         }
+
         impl MulAssign<f64> for Point3d {
             fn mul_assign(&mut self, scalar: f64) {
                 self.X *= scalar;
@@ -222,6 +224,7 @@ mod rust_3d {
                 self.Z *= scalar;
             }
         }
+        
         // Vector 3d definition.
         #[allow(non_snake_case)]
         #[derive(Debug, Clone, Copy, PartialEq)]
@@ -563,7 +566,7 @@ mod rust_3d {
                     far,
                 }
             }
-            
+
             /// Get view matrix.
             fn get_view_matrix(&self) -> [[f64; 4]; 4] {
                 let forward = Vector3d::new(
