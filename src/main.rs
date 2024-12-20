@@ -12,7 +12,7 @@ use models_3d::NUKE_3D_MODEL;
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
 //   representing a cube with a dot in the middle + 3 colors axis are
-//   also represented + one arbitrary segment in orange.
+//   also represented a square of that cube with orange segments.
 fn main() {
     /*
      * First projection of the rust_3d module 3d Point
