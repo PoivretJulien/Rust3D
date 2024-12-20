@@ -191,14 +191,13 @@ fn main() {
 fn display_nuke(camera:&Camera,buffer:&mut Vec<u32>,width:usize,scale_ratio:f64,angle:f64){
 // make a deep copy of a 'static 3d model in order to don't modify it outside that thread 
 // ( we are in main thread in that context.)
-let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone();
+let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone(); // copy static memory on threads stack.
     for p in is_that_really_a_nuke.iter_mut(){
-        (*p)+=Vector3d::new(-0.75 ,0.5, 0.0);
-        (*p)*=scale_ratio;
-        let pt_rotated = rotate_z(*p,angle);
-        if let Some(projected_point) = camera.project(pt_rotated) {
-                // Draw the point as a white pixel
-                buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF;
+        (*p)+=Vector3d::new(-0.75 ,0.5, 0.0); // translate model in world coordinates position.
+        (*p)*=scale_ratio;// scale it down in world display scale unit.
+        let pt_rotated = rotate_z(*p,angle); // rotate selected 3d point.
+        if let Some(projected_point) = camera.project(pt_rotated) {   // use 3d engine to project point.
+                buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; /// mutate the buffer (we are in a single thread configuration)
         }
     }
 }
