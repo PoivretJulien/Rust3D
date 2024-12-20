@@ -46,9 +46,6 @@ fn main() {
         100.0, // Far plane
     );
 
-    /*
-     * for now render view dimension need to be calibrated (work with small values)
-     */
     // Define a cube with 8 points (with a 9th point in the center)
     let mut points = vec![
         Point3d::new(0.0, 0.0, 0.0),
