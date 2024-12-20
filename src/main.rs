@@ -27,7 +27,7 @@ fn main() {
     const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
     
     // mutating a static memory involve unsafe code.
-    // (i want to avoid that so i make a deep copy once not a big deal...) 
+    // (i want to avoid that so i make a deep copy for the actual thread once not a big deal...) 
     let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone(); //Deep copy.
 
     if DISPLAY_NUKE {
