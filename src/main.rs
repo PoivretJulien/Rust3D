@@ -132,34 +132,34 @@ fn main() {
                 .unwrap(),
             0x0000FF, // Blue.
         );
-        // Draw a square in orange from the rotated 3d points in the previous loop.
+        // Draw a square (with a diagonal) in orange from the rotated 3d points in the previous loop.
         draw_line(
             &mut buffer,
             WIDTH,
             camera.project(moving_square[0]).unwrap(),
             camera.project(moving_square[1]).unwrap(),
-            0xFF3C00, // Green
+            0xFF3C00, // Orange
         );
         draw_line(
             &mut buffer,
             WIDTH,
             camera.project(moving_square[0]).unwrap(),
             camera.project(moving_square[2]).unwrap(),
-            0xFF3C00, // Green
+            0xFF3C00, // Orange
         );
         draw_line(
             &mut buffer,
             WIDTH,
             camera.project(moving_square[2]).unwrap(),
             camera.project(moving_square[3]).unwrap(),
-            0xFF3C00, // Green
+            0xFF3C00, // Orange
         );
         draw_line(
             &mut buffer,
             WIDTH,
             camera.project(moving_square[3]).unwrap(),
             camera.project(moving_square[1]).unwrap(),
-            0xFF3C00, // Green
+            0xFF3C00, // Orange
         );
 
         draw_line(
@@ -167,7 +167,7 @@ fn main() {
             WIDTH,
             camera.project(moving_square[3]).unwrap(),
             camera.project(moving_square[0]).unwrap(),
-            0xFF3C00, // Green
+            0xFF3C00, // Orange
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
