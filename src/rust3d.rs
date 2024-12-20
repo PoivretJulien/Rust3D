@@ -403,7 +403,7 @@ pub mod intersection {
     /// # Returns
     /// return a Point3d on success None if vector don't point on the plane.
     /// (work in progress not tested yet)
-    pub fn intersect_line_with_plane(
+    pub fn intersect_ray_with_plane(
         point: &Point3d,      // Starting point of the line (P0)
         direction: &Vector3d, // Direction vector of the line (V)
         plane: &CPlane,
@@ -894,7 +894,7 @@ mod test {
         let plane = CPlane::new(&plane_origin, &plane_normal);
         let expected_result = Point3d::new(-9.583205, 5.873738, 10.838721);
         // assert_eq!(expected_result,intersect_line_with_plane(&point, &direction, &plane).unwrap());
-        if let Some(result_point) = intersect_line_with_plane(&point, &direction, &plane){
+        if let Some(result_point) = intersect_ray_with_plane(&point, &direction, &plane){
            if (result_point - expected_result).Length().abs() < 1e-5{
                assert!(true);
            }else{
