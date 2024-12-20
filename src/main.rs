@@ -71,15 +71,15 @@ fn main() {
     }
 
     let mut angle = 0.0; // Angle in radian.
-    
-    let default_point = Point3d::new(0.0,0.0,0.0);
-    let mut moving_square = [default_point;4];
-    let mut ct = 0usize;
+
+    // init memory for an animated 3d square.
+    let default_point = Point3d::new(0.0, 0.0, 0.0);
+    let mut moving_square = [default_point; 4];
+    let mut ct = 0usize; // memory 'cursor index'
 
     // mini frame buffer runtime class initialization.
     // loop infinitely until the windows is closed or the escape key is pressed.
     while window.is_open() && !window.is_key_down(Key::Escape) {
-
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
             *pixel = 0x0;
@@ -87,18 +87,19 @@ fn main() {
         // Define 'static' origin 3d point
         let origin = Point3d::new(0.0, 0.0, 0.0);
         // Project animated point on the 2d screen.
-        // Compute only translated point in that loop. 
-        for (i,p) in points.iter().enumerate() {
+        // Compute only translated point in that loop.
+        for (i, p) in points.iter().enumerate() {
             // walk the array of point (Vector<Point3d>)
-            // and rotate a copy of the 3dPoint by an angle value.
+            // and rotate a copy of the 3d Point by an angle value.
             let rotated_point = rotate_z(*p, angle);
-            if (i==0) || (i==1) || (i==4) || (i==5){
+            // Backup rotated square point for further drawing after the loop.
+            if (i == 0) || (i == 1) || (i == 4) || (i == 5) {
                 moving_square[ct] = rotated_point;
-                ct+=1;
-                if i==5 {
-                    ct=0;
+                ct += 1;
+                if i == 5 {
+                    ct = 0;
                 }
-            } 
+            }
             // Unbox projected point if a value is present an draw 3d points
             // and Lines in 2d projected space. (3d engine have there completed it's task).
             // (a more fancy algorithm may use GPU for such operation rather than CPU)
@@ -107,7 +108,7 @@ fn main() {
                 buffer[projected_point.1 * WIDTH + projected_point.0] = 0xFFFFFF;
             }
             // Draw world X and Y axis (they are rotating...)
-            let rotated_x_axis = rotate_z(Point3d::new(1.0, 0.0, 0.0), angle)*DISPLAY_RATIO;
+            let rotated_x_axis = rotate_z(Point3d::new(1.0, 0.0, 0.0), angle) * DISPLAY_RATIO;
             draw_line(
                 &mut buffer,
                 WIDTH,
@@ -115,7 +116,7 @@ fn main() {
                 camera.project(rotated_x_axis).unwrap(),
                 0xFF0000, // red
             );
-            let rotated_y_axis = rotate_z(Point3d::new(0.0, 1.0, 0.0), angle)*DISPLAY_RATIO;
+            let rotated_y_axis = rotate_z(Point3d::new(0.0, 1.0, 0.0), angle) * DISPLAY_RATIO;
             draw_line(
                 &mut buffer,
                 WIDTH,
@@ -130,47 +131,47 @@ fn main() {
             WIDTH,
             camera.project(origin).unwrap(),
             camera
-                .project(Point3d::new(0.0, 0.0, 1.0*DISPLAY_RATIO))
+                .project(Point3d::new(0.0, 0.0, 1.0 * DISPLAY_RATIO))
                 .unwrap(),
             0x0000FF, // Blue.
         );
         // Draw a square in orange from the rotated 3d points in the previous loop.
         draw_line(
-                &mut buffer,
-                WIDTH,
-                camera.project(moving_square[0]).unwrap(),
-                camera.project(moving_square[1]).unwrap(),
-                0xFF3C00, // Green
-            );
+            &mut buffer,
+            WIDTH,
+            camera.project(moving_square[0]).unwrap(),
+            camera.project(moving_square[1]).unwrap(),
+            0xFF3C00, // Green
+        );
         draw_line(
-                &mut buffer,
-                WIDTH,
-                camera.project(moving_square[0]).unwrap(),
-                camera.project(moving_square[2]).unwrap(),
-                0xFF3C00, // Green
-            );
+            &mut buffer,
+            WIDTH,
+            camera.project(moving_square[0]).unwrap(),
+            camera.project(moving_square[2]).unwrap(),
+            0xFF3C00, // Green
+        );
         draw_line(
-                &mut buffer,
-                WIDTH,
-                camera.project(moving_square[2]).unwrap(),
-                camera.project(moving_square[3]).unwrap(),
-                0xFF3C00, // Green
-            );
+            &mut buffer,
+            WIDTH,
+            camera.project(moving_square[2]).unwrap(),
+            camera.project(moving_square[3]).unwrap(),
+            0xFF3C00, // Green
+        );
         draw_line(
-                &mut buffer,
-                WIDTH,
-                camera.project(moving_square[3]).unwrap(),
-                camera.project(moving_square[1]).unwrap(),
-                0xFF3C00, // Green
-            );
+            &mut buffer,
+            WIDTH,
+            camera.project(moving_square[3]).unwrap(),
+            camera.project(moving_square[1]).unwrap(),
+            0xFF3C00, // Green
+        );
 
         draw_line(
-                &mut buffer,
-                WIDTH,
-                camera.project(moving_square[3]).unwrap(),
-                camera.project(moving_square[0]).unwrap(),
-                0xFF3C00, // Green
-            );
+            &mut buffer,
+            WIDTH,
+            camera.project(moving_square[3]).unwrap(),
+            camera.project(moving_square[0]).unwrap(),
+            0xFF3C00, // Green
+        );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
             // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
@@ -247,11 +248,11 @@ mod rust_3d {
         }
         impl Mul<f64> for Point3d {
             type Output = Point3d;
-            fn mul(self, scalar: f64)->Point3d{
-                Point3d{
-                     X: self.X * scalar,
-                     Y: self.Y * scalar,
-                     Z: self.Z * scalar
+            fn mul(self, scalar: f64) -> Point3d {
+                Point3d {
+                    X: self.X * scalar,
+                    Y: self.Y * scalar,
+                    Z: self.Z * scalar,
                 }
             }
         }
