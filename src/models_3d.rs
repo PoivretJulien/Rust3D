@@ -1,4 +1,5 @@
 use crate::rust3d::geometry::Point3d;
+// Caricature of a nuke 3d model drawing.
 pub static NUKE_3D_MODEL: [Point3d; 707] = [
     Point3d {
         X: 0.000,
