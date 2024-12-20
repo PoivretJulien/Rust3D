@@ -187,7 +187,7 @@ fn main() {
     }
 }
 
-
+/// Display a caricatured 3d model of a nuke (good for round shape and square) for testing the engine.
 fn display_nuke(camera:&Camera,buffer:&mut Vec<u32>,width:usize,scale_ratio:f64,angle:f64){
 let mut is_that_really_a_nuke:[Point3d;707] = [
 Point3d{X:0.000, Y:-0.500, Z:0.677},
