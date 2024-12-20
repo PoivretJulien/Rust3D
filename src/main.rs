@@ -792,14 +792,15 @@ mod rust_3d {
     }
 
     pub mod draw {
-        // Bresenham's line algorithm.
-        // Draw a line between two 2d points on screen.
-        // it's a clever algorithm dynamically plotting
-        // the distance between two points.
-        // - Bresenham's algorithm compute at each loop the direction (x,y)
+        /// Bresenham's line algorithm.
+        /// Draw a line between two 2d points on screen.
+        /// it's a clever algorithm dynamically plotting
+        /// the distance between two points.
+        /// - Bresenham's algorithm compute at each loop the direction (x,y)
         //   of the next 2d point to plot and so, draw a line in
-        //   a (x,y) space and efficiently create the illusion of
-        //   a 3d line moving or rotating (if created with a 3d point projected in 2d).
+        ///   a (x,y) space and efficiently create the illusion of
+        ///   a 3d line moving or rotating 
+        /// (if created with a 3d point projected in 2d).
         pub fn draw_line(
             buffer: &mut Vec<u32>,
             width: usize,
