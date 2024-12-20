@@ -18,12 +18,12 @@ fn main() {
      * First projection of the rust_3d module 3d Point
      * with a very basic but mysterious 3d engine in rust.
      */
-    const WIDTH: usize = 800;
-    const HEIGHT: usize = 600;
-    const DISPLAY_RATIO: f64 = 0.109; // scale model dimension to fit in screen.
-    const DISPLAY_NUKE:bool = false;
+    const WIDTH: usize = 800; // screen pixel width.
+    const HEIGHT: usize = 600;// screen pixel height.
+    const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
+    const DISPLAY_NUKE:bool = false;  // Optional (for Graphical purpose).
 
-    // Init a widows class.
+    // Init a widows 2D mini buffer class.
     let mut window = Window::new(
         "Simple Camera 3D Projection",
         WIDTH,
@@ -34,6 +34,7 @@ fn main() {
         // panic on error (unwind stack and clean memory)
         panic!("{}", e);
     });
+    
     // a simple allocated array of u32 initialized at 0
     // representing the color and the 2d position of points.
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
