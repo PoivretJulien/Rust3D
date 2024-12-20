@@ -70,7 +70,7 @@ fn main() {
 
     let mut angle = 0.0; // Angle in radian.
 
-    // init memory for an animated 3d square.
+    // init a stack memory for an animated 3d square.
     let default_point = Point3d::new(0.0, 0.0, 0.0);
     let mut moving_square = [default_point; 4];
     let mut ct = 0usize; // memory 'cursor index'
