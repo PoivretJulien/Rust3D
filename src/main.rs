@@ -103,7 +103,7 @@ fn main() {
             // and 2DLines in projected space. (3d engine have already there completed it's task).
             // (a more fancy algorithm may use GPU for such projection operations rather than CPU based computation)
             if let Some(projected_point) = camera.project(rotated_point) {
-                // Draw the point as a white pixel
+                // Draw the point as a green pixel
                 buffer[projected_point.1 * WIDTH + projected_point.0] = 0x00FF00;
             }
             // Draw world X and Y axis (they are rotating...)
