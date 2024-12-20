@@ -594,10 +594,7 @@ mod rust_3d {
                     ],
                 ]
             }
-            /// Same as above slightly faster.
-            /// ( Vector Length is not automatically computed )
-            /// - i have used manual dot product between Point3d and Vector3d
-            /// without overhead cost at runtime..
+            /// Get view matrix.
             fn get_view_matrix(&self) -> [[f64; 4]; 4] {
                 let forward = Vector3d::new(
                     self.position.get_X() - self.target.get_X(),
