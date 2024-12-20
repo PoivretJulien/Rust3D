@@ -388,6 +388,21 @@ mod rust_3d {
                         )),
                 )
             }
+            
+            /// Test if two vectors sit on a same 3d plane.
+            /// ! for a valid result: 
+            ///   - vectors must describes two edges of the plane 
+            ///     starting from the same origin 
+            ///     ( involving an higher level check )
+            pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
+                let vector_c = (*vector_b) - (*vector_a);
+                if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
+                    true
+                } else {
+                    false
+                }
+            }
+            
             /// Test if tree vectors are coplanar with the scalar triple product.
             /// (if the volume of the AxB (cross product) * C == 0 they are coplanar)
             /// notes: two vectors addition make a third vector.
@@ -403,20 +418,6 @@ mod rust_3d {
                 }
             }
             
-            /// Test if two vectors sit on a same 3d plane.
-            /// ! for a valid result: 
-            ///   - vectors must describes two edges of the plane 
-            ///     starting from the same origin 
-            ///     ( involving an higher level check )
-            pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
-                let vector_c = (*vector_b) - (*vector_a);
-                if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
-                    true
-                } else {
-                    false
-                }
-            }
-
             /// Test if two vectors are perpendicular.
             pub fn are_perpandicular(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
                 if (*vector_a) * (*vector_b) == 0.0 {
