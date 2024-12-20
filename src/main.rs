@@ -390,10 +390,6 @@ mod rust_3d {
             }
             
             /// Test if two vectors sit on a same 3d plane.
-            /// ! for a valid result: 
-            ///   - vectors must describes two edges of the plane 
-            ///     starting from the same origin 
-            ///     ( involving an higher level check )
             pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
                 let vector_c = (*vector_b) - (*vector_a);
                 if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
@@ -444,11 +440,14 @@ mod rust_3d {
             }
             /// Project a vector on an infinite plane.
             /// # Arguments
-            /// takes plane as an array of two coplanar vectors from a same origin 3d point
-            /// defining the edge of the parallelepiped.
+            ///   takes plane as an array of two coplanar vectors from a same origin 3d point
+            ///   defining the edge of the parallelepiped.
             /// # Returns
             ///  - an Option<Vector3d>
             ///  - the projected Vector on success or  None on failure.
+            /// ! for a valid result: 
+            ///   - vectors must describes two edges of the plane 
+            ///     starting from the same origin 
             pub fn project_on_infinite_plane(&self, plane: &[Vector3d; 2]) -> Option<Vector3d> {
                 if Vector3d::are_coplanar_a(&((*plane)[0]), &((*plane)[1])) {
                     let normal = Vector3d::cross_product(&(*plane)[0], &(*plane)[1]).unitize_b();
@@ -568,8 +567,6 @@ mod rust_3d {
         /// p2 first points (Point3d), d2 first direction (Vector3d)
         /// # Returns
         /// None if vectors never intersect or Point3d of intersection on Success.
-        /// ***** this is a CAD version of the function using full fledged vectors feature. *****
-        /// note: a performance drawing optimized function will be added just next.
         pub fn compute_intersection_coplanar(
             p1: &Point3d,
             d1: &Vector3d,
@@ -774,7 +771,7 @@ mod rust_3d {
             point: &Point3d,
             plane_pt: &[Point3d; 4],
         ) -> Option<Point3d> {
-            // Make a plane vectors.
+            // Make a plane vectors from inputs points.
             let plane = [
                 (*plane_pt)[0] - (*plane_pt)[1],
                 (*plane_pt)[3] - (*plane_pt)[0],
