@@ -250,7 +250,9 @@ pub mod geometry {
 
             (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
         }
-        /// Project a vector on an infinite plane.
+        
+        /// Project a vector on an infinite plane 
+        /// by the rule of the plane normal.
         /// # Arguments
         ///   takes plane as an array of two coplanar vectors from a same origin 3d point
         ///   defining the edge of the parallelepiped.
@@ -612,7 +614,7 @@ pub mod transformation {
             Z: point.Z,
         }
     }
-    /// Project a 3d point plane.
+    /// Project a 3d point on a finite plane of 4 Point3d
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
         let plane = [
