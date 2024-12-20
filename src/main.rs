@@ -13,9 +13,9 @@ use models_3d::NUKE_3D_MODEL;
 // - a basic Rust program using CPU for animating 9 3d points on screen
 //   representing a cube with a dot in the middle + 3 colors axis are
 //   also represented a square of that cube with orange segments.
-//   f32 would be enough and require for speed display. 
+//   f32 would be enough and require for speed display.
 //   but... that is a lib for back end CAD applications
-//   so a full double precision is used a f128 also is probably overkill... 
+//   so a full double precision is used a f128 also is probably overkill...
 
 fn main() {
     /*
@@ -25,20 +25,20 @@ fn main() {
     const HEIGHT: usize = 600; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
     const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
-    
+
     // mutating a static memory involve unsafe code.
-    // (i want to avoid that so i make a deep copy for the actual thread once not a big deal...) 
+    // (i want to avoid that so i make a deep copy for the actual thread once not a big deal...)
     let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone(); //Deep copy.
 
     if DISPLAY_NUKE {
         // Pre process 3d model before display.
-        let trans_vector = (-0.75,0.5,0.0); //translation vector. 
+        let trans_vector = (-0.75, 0.5, 0.0); //translation vector.
         pre_process_model(
-        &(trans_vector.0),
-        &(trans_vector.1),
-        &(trans_vector.2),
-        &DISPLAY_RATIO,
-        &mut is_that_really_a_nuke
+            &(trans_vector.0),
+            &(trans_vector.1),
+            &(trans_vector.2),
+            &DISPLAY_RATIO,
+            &mut is_that_really_a_nuke,
         );
     }
 
@@ -93,10 +93,12 @@ fn main() {
 
     let mut angle = 0.0; // Angle in radian.
 
+    // Define the world coordinates origin 3d point.
+    let origin = Point3d::new(0.0, 0.0, 0.0);
     // init memory for an animated 3d square.
-    let default_point = Point3d::new(0.0, 0.0, 0.0);
-    let mut moving_square = [default_point; 4];
+    let mut moving_square = [origin; 4];
     let mut ct = 0usize; // memory 'cursor index'
+
 
     // mini frame buffer runtime class initialization.
     // loop infinitely until the windows is closed or the escape key is pressed.
@@ -105,8 +107,6 @@ fn main() {
         for pixel in buffer.iter_mut() {
             *pixel = 0x0;
         }
-        // Define the world coordinates origin 3d point.
-        let origin = Point3d::new(0.0, 0.0, 0.0);
 
         // Project animated point on the 2d screen.
         // Compute only the animated 3d point in that loop.
@@ -196,7 +196,13 @@ fn main() {
         );
         // Display nuke if true;
         if DISPLAY_NUKE {
-            display_nuke(&camera, &mut buffer, &WIDTH,  &angle,&mut is_that_really_a_nuke);
+            display_nuke(
+                &camera,
+                &mut buffer,
+                &WIDTH,
+                &angle,
+                &mut is_that_really_a_nuke,
+            );
         }
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
@@ -208,8 +214,14 @@ fn main() {
     }
 }
 
-fn pre_process_model(trans_x:&f64,trans_y:&f64,trans_z:&f64,scale_ratio:&f64,model_3d:&mut [Point3d;707]) {
-       for i in 0usize..707 {
+fn pre_process_model(
+    trans_x: &f64,
+    trans_y: &f64,
+    trans_z: &f64,
+    scale_ratio: &f64,
+    model_3d: &mut [Point3d; 707],
+) {
+    for i in 0usize..707 {
         model_3d[i].X += *trans_x;
         model_3d[i].Y += *trans_y;
         model_3d[i].Z += *trans_z;
@@ -222,13 +234,14 @@ fn display_nuke(
     buffer: &mut Vec<u32>,
     width: &usize,
     angle: &f64,
-    mode_3d:&mut [Point3d;707]
+    mode_3d: &mut [Point3d; 707],
 ) {
     for p in mode_3d.iter_mut() {
-        let pt_rotated = rotate_z(*p,*angle); // rotate selected 3d point.
+        let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
+        // use 3d engine to project point.
         if let Some(projected_point) = camera.project(pt_rotated) {
-            // use 3d engine to project point.
-            buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration)
+            // write withe pixel on 2d screen representing the rotating 3d model.
+            buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration).
         }
     }
 }
