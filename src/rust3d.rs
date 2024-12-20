@@ -670,6 +670,13 @@
         }
     }
 
+pub mod utillity {
+    use core::f64;
+    pub fn Degree_to_Radians(inputangle_in_degre:&f64)->f64{
+        (*inputangle_in_degre) * (f64::consts::PI*2.0) / 360.0
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::geometry::*;
@@ -706,6 +713,7 @@ mod test {
         vector *= 4.0;
         assert_eq!(4.0, vector.Length());
     }
+    use core::f64;
     use std::f64::consts::PI;
     #[test]
     fn test_vector3d_angle() {
@@ -840,6 +848,12 @@ mod test {
         } else {
             assert!(false);
         }
+    }
+    #[test]
+    fn test_degrees_to_radiansi(){
+    use super::utillity::*;
+    let angle_to_test = 90.0;
+    assert_eq!(f64::consts::PI/2.0 ,Degree_to_Radians(&angle_to_test));
     }
 }
 
