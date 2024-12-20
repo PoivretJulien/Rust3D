@@ -15,7 +15,7 @@ use models_3d::NUKE_3D_MODEL;
 //   also represented a square of that cube with orange segments.
 fn main() {
     /*
-     * First projection of the rust_3d module 3d Point
+     * First projection of the rust3d module 3d Point
      * with a very basic but mysterious 3d engine in rust.
      */
     const WIDTH: usize = 800; // screen pixel width.
