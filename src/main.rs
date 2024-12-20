@@ -4,24 +4,43 @@ use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a def
 mod rust3d;
 use rust3d::draw::*;
 use rust3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
-use rust3d::transformation::*; // Basic 3d transformation of 3dPoint.
+use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
 use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
 
-mod models_3d; // external file where 3d model(s) are conveniently stored. 
+mod models_3d; // external file where 3d model(s) are conveniently stored.
 use models_3d::NUKE_3D_MODEL;
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
 //   representing a cube with a dot in the middle + 3 colors axis are
 //   also represented a square of that cube with orange segments.
+//   f32 would be enough and require for speed display. 
+//   but... that is a lib for back end CAD applications
+//   so a full double precision is used a f128 also is probably overkill... 
+
 fn main() {
     /*
-     * First projection of the rust3d module 3d Point
-     * with a very basic but mysterious 3d engine in rust.
+     * First projection of the rust 3d lib using Point3d and Vector3d Objects.
      */
     const WIDTH: usize = 800; // screen pixel width.
-    const HEIGHT: usize = 600;// screen pixel height.
+    const HEIGHT: usize = 600; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
-    const DISPLAY_NUKE:bool = false;  // Optional (for Graphical purpose).
+    const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
+    
+    // mutating a static memory involve unsafe code.
+    // (i want to avoid that so i make a deep copy once not a big deal...) 
+    let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone(); //Deep copy.
+
+    if DISPLAY_NUKE {
+        // Pre process 3d model before display.
+        let trans_vector = (-0.75,0.5,0.0); //translation vector. 
+        pre_process_model(
+        &(trans_vector.0),
+        &(trans_vector.1),
+        &(trans_vector.2),
+        &DISPLAY_RATIO,
+        &mut is_that_really_a_nuke
+        );
+    }
 
     // Init a widows 2D mini buffer class.
     let mut window = Window::new(
@@ -34,8 +53,8 @@ fn main() {
         // panic on error (unwind stack and clean memory)
         panic!("{}", e);
     });
-    
-    // a simple allocated array of u32 initialized at 0
+
+    // a simple allocated array of u 32 initialized at 0
     // representing the color and the 2d position of points.
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -43,10 +62,10 @@ fn main() {
     let camera = Camera::new(
         Vector3d::new(0.0, 1.0, 0.25), // Camera position (1 is the max value)
         Vector3d::new(0.0, 0.0, 0.0),  // Camera target (looking at the origin)
-        Vector3d::new(0.0, 1.0, 0.0), // Camera up vector (for iner cross product operation usually Y=1)
+        Vector3d::new(0.0, 1.0, 0.0), // Camera up vector (for inner cross product operation usually Y=1)
         WIDTH as f64,
         HEIGHT as f64,
-        35.0,  // FOV (Zoom angle increace and you will get a smaller representation)
+        35.0,  // FOV (Zoom angle increase and you will get a smaller representation)
         0.5,   // Near clip plane
         100.0, // Far clip plane
     );
@@ -103,8 +122,8 @@ fn main() {
                     ct = 0;
                 }
             }
-            // Unbox projected point if a value is present an draw 3d points
-            // and 2DLines in projected space. (3d engine have already there completed it's task).
+            // Un box projected point if a value is present an draw 3d points
+            // and 2D Lines in projected space. (3d engine have already there completed it's task).
             // (a more fancy algorithm may use GPU for such projection operations rather than CPU based computation)
             if let Some(projected_point) = camera.project(rotated_point) {
                 // Draw the point as a white pixel
@@ -176,8 +195,8 @@ fn main() {
             0xFF3C00, // Orange
         );
         // Display nuke if true;
-        if DISPLAY_NUKE{
-            display_nuke(&camera, &mut buffer, WIDTH, DISPLAY_RATIO, angle);
+        if DISPLAY_NUKE {
+            display_nuke(&camera, &mut buffer, &WIDTH,  &angle,&mut is_that_really_a_nuke);
         }
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
@@ -189,17 +208,27 @@ fn main() {
     }
 }
 
-fn display_nuke(camera:&Camera,buffer:&mut Vec<u32>,width:usize,scale_ratio:f64,angle:f64){
-// make a deep copy of a 'static 3d model in order to don't modify it outside that thread 
-// ( we are in main thread in that context.)
-let mut is_that_really_a_nuke = NUKE_3D_MODEL.clone(); // copy static memory on threads stack.
-    for p in is_that_really_a_nuke.iter_mut(){
-        (*p)+=Vector3d::new(-0.75 ,0.5, 0.0); // translate model in world coordinates position.
-        (*p)*=scale_ratio;// scale it down in world display scale unit.
-        let pt_rotated = rotate_z(*p,angle); // rotate selected 3d point.
-        if let Some(projected_point) = camera.project(pt_rotated) {   // use 3d engine to project point.
-                buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration)
-        }
+fn pre_process_model(trans_x:&f64,trans_y:&f64,trans_z:&f64,scale_ratio:&f64,model_3d:&mut [Point3d;707]) {
+       for i in 0usize..707 {
+        model_3d[i].X += *trans_x;
+        model_3d[i].Y += *trans_y;
+        model_3d[i].Z += *trans_z;
+        model_3d[i] *= *scale_ratio;
     }
 }
 
+fn display_nuke(
+    camera: &Camera,
+    buffer: &mut Vec<u32>,
+    width: &usize,
+    angle: &f64,
+    mode_3d:&mut [Point3d;707]
+) {
+    for p in mode_3d.iter_mut() {
+        let pt_rotated = rotate_z(*p,*angle); // rotate selected 3d point.
+        if let Some(projected_point) = camera.project(pt_rotated) {
+            // use 3d engine to project point.
+            buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration)
+        }
+    }
+}
