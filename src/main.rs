@@ -402,7 +402,12 @@ mod rust_3d {
                     false
                 }
             }
-
+            
+            /// Test if two vectors sit on a same 3d plane.
+            /// ! for a valid result: 
+            ///   - vectors must describes two edges of the plane 
+            ///     starting from the same origin 
+            ///     ( involving an higher level check )
             pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
                 let vector_c = (*vector_b) - (*vector_a);
                 if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
