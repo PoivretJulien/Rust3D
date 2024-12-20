@@ -612,7 +612,7 @@ pub mod transformation {
             Z: point.Z,
         }
     }
-    /// Project a 3d point plane.
+    /// Project a 3d point on a 4 points3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
         let plane = [
