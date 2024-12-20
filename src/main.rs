@@ -14,8 +14,11 @@ fn main() {
      * First projection of the rust_3d module 3d Point
      * with a very basic but mysterious 3d engine in rust.
      */
+    
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
+    const DISPLAY_RATIO:f64 = 0.1; // scale model dimension to fit in screen.
+
     // Init a widows class.
     let mut window = Window::new(
         "Simple Camera 3D Projection",
@@ -33,9 +36,9 @@ fn main() {
 
     // Define the camera
     let camera = Camera::new(
-        Vector3d::new(0.0, -1.0, 0.2), // Camera position
-        Vector3d::new(0.0, 0.0, -0.1), // Camera target (looking at the origin)
-        Vector3d::new(0.0, 0.0, 1.0),  // Camera up vector
+        Vector3d::new(0.0, 1.0, 0.1), // Camera position
+        Vector3d::new(0.0, 0.0, 0.0),   // Camera target (looking at the origin)
+        Vector3d::new(0.0,1.0, 0.0),   // Camera up vector
         WIDTH as f64,
         HEIGHT as f64,
         35.0,  // FOV
@@ -47,22 +50,28 @@ fn main() {
      * for now render view dimension need to be calibrated (work with small values)
      */
     // Define a cube with 8 points (with a 9th point in the center)
-    let points = vec![
+    let mut points = vec![
         Point3d::new(0.0, 0.0, 0.0),
-        Point3d::new(0.1, 0.0, 0.0),
-        Point3d::new(0.0, 0.1, 0.0),
-        Point3d::new(0.1, 0.1, 0.0),
-        Point3d::new(0.0, 0.0, 0.1),
-        Point3d::new(0.1, 0.0, 0.1),
-        Point3d::new(0.0, 0.1, 0.1),
-        Point3d::new(0.1, 0.1, 0.1),
-        Point3d::new(0.05, 0.05, 0.05),
+        Point3d::new(1.0, 0.0, 0.0),
+        Point3d::new(0.0, 1.0, 0.0),
+        Point3d::new(1.0, 1.0, 0.0),
+        Point3d::new(0.0, 0.0, 1.0),
+        Point3d::new(1.0, 0.0, 1.0),
+        Point3d::new(0.0, 1.0, 1.0),
+        Point3d::new(1.0, 1.0, 1.0),
+        Point3d::new(0.50, 0.50, 0.50),
     ];
+
+
+    //Scale the 3d model to model space ratio.
+    for pt in points.iter_mut(){
+        (*pt) *= DISPLAY_RATIO;
+    }
 
     let mut angle = 0.0; // Angle in radian.
 
     // mini frame buffer runtime class initialization.
-    // loop infinitly until the windows is closed or the escape key is pressed.
+    // loop infinitely until the windows is closed or the escape key is pressed.
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
@@ -118,12 +127,12 @@ fn main() {
             &mut buffer,
             WIDTH,
             camera.project(origin).unwrap(),
-            camera.project(Point3d::new(0.0, 0.0, 0.1)).unwrap(),
+            camera.project(Point3d::new(0.0, 0.0, 1.0 * DISPLAY_RATIO)).unwrap(),
             0x0000FF,
         );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
-            // prevent to panic in case of f64 overflow (substraction will be optimized at compile time)
+            // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
             angle = 0.0;
         } else {
             angle += 0.005; // increment angle rotation for the animation in loop
@@ -204,6 +213,13 @@ mod rust_3d {
                     Y: self.Y + vector.Y,
                     Z: self.Z + vector.Z,
                 }
+            }
+        }
+        impl MulAssign<f64> for Point3d {
+            fn mul_assign(&mut self, scalar: f64) {
+                self.X *= scalar;
+                self.Y *= scalar;
+                self.Z *= scalar;
             }
         }
         // Vector 3d definition.
@@ -449,7 +465,7 @@ mod rust_3d {
                 let v = Vector3d::cross_product(&normalized_normal, &u).unitize_b();
 
                 Self {
-                    origin: Point3d::new((*origin).X,(*origin).Y,(*origin).Z),
+                    origin: Point3d::new((*origin).X, (*origin).Y, (*origin).Z),
                     normal: normalized_normal,
                     u,
                     v,
@@ -548,16 +564,45 @@ mod rust_3d {
                 }
             }
 
-            
+            // Compute the view matrix
+            // (transforms world coordinates to camera coordinates)
+            // TODO: Vector3d struct use a member 'Length' not required in this
+            // Context.
+            fn get_view_matrix_deprecated(&self) -> [[f64; 4]; 4] {
+                let forward = Vector3d::new(
+                    self.target.get_X() - self.position.get_X(),
+                    self.target.get_Y() - self.position.get_Y(),
+                    self.target.get_Z() - self.position.get_Z(),
+                )
+                .unitize_b();
+                let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+                let up = Vector3d::cross_product(&right, &forward).unitize_b();
+                let translation = Vector3d::new(
+                    -self.position.get_X(),
+                    -self.position.get_Y(),
+                    -self.position.get_Z(),
+                );
+                [
+                    [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
+                    [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
+                    [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
+                    [
+                        right * translation,
+                        up * translation,
+                        forward * translation,
+                        1.0,
+                    ],
+                ]
+            }
             /// Same as above slightly faster.
             /// ( Vector Length is not automatically computed )
             /// - i have used manual dot product between Point3d and Vector3d
             /// without overhead cost at runtime..
             fn get_view_matrix(&self) -> [[f64; 4]; 4] {
                 let forward = Vector3d::new(
-                    self.target.get_X() - self.position.get_X(),
-                    self.target.get_Y() - self.position.get_Y(),
-                    self.target.get_Z() - self.position.get_Z(),
+                    self.position.get_X() - self.target.get_X(),
+                    self.position.get_Y() - self.target.get_Y(),
+                    self.position.get_Z() - self.target.get_Z(),
                 )
                 .unitize_b();
                 let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
@@ -933,18 +978,19 @@ mod test {
         let point_to_test = Point3d::new(-2.571911, 13.271809, 8.748913);
         assert_eq!(true, point_to_test.is_on_plane(&plane));
     }
+
     #[test]
-    fn test_local_point(){
-        let plane_origin_pt = Point3d::new(4.330127,10.0,-15.5);
-        let plane_normal = Vector3d::new(0.5,0.0,-0.866025);
-        let point = Point3d::new(5.0,5.0,5.0);
-        let expected_result = Point3d::new(2.5,5.0,-22.330127);
-        let cp = CPlane::new(&plane_origin_pt,&plane_normal);
+    fn test_local_point() {
+        let plane_origin_pt = Point3d::new(4.330127, 10.0, -15.5);
+        let plane_normal = Vector3d::new(0.5, 0.0, -0.866025);
+        let point = Point3d::new(5.0, 5.0, 5.0);
+        let expected_result = Point3d::new(2.5, 5.0, -22.330127);
+        let cp = CPlane::new(&plane_origin_pt, &plane_normal);
         let result = cp.point_on_plane(&(point.X), &(point.Y), &(point.Z));
         // assert_eq!(expected_result,result);
-        if (expected_result-result).Length().abs() <= 1e-5{
+        if (expected_result - result).Length().abs() <= 1e-5 {
             assert!(true);
-        }else{
+        } else {
             assert!(false);
         }
     }
