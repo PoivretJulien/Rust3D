@@ -36,14 +36,14 @@ fn main() {
 
     // Define the camera
     let camera = Camera::new(
-        Vector3d::new(0.0, 1.0, 0.25), // Camera position
+        Vector3d::new(0.0, 1.0, 0.25), // Camera position (1 is the max value)
         Vector3d::new(0.0, 0.0, 0.0),  // Camera target (looking at the origin)
-        Vector3d::new(0.0, 1.0, 0.0),  // Camera up vector
+        Vector3d::new(0.0, 1.0, 0.0),  // Camera up vector (for iner cross product operation usually Y=1)
         WIDTH as f64,
         HEIGHT as f64,
-        35.0,  // FOV
-        0.5,   // Near plane
-        100.0, // Far plane
+        35.0,  // FOV (Zoom angle increace and you will get a smaller representation)
+        0.5,   // Near clip plane
+        100.0, // Far clip plane
     );
 
     // Define a cube with 8 points (with a 9th point in the center)
@@ -59,9 +59,10 @@ fn main() {
         Point3d::new(0.50, 0.50, 0.50),
     ];
 
-    // Translation Vector.
+    // Translation Vector of the above 'cube'.
     let mv = Vector3d::new(-0.5, -0.5, 0.0);
-    //Scale the 3d model to model space ratio.
+    
+    // Scale the 3d model to model space ratio and center it in the World Coordinates.
     for pt in points.iter_mut() {
         (*pt) *= DISPLAY_RATIO;
         (*pt) += mv * DISPLAY_RATIO;
@@ -81,15 +82,16 @@ fn main() {
         for pixel in buffer.iter_mut() {
             *pixel = 0x0;
         }
-        // Define 'static' origin 3d point
+        // Define the world coordinates origin 3d point.
         let origin = Point3d::new(0.0, 0.0, 0.0);
+        
         // Project animated point on the 2d screen.
-        // Compute only translated point in that loop.
+        // Compute only the animated 3d point in that loop.
         for (i, p) in points.iter().enumerate() {
             // walk the array of point (Vector<Point3d>)
-            // and rotate a copy of the 3d Point by an angle value.
+            // and rotate a copy of the 3d Point by an  incremented angle value of 0.005 radians.
             let rotated_point = rotate_z(*p, angle);
-            // Backup rotated square point for further drawing after the loop.
+            // Backup rotated square point for further drawing line after the computation of the animation (in the loop).
             if (i == 0) || (i == 1) || (i == 4) || (i == 5) {
                 moving_square[ct] = rotated_point;
                 ct += 1;
@@ -98,11 +100,11 @@ fn main() {
                 }
             }
             // Unbox projected point if a value is present an draw 3d points
-            // and Lines in 2d projected space. (3d engine have there completed it's task).
-            // (a more fancy algorithm may use GPU for such operation rather than CPU)
+            // and 2DLines in projected space. (3d engine have already there completed it's task).
+            // (a more fancy algorithm may use GPU for such projection operations rather than CPU based computation)
             if let Some(projected_point) = camera.project(rotated_point) {
                 // Draw the point as a white pixel
-                buffer[projected_point.1 * WIDTH + projected_point.0] = 0xFFFFFF;
+                buffer[projected_point.1 * WIDTH + projected_point.0] = 0x00FF00;
             }
             // Draw world X and Y axis (they are rotating...)
             let rotated_x_axis = rotate_z(Point3d::new(1.0, 0.0, 0.0), angle) * DISPLAY_RATIO;
