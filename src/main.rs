@@ -21,7 +21,7 @@ fn main() {
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
     const DISPLAY_RATIO: f64 = 0.109; // scale model dimension to fit in screen.
-    const DISPLAY_NUKE:bool = true;
+    const DISPLAY_NUKE:bool = false;
 
     // Init a widows class.
     let mut window = Window::new(
