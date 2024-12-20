@@ -17,7 +17,7 @@ fn main() {
 
     const WIDTH: usize = 800;
     const HEIGHT: usize = 600;
-    const DISPLAY_RATIO: f64 = 0.15; // scale model dimension to fit in screen.
+    const DISPLAY_RATIO: f64 = 0.109; // scale model dimension to fit in screen.
 
     // Init a widows class.
     let mut window = Window::new(
@@ -37,8 +37,8 @@ fn main() {
     // Define the camera
     let camera = Camera::new(
         Vector3d::new(0.0, 1.0, 0.25), // Camera position
-        Vector3d::new(0.0, 0.0, 0.0), // Camera target (looking at the origin)
-        Vector3d::new(0.0, 1.0, 0.0), // Camera up vector
+        Vector3d::new(0.0, 0.0, 0.0),  // Camera target (looking at the origin)
+        Vector3d::new(0.0, 1.0, 0.0),  // Camera up vector
         WIDTH as f64,
         HEIGHT as f64,
         35.0,  // FOV
@@ -62,16 +62,24 @@ fn main() {
         Point3d::new(0.50, 0.50, 0.50),
     ];
 
+    // Translation Vector.
+    let mv = Vector3d::new(-0.5, -0.5, 0.0);
     //Scale the 3d model to model space ratio.
     for pt in points.iter_mut() {
         (*pt) *= DISPLAY_RATIO;
+        (*pt) += mv * DISPLAY_RATIO;
     }
 
     let mut angle = 0.0; // Angle in radian.
+    
+    let default_point = Point3d::new(0.0,0.0,0.0);
+    let mut moving_square = [default_point;4];
+    let mut ct = 0usize;
 
     // mini frame buffer runtime class initialization.
     // loop infinitely until the windows is closed or the escape key is pressed.
     while window.is_open() && !window.is_key_down(Key::Escape) {
+
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
             *pixel = 0x0;
@@ -79,10 +87,18 @@ fn main() {
         // Define 'static' origin 3d point
         let origin = Point3d::new(0.0, 0.0, 0.0);
         // Project animated point on the 2d screen.
-        for (i, p) in points.iter().enumerate() {
+        // Compute only translated point in that loop. 
+        for (i,p) in points.iter().enumerate() {
             // walk the array of point (Vector<Point3d>)
             // and rotate a copy of the 3dPoint by an angle value.
             let rotated_point = rotate_z(*p, angle);
+            if (i==0) || (i==1) || (i==4) || (i==5){
+                moving_square[ct] = rotated_point;
+                ct+=1;
+                if i==5 {
+                    ct=0;
+                }
+            } 
             // Unbox projected point if a value is present an draw 3d points
             // and Lines in 2d projected space. (3d engine have there completed it's task).
             // (a more fancy algorithm may use GPU for such operation rather than CPU)
@@ -91,46 +107,70 @@ fn main() {
                 buffer[projected_point.1 * WIDTH + projected_point.0] = 0xFFFFFF;
             }
             // Draw world X and Y axis (they are rotating...)
-            if i == 1 {
-                // if first point in Vector<Point3d> array.
-                draw_line(
-                    &mut buffer,
-                    WIDTH,
-                    camera.project(origin).unwrap(),
-                    camera.project(rotated_point).unwrap(),
-                    0x00FF00,
-                );
-            } else if i == 2 {
-                // if third point in Vector<Point3d> array.
-                draw_line(
-                    &mut buffer,
-                    WIDTH,
-                    camera.project(origin).unwrap(),
-                    camera.project(rotated_point).unwrap(),
-                    0xFF0000,
-                );
-            } else if i == 8 {
-                // if 9th (zero based) point in Vector<Point3d> array.
-                // Draw an example line in orange.
-                draw_line(
-                    &mut buffer,
-                    WIDTH,
-                    camera.project(origin).unwrap(),
-                    camera.project(rotated_point).unwrap(),
-                    0xFA7600, // Orange color (see hexadecimal value).
-                );
-            }
+            let rotated_x_axis = rotate_z(Point3d::new(1.0, 0.0, 0.0), angle)*DISPLAY_RATIO;
+            draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(origin).unwrap(),
+                camera.project(rotated_x_axis).unwrap(),
+                0xFF0000, // red
+            );
+            let rotated_y_axis = rotate_z(Point3d::new(0.0, 1.0, 0.0), angle)*DISPLAY_RATIO;
+            draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(origin).unwrap(),
+                camera.project(rotated_y_axis).unwrap(),
+                0x00FF00, // Green
+            );
         }
-        // Draw the static (not moving) z Axis in blue.
+        // Draw the static (not moving) z Axis in blue at the center.
         draw_line(
             &mut buffer,
             WIDTH,
             camera.project(origin).unwrap(),
             camera
-                .project(Point3d::new(0.0, 0.0, 1.0 * DISPLAY_RATIO))
+                .project(Point3d::new(0.0, 0.0, 1.0*DISPLAY_RATIO))
                 .unwrap(),
-            0x0000FF,
+            0x0000FF, // Blue.
         );
+        // Draw a square in orange from the rotated 3d points in the previous loop.
+        draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(moving_square[0]).unwrap(),
+                camera.project(moving_square[1]).unwrap(),
+                0xFF3C00, // Green
+            );
+        draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(moving_square[0]).unwrap(),
+                camera.project(moving_square[2]).unwrap(),
+                0xFF3C00, // Green
+            );
+        draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(moving_square[2]).unwrap(),
+                camera.project(moving_square[3]).unwrap(),
+                0xFF3C00, // Green
+            );
+        draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(moving_square[3]).unwrap(),
+                camera.project(moving_square[1]).unwrap(),
+                0xFF3C00, // Green
+            );
+
+        draw_line(
+                &mut buffer,
+                WIDTH,
+                camera.project(moving_square[3]).unwrap(),
+                camera.project(moving_square[0]).unwrap(),
+                0xFF3C00, // Green
+            );
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
             // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
@@ -150,7 +190,7 @@ mod rust_3d {
         // Implementation of a Point3d structure
         // bound to Vector3d structure
         // for standard operator processing.
-        use std::ops::{Add, Div, Mul, MulAssign, Sub};
+        use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
         #[allow(non_snake_case)]
         #[derive(Debug, Clone, Copy, PartialEq)]
         pub struct Point3d {
@@ -205,6 +245,16 @@ mod rust_3d {
                 Vector3d::new(self.X - other.X, self.Y - other.Y, self.Z - other.Z)
             }
         }
+        impl Mul<f64> for Point3d {
+            type Output = Point3d;
+            fn mul(self, scalar: f64)->Point3d{
+                Point3d{
+                     X: self.X * scalar,
+                     Y: self.Y * scalar,
+                     Z: self.Z * scalar
+                }
+            }
+        }
 
         impl Add<Vector3d> for Point3d {
             type Output = Point3d;
@@ -217,6 +267,14 @@ mod rust_3d {
             }
         }
 
+        impl AddAssign<Vector3d> for Point3d {
+            fn add_assign(&mut self, other: Vector3d) {
+                self.X = self.X + other.X;
+                self.Y = self.Y + other.Y;
+                self.Z = self.Z + other.Z;
+            }
+        }
+
         impl MulAssign<f64> for Point3d {
             fn mul_assign(&mut self, scalar: f64) {
                 self.X *= scalar;
@@ -224,7 +282,7 @@ mod rust_3d {
                 self.Z *= scalar;
             }
         }
-        
+
         // Vector 3d definition.
         #[allow(non_snake_case)]
         #[derive(Debug, Clone, Copy, PartialEq)]
@@ -330,16 +388,6 @@ mod rust_3d {
                         )),
                 )
             }
-            /// Test if two vectors are coplanar (sit on a same virtual plane)
-            pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
-                let vector_c = (*vector_b) - (*vector_a);
-                if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
-                    true
-                } else {
-                    false
-                }
-            }
-            
             /// Test if tree vectors are coplanar with the scalar triple product.
             /// (if the volume of the AxB (cross product) * C == 0 they are coplanar)
             /// notes: two vectors addition make a third vector.
@@ -349,6 +397,15 @@ mod rust_3d {
                 vector_c: &Vector3d,
             ) -> bool {
                 if (Vector3d::cross_product(vector_a, vector_b) * (*vector_c)).abs() <= 1e-5 {
+                    true
+                } else {
+                    false
+                }
+            }
+
+            pub fn are_coplanar_a(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
+                let vector_c = (*vector_b) - (*vector_a);
+                if (Vector3d::cross_product(vector_a, vector_b) * (vector_c)).abs() <= 1e-5 {
                     true
                 } else {
                     false
