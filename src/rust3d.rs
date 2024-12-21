@@ -594,6 +594,16 @@ pub mod visualization {
                     z: self.z / scalar,
                 }
             }
+
+            // Access the coordinate by axis index (0 = x, 1 = y, 2 = z)
+            fn get_by_axis(&self, axis: usize) -> f64 {
+                match axis {
+                    0 => self.x,
+                    1 => self.y,
+                    2 => self.z,
+                    _ => panic!("Invalid axis index!"), // You can handle this more gracefully if needed
+                }
+            }
         }
 
         #[derive(Debug, Copy, Clone)]
@@ -648,7 +658,6 @@ pub mod visualization {
         }
 
         impl Triangle {
-
             // Möller–Trumbore algorithm.
             fn intersect(&self, ray: &Ray) -> Option<f64> {
                 let edge1 = Vertex {
@@ -815,8 +824,8 @@ pub mod visualization {
                 let axis = depth % 3;
                 let mut sorted_triangles = triangles;
                 sorted_triangles.sort_by(|a, b| {
-                    let center_a = a.center()[axis];
-                    let center_b = b.center()[axis];
+                    let center_a = a.center().get_by_axis(axis);
+                    let center_b = b.center().get_by_axis(axis);
                     center_a.partial_cmp(&center_b).unwrap()
                 });
 
