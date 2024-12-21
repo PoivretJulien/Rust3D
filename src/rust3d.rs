@@ -568,15 +568,15 @@ pub mod visualization {
     }
 
     /*
-     *  Ray tracing algorithm study.  
+     *  Ray tracing algorithm study.
      *  Camera and vertex are for now overlapping objects
-     *  they will be implemented in the rest of the code 
+     *  they will be implemented in the rest of the code
      *  after some api and performances optimizations.
      *  (caching,references)
      *  for now a good sequencing process is the goal.
      */
     pub mod redering_object {
-        
+
         // Todo: (optimize data structure)
         #[derive(Debug, Copy, Clone)]
         pub struct Vertex {
@@ -586,8 +586,11 @@ pub mod visualization {
         }
 
         impl Vertex {
+            pub fn new(x: f64, y: f64, z: f64) -> Self {
+                Self { x, y, z }
+            }
             // Add two vertices
-            fn add(&self, other: &Vertex) -> Vertex {
+            pub fn add(&self, other: &Vertex) -> Vertex {
                 Vertex {
                     x: self.x + other.x,
                     y: self.y + other.y,
@@ -614,7 +617,7 @@ pub mod visualization {
             }
 
             // Access the coordinate by axis index (0 = x, 1 = y, 2 = z)
-            fn get_by_axis(&self, axis: usize) -> f64 {
+            pub fn get_by_axis(&self, axis: usize) -> f64 {
                 match axis {
                     0 => self.x,
                     1 => self.y,
@@ -687,11 +690,6 @@ pub mod visualization {
             }
         }
 
-        pub struct Ray {
-            pub origin: Vertex,
-            pub direction: Vertex,
-        }
-
         impl Triangle {
             // Möller–Trumbore algorithm.
             pub fn intersect(&self, ray: &Ray) -> Option<f64> {
@@ -746,6 +744,21 @@ pub mod visualization {
                     Some(t) // Intersection distance
                 } else {
                     None
+                }
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        pub struct Ray {
+            pub origin: Vertex,
+            pub direction: Vertex,
+        }
+
+        impl Ray {
+            pub fn new(pt1: Vertex, pt2: Vertex) -> Self {
+                Self {
+                    origin: pt1,
+                    direction: pt2,
                 }
             }
         }
@@ -842,6 +855,9 @@ pub mod visualization {
         }
 
         impl BVHNode {
+            // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
+            // into a tree structure to accelerate ray tracing by
+            // reducing the number of intersection tests.
             pub fn build(triangles: Vec<Triangle>, depth: usize) -> BVHNode {
                 // Base case: Create a leaf node if triangle count is small
                 if triangles.len() <= 2 {
@@ -932,7 +948,7 @@ pub mod visualization {
             }
         }
 
-        struct Camera {
+        pub struct Camera {
             position: Vertex,  // Camera position
             forward: Vertex,   // Forward direction
             right: Vertex,     // Right direction
@@ -975,15 +991,17 @@ pub mod visualization {
                 }
             }
 
-            pub fn render(camera: &Camera) {
+            // Generate a memory allocated array: Vec<Ray> of Ray object for further
+            // Ray tracing from Camera fov generated rays.
+            pub fn render(camera: &Camera, ray_buffer: &mut Vec<Ray>) {
                 for y in 0..camera.height {
                     for x in 0..camera.width {
                         let ray = camera.generate_ray(x, y);
-                        // Use the ray for intersection tests
                         println!(
                             "Pixel ({}, {}) -> Ray Origin: {:?}, Direction: {:?}",
                             x, y, ray.origin, ray.direction
                         );
+                        ray_buffer.push(ray);
                     }
                 }
             }
@@ -1031,6 +1049,7 @@ pub mod transformation {
             Z: point.Z,
         }
     }
+
     /// Project a 3d point on a 4 points3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
@@ -1304,7 +1323,7 @@ mod test {
     }
 
     #[test]
-    fn test_ray_trace() {
+    fn test_ray_trace_v_a() {
         use super::intersection::*;
         let point = Point3d::new(7.812578, 4.543698, 23.058283);
         let direction = Vector3d::new(-1.398849, 0.106953, -0.982613);
@@ -1320,5 +1339,52 @@ mod test {
                 assert!(false);
             }
         }
+    }
+    #[test]
+    fn test_ray_trace_v_b() {
+        use super::visualization::redering_object::*;
+
+        // Define some triangles.
+        let triangles = vec![
+            Triangle::new(
+                Vertex::new(0.0, 0.0, 0.0),
+                Vertex::new(1.0, 0.0, 0.0),
+                Vertex::new(0.0, 1.0, 0.0),
+            ),
+            Triangle::new(
+                Vertex::new(1.0, 1.0, 1.0),
+                Vertex::new(2.0, 1.0, 1.0),
+                Vertex::new(1.0, 2.0, 1.0),
+            ),
+        ];
+
+        // Spatial Acceleration with BVH tree.
+        // Consist to build volumes box(s) around mesh triangles
+        // to first evaluate rays intersections only with
+        // that bounding box before weather or not digging
+        // deeper in the mesh face itself with more rays.
+        // box are build in tree structures where 
+        // - leafs are face Bounding box volumes,
+        // - parent are the sum of the childrens bb volumes
+        // - the root tree is the bounding box of the whole sub bb volumes.
+
+        // Build the BVH (Bounding Volumes Hiearchy).
+        let bvh = BVHNode::build(triangles, 0);
+
+        // Define a ray.
+        let origin = Vertex::new(0.5, 0.5, -1.0);
+        let direction = Vertex::new(0.0, 0.0, 1.0);
+        let ray = Ray::new(origin, direction);
+
+        // Perform intersection test on bvh.
+        if let Some((t, _triangle)) = bvh.intersect(&ray) {
+            //  _triangle is the ref to intersected triangle geometry.
+            // *_triangle.intersect(&ray) (for refinements...)
+            println!("Hit triangle at t = {}!", t);
+        } else {
+            println!("No intersection.");
+            assert!(false);
+        }
+        assert!(true);
     }
 }
