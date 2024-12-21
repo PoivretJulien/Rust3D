@@ -1357,7 +1357,7 @@ mod test {
                 Vertex::new(1.0, 2.0, 1.0),
             ),
         ];
-        //Personal study notes:
+
         // Spatial Acceleration with BVH tree.
         // Consist to build volumes box(s) around mesh triangles
         // to first evaluate rays intersections only with
