@@ -878,7 +878,7 @@ mod test {
     }
 
     #[test]
-    fn test_degrees_to_radiansi() {
+    fn test_degrees_to_radian() {
         use super::utillity::*;
         let angle_to_test = 90.0;
         assert_eq!(f64::consts::PI / 2.0, Degree_to_Radians(&angle_to_test));
