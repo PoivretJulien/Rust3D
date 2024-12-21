@@ -586,6 +586,15 @@ pub mod visualization {
                 }
             }
 
+            // Multiply a vertex by a scalar
+            fn mul(&self, scalar: f64) -> Vertex {
+                Vertex {
+                    x: self.x * scalar,
+                    y: self.y * scalar,
+                    z: self.z * scalar,
+                }
+            }
+
             // Divide a vertex by a scalar
             fn div(&self, scalar: f64) -> Vertex {
                 Vertex {
@@ -602,6 +611,23 @@ pub mod visualization {
                     1 => self.y,
                     2 => self.z,
                     _ => panic!("Invalid axis index!"), // You can handle this more gracefully if needed
+                }
+            }
+            // Compute the magnitude (length) of the vector
+            fn magnitude(&self) -> f64 {
+                (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+            }
+
+            // Normalize the vector (make it unit-length)
+            fn unitize(&self) -> Vertex {
+                let magnitude = self.magnitude();
+                if magnitude == 0.0 {
+                    panic!("Cannot normalize a zero-length vector");
+                }
+                Vertex {
+                    x: self.x / magnitude,
+                    y: self.y / magnitude,
+                    z: self.z / magnitude,
                 }
             }
         }
@@ -893,6 +919,50 @@ pub mod visualization {
                             (None, None) => None,
                         }
                     }
+                }
+            }
+        }
+
+        struct Camera {
+            position: Vertex,  // Camera position
+            forward: Vertex,   // Forward direction
+            right: Vertex,     // Right direction
+            up: Vertex,        // Up direction
+            fov: f64,          // Field of view in degrees
+            aspect_ratio: f64, // Aspect ratio (width / height)
+            width: usize,      // Image width
+            height: usize,     // Image height
+        }
+
+        impl Camera {
+            // Generate rays for a given pixel
+            fn generate_ray(&self, pixel_x: usize, pixel_y: usize) -> Ray {
+                // Convert FOV to radians and compute scaling factor
+                let fov_scale = (self.fov.to_radians() / 2.0).tan();
+
+                // Map pixel to normalized device coordinates (NDC)
+                let ndc_x = (pixel_x as f64 + 0.5) / self.width as f64; // Center pixel
+                let ndc_y = (pixel_y as f64 + 0.5) / self.height as f64;
+
+                // Map NDC to screen space [-1, 1]
+                let screen_x = 2.0 * ndc_x - 1.0;
+                let screen_y = 1.0 - 2.0 * ndc_y;
+
+                // Adjust for aspect ratio and FOV
+                let pixel_camera_x = screen_x * self.aspect_ratio * fov_scale;
+                let pixel_camera_y = screen_y * fov_scale;
+
+                // Compute ray direction in camera space
+                let ray_direction = self
+                    .forward
+                    .add(&self.right.mul(pixel_camera_x))
+                    .add(&self.up.mul(pixel_camera_y))
+                    .unitize(); // Normalize to get unit vector
+
+                // Create the ray
+                Ray {
+                    origin: self.position,
+                    direction: ray_direction,
                 }
             }
         }
