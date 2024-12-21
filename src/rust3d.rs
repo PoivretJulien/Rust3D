@@ -567,15 +567,24 @@ pub mod visualization {
         }
     }
 
+    /*
+     *  Ray tracing algorithm study.  
+     *  Camera and vertex are for now overlapping objects
+     *  they will be implemented in the rest of the code 
+     *  after some api and performances optimizations.
+     *  (caching,references)
+     *  for now a good sequencing process is the goal.
+     */
     pub mod redering_object {
-        // Define point 3d (may be replace by Point3d soon)
-        // Todo: (check validity of vertex.)
+        
+        // Todo: (optimize data structure)
         #[derive(Debug, Copy, Clone)]
-        struct Vertex {
-            x: f64,
-            y: f64,
-            z: f64,
+        pub struct Vertex {
+            pub x: f64,
+            pub y: f64,
+            pub z: f64,
         }
+
         impl Vertex {
             // Add two vertices
             fn add(&self, other: &Vertex) -> Vertex {
@@ -587,7 +596,7 @@ pub mod visualization {
             }
 
             // Multiply a vertex by a scalar
-            fn mul(&self, scalar: f64) -> Vertex {
+            pub fn mul(&self, scalar: f64) -> Vertex {
                 Vertex {
                     x: self.x * scalar,
                     y: self.y * scalar,
@@ -596,7 +605,7 @@ pub mod visualization {
             }
 
             // Divide a vertex by a scalar
-            fn div(&self, scalar: f64) -> Vertex {
+            pub fn div(&self, scalar: f64) -> Vertex {
                 Vertex {
                     x: self.x / scalar,
                     y: self.y / scalar,
@@ -614,12 +623,12 @@ pub mod visualization {
                 }
             }
             // Compute the magnitude (length) of the vector
-            fn magnitude(&self) -> f64 {
+            pub fn magnitude(&self) -> f64 {
                 (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
             }
 
             // Normalize the vector (make it unit-length)
-            fn unitize(&self) -> Vertex {
+            pub fn unitize(&self) -> Vertex {
                 let magnitude = self.magnitude();
                 if magnitude == 0.0 {
                     panic!("Cannot normalize a zero-length vector");
@@ -633,15 +642,15 @@ pub mod visualization {
         }
 
         #[derive(Debug, Copy, Clone)]
-        struct Triangle {
-            v0: Vertex,
-            v1: Vertex,
-            v2: Vertex,
-            normal: Vertex, // Precomputed normal vector
+        pub struct Triangle {
+            pub v0: Vertex,
+            pub v1: Vertex,
+            pub v2: Vertex,
+            pub normal: Vertex, // Precomputed normal vector
         }
 
         impl Triangle {
-            fn new(v0: Vertex, v1: Vertex, v2: Vertex) -> Self {
+            pub fn new(v0: Vertex, v1: Vertex, v2: Vertex) -> Self {
                 //Represent edge 1 by a vector.
                 let edge1 = Vertex {
                     x: v1.x - v0.x,
@@ -664,13 +673,13 @@ pub mod visualization {
             }
         }
 
-        struct Mesh {
-            vertices: Vec<Vertex>,
-            triangles: Vec<Triangle>,
+        pub struct Mesh {
+            pub vertices: Vec<Vertex>,
+            pub triangles: Vec<Triangle>,
         }
 
         impl Mesh {
-            fn new(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
+            pub fn new(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
                 Self {
                     vertices,
                     triangles,
@@ -678,14 +687,14 @@ pub mod visualization {
             }
         }
 
-        struct Ray {
-            origin: Vertex,
-            direction: Vertex,
+        pub struct Ray {
+            pub origin: Vertex,
+            pub direction: Vertex,
         }
 
         impl Triangle {
             // Möller–Trumbore algorithm.
-            fn intersect(&self, ray: &Ray) -> Option<f64> {
+            pub fn intersect(&self, ray: &Ray) -> Option<f64> {
                 let edge1 = Vertex {
                     x: self.v1.x - self.v0.x,
                     y: self.v1.y - self.v0.y,
@@ -747,14 +756,14 @@ pub mod visualization {
         use std::sync::Arc; // for nodes safety.
 
         #[derive(Debug, Clone)]
-        struct AABB {
+        pub struct AABB {
             min: Vertex, // Minimum corner of the bounding box
             max: Vertex, // Maximum corner of the bounding box
         }
 
         impl AABB {
             // Combine two AABBs into one that encompasses both
-            fn surrounding_box(box1: &AABB, box2: &AABB) -> AABB {
+            pub fn surrounding_box(box1: &AABB, box2: &AABB) -> AABB {
                 AABB {
                     min: Vertex {
                         x: box1.min.x.min(box2.min.x),
@@ -770,7 +779,7 @@ pub mod visualization {
             }
 
             // Ray-AABB intersection test (needed for BVH traversal)
-            fn intersects(&self, ray: &Ray) -> bool {
+            pub fn intersects(&self, ray: &Ray) -> bool {
                 let inv_dir = Vertex {
                     x: 1.0 / ray.direction.x,
                     y: 1.0 / ray.direction.y,
@@ -796,7 +805,7 @@ pub mod visualization {
         }
 
         #[derive(Debug)]
-        enum BVHNode {
+        pub enum BVHNode {
             Leaf {
                 bounding_box: AABB,
                 triangles: Vec<Triangle>, // Triangles in the leaf
@@ -810,13 +819,13 @@ pub mod visualization {
 
         impl Triangle {
             // Compute the centroid of the triangle
-            fn center(&self) -> [f64; 3] {
+            pub fn center(&self) -> [f64; 3] {
                 let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
                 [centroid.x, centroid.y, centroid.z]
             }
 
             // Compute the bounding box of the triangle
-            fn bounding_box(&self) -> AABB {
+            pub fn bounding_box(&self) -> AABB {
                 AABB {
                     min: Vertex {
                         x: self.v0.x.min(self.v1.x).min(self.v2.x),
@@ -833,7 +842,7 @@ pub mod visualization {
         }
 
         impl BVHNode {
-            fn build(triangles: Vec<Triangle>, depth: usize) -> BVHNode {
+            pub fn build(triangles: Vec<Triangle>, depth: usize) -> BVHNode {
                 // Base case: Create a leaf node if triangle count is small
                 if triangles.len() <= 2 {
                     let bounding_box = triangles
@@ -883,7 +892,7 @@ pub mod visualization {
             }
         }
         impl BVHNode {
-            fn intersect(&self, ray: &Ray) -> Option<(f64, &Triangle)> {
+            pub fn intersect(&self, ray: &Ray) -> Option<(f64, &Triangle)> {
                 if !self.bounding_box().intersects(ray) {
                     return None; // Ray doesn't hit this node
                 }
@@ -936,7 +945,7 @@ pub mod visualization {
 
         impl Camera {
             // Generate rays for a given pixel
-            fn generate_ray(&self, pixel_x: usize, pixel_y: usize) -> Ray {
+            pub fn generate_ray(&self, pixel_x: usize, pixel_y: usize) -> Ray {
                 // Convert FOV to radians and compute scaling factor
                 let fov_scale = (self.fov.to_radians() / 2.0).tan();
 
@@ -963,6 +972,19 @@ pub mod visualization {
                 Ray {
                     origin: self.position,
                     direction: ray_direction,
+                }
+            }
+
+            pub fn render(camera: &Camera) {
+                for y in 0..camera.height {
+                    for x in 0..camera.width {
+                        let ray = camera.generate_ray(x, y);
+                        // Use the ray for intersection tests
+                        println!(
+                            "Pixel ({}, {}) -> Ray Origin: {:?}, Direction: {:?}",
+                            x, y, ray.origin, ray.direction
+                        );
+                    }
                 }
             }
         }
