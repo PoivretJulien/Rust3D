@@ -666,12 +666,12 @@ pub mod visualization {
                     y: v2.y - v0.y,
                     z: v2.z - v0.z,
                 };
-                // normal is simply the  cross Product of edge 1 and 2.
-                let normal = Vertex {
-                    x: edge1.y * edge2.z - edge1.z * edge2.y,
-                    y: edge1.z * edge2.x - edge1.x * edge2.z,
-                    z: edge1.x * edge2.y - edge1.y * edge2.x,
-                };
+                // normal is simply the cross Product of edge 1 and 2.
+                let normal = Vertex::new(
+                     edge1.y * edge2.z - edge1.z * edge2.y,
+                     edge1.z * edge2.x - edge1.x * edge2.z,
+                     edge1.x * edge2.y - edge1.y * edge2.x
+                ).unitize();
                 Self { v0, v1, v2, normal }
             }
         }
