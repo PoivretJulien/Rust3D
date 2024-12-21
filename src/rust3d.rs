@@ -443,12 +443,12 @@ pub mod visualization {
     pub struct Camera {
         position: Point3d, // Camera position in world space
         target: Point3d,   // The point the camera is looking at
-        up: Vector3d,       // The "up" direction (usually the Y-axis)
-        fov: f64,           // Field of view (in degrees)
-        width: f64,         // Screen width
-        height: f64,        // Screen height
-        near: f64,          // Near clipping plane
-        far: f64,           // Far clipping plane
+        up: Vector3d,      // The "up" direction (usually the Y-axis)
+        fov: f64,          // Field of view (in degrees)
+        width: f64,        // Screen width
+        height: f64,       // Screen height
+        near: f64,         // Near clipping plane
+        far: f64,          // Far clipping plane
     }
 
     impl Camera {
@@ -486,11 +486,7 @@ pub mod visualization {
             let up = Vector3d::cross_product(&right, &forward).unitize_b();
             // a Point3d is used there instead of Vector3d to avoid
             // computing unused vector length automatically.
-            let translation = Point3d::new(
-                -self.position.X,
-                -self.position.Y,
-                -self.position.Z,
-            );
+            let translation = Point3d::new(-self.position.X, -self.position.Y, -self.position.Z);
             [
                 [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
                 [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
@@ -568,6 +564,327 @@ pub mod visualization {
                 matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
                 matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
             )
+        }
+    }
+
+    pub mod redering_object {
+        // Define point 3d (may be replace by Point3d soon)
+        // Todo: (check validity of vertex.)
+        #[derive(Debug, Copy, Clone)]
+        struct Vertex {
+            x: f64,
+            y: f64,
+            z: f64,
+        }
+        impl Vertex {
+            // Add two vertices
+            fn add(&self, other: &Vertex) -> Vertex {
+                Vertex {
+                    x: self.x + other.x,
+                    y: self.y + other.y,
+                    z: self.z + other.z,
+                }
+            }
+
+            // Divide a vertex by a scalar
+            fn div(&self, scalar: f64) -> Vertex {
+                Vertex {
+                    x: self.x / scalar,
+                    y: self.y / scalar,
+                    z: self.z / scalar,
+                }
+            }
+        }
+
+        #[derive(Debug, Copy, Clone)]
+        struct Triangle {
+            v0: Vertex,
+            v1: Vertex,
+            v2: Vertex,
+            normal: Vertex, // Precomputed normal vector
+        }
+
+        impl Triangle {
+            fn new(v0: Vertex, v1: Vertex, v2: Vertex) -> Self {
+                //Represent edge 1 by a vector.
+                let edge1 = Vertex {
+                    x: v1.x - v0.x,
+                    y: v1.y - v0.y,
+                    z: v1.z - v0.z,
+                };
+                // Make Vector of edge 2.
+                let edge2 = Vertex {
+                    x: v2.x - v0.x,
+                    y: v2.y - v0.y,
+                    z: v2.z - v0.z,
+                };
+                // normal is simply the  cross Product of edge 1 and 2.
+                let normal = Vertex {
+                    x: edge1.y * edge2.z - edge1.z * edge2.y,
+                    y: edge1.z * edge2.x - edge1.x * edge2.z,
+                    z: edge1.x * edge2.y - edge1.y * edge2.x,
+                };
+                Self { v0, v1, v2, normal }
+            }
+        }
+
+        struct Mesh {
+            vertices: Vec<Vertex>,
+            triangles: Vec<Triangle>,
+        }
+
+        impl Mesh {
+            fn new(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
+                Self {
+                    vertices,
+                    triangles,
+                }
+            }
+        }
+
+        struct Ray {
+            origin: Vertex,
+            direction: Vertex,
+        }
+
+        impl Triangle {
+
+            // Möller–Trumbore algorithm.
+            fn intersect(&self, ray: &Ray) -> Option<f64> {
+                let edge1 = Vertex {
+                    x: self.v1.x - self.v0.x,
+                    y: self.v1.y - self.v0.y,
+                    z: self.v1.z - self.v0.z,
+                };
+                let edge2 = Vertex {
+                    x: self.v2.x - self.v0.x,
+                    y: self.v2.y - self.v0.y,
+                    z: self.v2.z - self.v0.z,
+                };
+
+                let h = Vertex {
+                    x: ray.direction.y * edge2.z - ray.direction.z * edge2.y,
+                    y: ray.direction.z * edge2.x - ray.direction.x * edge2.z,
+                    z: ray.direction.x * edge2.y - ray.direction.y * edge2.x,
+                };
+                let a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
+
+                if a > -1e-8 && a < 1e-8 {
+                    return None; // Ray is parallel to the triangle.
+                }
+
+                let f = 1.0 / a;
+                let s = Vertex {
+                    x: ray.origin.x - self.v0.x,
+                    y: ray.origin.y - self.v0.y,
+                    z: ray.origin.z - self.v0.z,
+                };
+                let u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
+
+                if u < 0.0 || u > 1.0 {
+                    return None;
+                }
+
+                let q = Vertex {
+                    x: s.y * edge1.z - s.z * edge1.y,
+                    y: s.z * edge1.x - s.x * edge1.z,
+                    z: s.x * edge1.y - s.y * edge1.x,
+                };
+                let v = f * (ray.direction.x * q.x + ray.direction.y * q.y + ray.direction.z * q.z);
+
+                if v < 0.0 || u + v > 1.0 {
+                    return None;
+                }
+
+                let t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
+
+                if t > 1e-8 {
+                    Some(t) // Intersection distance
+                } else {
+                    None
+                }
+            }
+        }
+
+        // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
+        // into a tree structure to accelerate ray tracing
+        // by reducing the number of intersection tests.
+        use std::sync::Arc; // for nodes safety.
+
+        #[derive(Debug, Clone)]
+        struct AABB {
+            min: Vertex, // Minimum corner of the bounding box
+            max: Vertex, // Maximum corner of the bounding box
+        }
+
+        impl AABB {
+            // Combine two AABBs into one that encompasses both
+            fn surrounding_box(box1: &AABB, box2: &AABB) -> AABB {
+                AABB {
+                    min: Vertex {
+                        x: box1.min.x.min(box2.min.x),
+                        y: box1.min.y.min(box2.min.y),
+                        z: box1.min.z.min(box2.min.z),
+                    },
+                    max: Vertex {
+                        x: box1.max.x.max(box2.max.x),
+                        y: box1.max.y.max(box2.max.y),
+                        z: box1.max.z.max(box2.max.z),
+                    },
+                }
+            }
+
+            // Ray-AABB intersection test (needed for BVH traversal)
+            fn intersects(&self, ray: &Ray) -> bool {
+                let inv_dir = Vertex {
+                    x: 1.0 / ray.direction.x,
+                    y: 1.0 / ray.direction.y,
+                    z: 1.0 / ray.direction.z,
+                };
+
+                let t_min = (
+                    (self.min.x - ray.origin.x) * inv_dir.x,
+                    (self.min.y - ray.origin.y) * inv_dir.y,
+                    (self.min.z - ray.origin.z) * inv_dir.z,
+                );
+                let t_max = (
+                    (self.max.x - ray.origin.x) * inv_dir.x,
+                    (self.max.y - ray.origin.y) * inv_dir.y,
+                    (self.max.z - ray.origin.z) * inv_dir.z,
+                );
+
+                let t_enter = t_min.0.max(t_min.1).max(t_min.2);
+                let t_exit = t_max.0.min(t_max.1).min(t_max.2);
+
+                t_enter <= t_exit
+            }
+        }
+
+        #[derive(Debug)]
+        enum BVHNode {
+            Leaf {
+                bounding_box: AABB,
+                triangles: Vec<Triangle>, // Triangles in the leaf
+            },
+            Internal {
+                bounding_box: AABB,
+                left: Arc<BVHNode>,  // Left child
+                right: Arc<BVHNode>, // Right child
+            },
+        }
+
+        impl Triangle {
+            // Compute the centroid of the triangle
+            fn center(&self) -> Vertex {
+                self.v0.add(&self.v1).add(&self.v2).div(3.0)
+            }
+
+            // Compute the bounding box of the triangle
+            fn bounding_box(&self) -> AABB {
+                AABB {
+                    min: Vertex {
+                        x: self.v0.x.min(self.v1.x).min(self.v2.x),
+                        y: self.v0.y.min(self.v1.y).min(self.v2.y),
+                        z: self.v0.z.min(self.v1.z).min(self.v2.z),
+                    },
+                    max: Vertex {
+                        x: self.v0.x.max(self.v1.x).max(self.v2.x),
+                        y: self.v0.y.max(self.v1.y).max(self.v2.y),
+                        z: self.v0.z.max(self.v1.z).max(self.v2.z),
+                    },
+                }
+            }
+        }
+
+        impl BVHNode {
+            fn build(triangles: Vec<Triangle>, depth: usize) -> BVHNode {
+                // Base case: Create a leaf node if triangle count is small
+                if triangles.len() <= 2 {
+                    let bounding_box = triangles
+                        .iter()
+                        .map(|tri| tri.bounding_box())
+                        .reduce(|a, b| AABB::surrounding_box(&a, &b))
+                        .unwrap();
+                    return BVHNode::Leaf {
+                        bounding_box,
+                        triangles,
+                    };
+                }
+
+                // Find the axis to split (X, Y, or Z)
+                let axis = depth % 3;
+                let mut sorted_triangles = triangles;
+                sorted_triangles.sort_by(|a, b| {
+                    let center_a = a.center()[axis];
+                    let center_b = b.center()[axis];
+                    center_a.partial_cmp(&center_b).unwrap()
+                });
+
+                // Partition the triangles into two groups
+                let mid = sorted_triangles.len() / 2;
+                let (left_triangles, right_triangles) = sorted_triangles.split_at(mid);
+
+                // Recursively build the left and right subtrees
+                let left = Arc::new(BVHNode::build(left_triangles.to_vec(), depth + 1));
+                let right = Arc::new(BVHNode::build(right_triangles.to_vec(), depth + 1));
+
+                // Create the bounding box for this node
+                let bounding_box =
+                    AABB::surrounding_box(&left.bounding_box(), &right.bounding_box());
+
+                BVHNode::Internal {
+                    bounding_box,
+                    left,
+                    right,
+                }
+            }
+
+            pub fn bounding_box(&self) -> &AABB {
+                match self {
+                    BVHNode::Leaf { bounding_box, .. } => bounding_box,
+                    BVHNode::Internal { bounding_box, .. } => bounding_box,
+                }
+            }
+        }
+        impl BVHNode {
+            fn intersect(&self, ray: &Ray) -> Option<(f64, &Triangle)> {
+                if !self.bounding_box().intersects(ray) {
+                    return None; // Ray doesn't hit this node
+                }
+
+                match self {
+                    BVHNode::Leaf { triangles, .. } => {
+                        // Test against all triangles in the leaf
+                        let mut closest_hit: Option<(f64, &Triangle)> = None;
+                        for triangle in triangles {
+                            if let Some(t) = triangle.intersect(ray) {
+                                if closest_hit.is_none() || t < closest_hit.unwrap().0 {
+                                    closest_hit = Some((t, triangle));
+                                }
+                            }
+                        }
+                        closest_hit
+                    }
+                    BVHNode::Internal { left, right, .. } => {
+                        // Recursively test left and right children
+                        let left_hit = left.intersect(ray);
+                        let right_hit = right.intersect(ray);
+
+                        match (left_hit, right_hit) {
+                            (Some(l), Some(r)) => {
+                                if l.0 < r.0 {
+                                    Some(l)
+                                } else {
+                                    Some(r)
+                                }
+                            }
+                            (Some(l), None) => Some(l),
+                            (None, Some(r)) => Some(r),
+                            (None, None) => None,
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -894,12 +1211,12 @@ mod test {
         let plane = CPlane::new(&plane_origin, &plane_normal);
         let expected_result = Point3d::new(-9.583205, 5.873738, 10.838721);
         // assert_eq!(expected_result,intersect_line_with_plane(&point, &direction, &plane).unwrap());
-        if let Some(result_point) = intersect_ray_with_plane(&point, &direction, &plane){
-           if (result_point - expected_result).Length().abs() < 1e-5{
-               assert!(true);
-           }else{
-               assert!(false);
-           }
+        if let Some(result_point) = intersect_ray_with_plane(&point, &direction, &plane) {
+            if (result_point - expected_result).Length().abs() < 1e-5 {
+                assert!(true);
+            } else {
+                assert!(false);
+            }
         }
     }
 }
