@@ -441,8 +441,8 @@ pub mod visualization {
     use super::geometry::{Point3d, Vector3d};
 
     pub struct Camera {
-        position: Vector3d, // Camera position in world space
-        target: Vector3d,   // The point the camera is looking at
+        position: Point3d, // Camera position in world space
+        target: Point3d,   // The point the camera is looking at
         up: Vector3d,       // The "up" direction (usually the Y-axis)
         fov: f64,           // Field of view (in degrees)
         width: f64,         // Screen width
@@ -453,8 +453,8 @@ pub mod visualization {
 
     impl Camera {
         pub fn new(
-            position: Vector3d,
-            target: Vector3d,
+            position: Point3d,
+            target: Point3d,
             up: Vector3d,
             width: f64,
             height: f64,
@@ -477,9 +477,9 @@ pub mod visualization {
         /// Get view matrix.
         fn get_view_matrix(&self) -> [[f64; 4]; 4] {
             let forward = Vector3d::new(
-                self.position.get_X() - self.target.get_X(),
-                self.position.get_Y() - self.target.get_Y(),
-                self.position.get_Z() - self.target.get_Z(),
+                self.position.X - self.target.X,
+                self.position.Y - self.target.Y,
+                self.position.Z - self.target.Z,
             )
             .unitize_b();
             let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
@@ -487,9 +487,9 @@ pub mod visualization {
             // a Point3d is used there instead of Vector3d to avoid
             // computing unused vector length automatically.
             let translation = Point3d::new(
-                -self.position.get_X(),
-                -self.position.get_Y(),
-                -self.position.get_Z(),
+                -self.position.X,
+                -self.position.Y,
+                -self.position.Z,
             );
             [
                 [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
@@ -698,7 +698,7 @@ pub mod draw {
 
 pub mod utillity {
     use core::f64;
-    pub fn Degree_to_Radians(inputangle_in_degre: &f64) -> f64 {
+    pub fn degree_to_radians(inputangle_in_degre: &f64) -> f64 {
         (*inputangle_in_degre) * (f64::consts::PI * 2.0) / 360.0
     }
 }
@@ -881,7 +881,7 @@ mod test {
     fn test_degrees_to_radian() {
         use super::utillity::*;
         let angle_to_test = 90.0;
-        assert_eq!(f64::consts::PI / 2.0, Degree_to_Radians(&angle_to_test));
+        assert_eq!(f64::consts::PI / 2.0, degree_to_radians(&angle_to_test));
     }
 
     #[test]

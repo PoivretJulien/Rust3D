@@ -60,8 +60,8 @@ fn main() {
 
     // Define the camera
     let camera = Camera::new(
-        Vector3d::new(0.0, 1.0, 0.25), // Camera position (1 is the max value)
-        Vector3d::new(0.0, 0.0, 0.0),  // Camera target (looking at the origin)
+        Point3d::new(0.0, 1.0, 0.25), // Camera position (1 is the max value)
+        Point3d::new(0.0, 0.0, 0.0),  // Camera target (looking at the origin)
         Vector3d::new(0.0, 1.0, 0.0), // Camera up vector (for inner cross product operation usually Y=1)
         WIDTH as f64,
         HEIGHT as f64,
