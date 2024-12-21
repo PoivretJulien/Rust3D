@@ -1006,6 +1006,48 @@ pub mod visualization {
                 }
             }
         }
+        mod ray_operations {
+            fn shade_with_distance(
+                base_color: (u8, u8, u8),
+                distance: f64,
+                attenuation: f64,
+            ) -> (u8, u8, u8) {
+                let intensity = 1.0 / (1.0 + attenuation * distance);
+                let (r, g, b) = base_color;
+
+                (
+                    (r as f64 * intensity) as u8,
+                    (g as f64 * intensity) as u8,
+                    (b as f64 * intensity) as u8,
+                )
+            }
+        }
+        fn fog_with_distance(
+            base_color: (u8, u8, u8),
+            fog_color: (u8, u8, u8),
+            distance: f64,
+            max_distance: f64,
+        ) -> (u8, u8, u8) {
+            let fog_factor = (distance / max_distance).min(1.0);
+            let (r1, g1, b1) = base_color;
+            let (r2, g2, b2) = fog_color;
+
+            (
+                ((r1 as f64 * (1.0 - fog_factor)) + (r2 as f64 * fog_factor)) as u8,
+                ((g1 as f64 * (1.0 - fog_factor)) + (g2 as f64 * fog_factor)) as u8,
+                ((b1 as f64 * (1.0 - fog_factor)) + (b2 as f64 * fog_factor)) as u8,
+            )
+        }
+        fn light_falloff(base_color: (u8, u8, u8), distance: f64) -> (u8, u8, u8) {
+            let intensity = 1.0 / (distance + 1.0); // Soft falloff
+            let (r, g, b) = base_color;
+
+            (
+                (r as f64 * intensity) as u8,
+                (g as f64 * intensity) as u8,
+                (b as f64 * intensity) as u8,
+            )
+        }
     }
 }
 /*
@@ -1363,7 +1405,7 @@ mod test {
         // to first evaluate rays intersections only with
         // that bounding box before weather or not digging
         // deeper in the mesh face itself with more rays.
-        // box are build in tree structures where 
+        // box are build in tree structures where
         // - leafs are face Bounding box volumes,
         // - parent are the sum of the childrens bb volumes
         // - the root tree is the bounding box of the whole sub bb volumes.
