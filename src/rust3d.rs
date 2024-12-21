@@ -784,8 +784,9 @@ pub mod visualization {
 
         impl Triangle {
             // Compute the centroid of the triangle
-            fn center(&self) -> Vertex {
-                self.v0.add(&self.v1).add(&self.v2).div(3.0)
+            fn center(&self) -> [f64; 3] {
+                let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
+                [centroid.x, centroid.y, centroid.z]
             }
 
             // Compute the bounding box of the triangle
@@ -824,8 +825,8 @@ pub mod visualization {
                 let axis = depth % 3;
                 let mut sorted_triangles = triangles;
                 sorted_triangles.sort_by(|a, b| {
-                    let center_a = a.center().get_by_axis(axis);
-                    let center_b = b.center().get_by_axis(axis);
+                    let center_a = a.center()[axis];
+                    let center_b = b.center()[axis];
                     center_a.partial_cmp(&center_b).unwrap()
                 });
 
