@@ -1118,14 +1118,17 @@ pub mod visualization {
             }
 
             /// Get absolute RGB value.
+            /// compute & update absolute color value if not cached.
             pub fn get_value(&mut self)->u32{
                 if let Some(value) = self.value{
                     value
                 }else{
                     if self.alpha < 1.0{
-                        self.rgba_color(&self.red, &self.green, &self.blue, &mut self.alpha, &self.bg_color.unwrap()) 
+                        self.value = Some(self.rgba_color(&self.red, &self.green, &self.blue, &mut self.alpha, &self.bg_color.unwrap())); 
+                        self.value.unwrap()
                     }else{
-                        self.rgb_color(&self.red, &self.green, &self.blue)
+                        self.value = Some(self.rgb_color(&self.red, &self.green, &self.blue));
+                        self.value.unwrap()
                     }
                 } 
             }
