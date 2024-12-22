@@ -1088,9 +1088,9 @@ pub mod visualization {
             pub fn new_rgb(self, red: u8, green: u8, blue: u8) -> Self {
                 let absolute_color = self.rgb_color(&red, &green, &blue);
                 Self {
-                    red: red,
-                    green: green,
-                    blue: blue,
+                    red,
+                    green,
+                    blue,
                     alpha: 1.0,
                     value: Some(absolute_color),
                     bg_color:None,
@@ -1120,9 +1120,9 @@ pub mod visualization {
                     }
                 } else {
                     Self {
-                        red: red,
-                        green: green,
-                        blue: blue,
+                        red,
+                        green,
+                        blue,
                         alpha,
                         value: Some((red as u32) << 16 | ((green as u32) << 8) | (blue as u32)),
                         bg_color:None,
