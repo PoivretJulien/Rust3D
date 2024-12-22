@@ -1188,6 +1188,57 @@ pub mod utillity {
     pub fn rgb_color(red: u8, green: u8, blue: u8) -> u32 {
         (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
     }
+
+    /// Blend rgb value with alpha to back ground color.
+    /// # Arguments
+    /// - red u8
+    /// - green u8
+    /// - blue u8
+    /// - alpha f32 from 0.0 (transparent) to 1.0 (opaque)
+    /// - Background_color u32 (color to blend with)
+    /// # Returns
+    /// return an RGB color blended with the background color with the alpha from 0.0 to 1.0.
+    pub fn rgba_color(red: u8, green: u8, blue: u8, alpha: f32, bg_color: u32) -> u32 {
+        // Ensure alpha is clamped between 0.0 and 1.0
+        let alpha = alpha.clamp(0.0, 1.0);
+
+        let bg_r = ((bg_color >> 16) & 0xFF) as f32;
+        let bg_g = ((bg_color >> 8) & 0xFF) as f32;
+        let bg_b = (bg_color & 0xFF) as f32;
+
+        // Blend each channel
+        let blended_r = (alpha * red as f32 + (1.0 - alpha) * bg_r).round() as u32;
+        let blended_g = (alpha * green as f32 + (1.0 - alpha) * bg_g).round() as u32;
+        let blended_b = (alpha * blue as f32 + (1.0 - alpha) * bg_b).round() as u32;
+        (blended_r << 16) | (blended_g << 8) | blended_b
+    }
+
+    pub fn blend_rgb_with_background(
+        foreground: u32, // 0xRRGGBB
+        background: u32, // 0xRRGGBB
+        alpha: f32,      // Transparency: 0.0 (transparent) to 1.0 (opaque)
+    ) -> u32 {
+        // Ensure alpha is clamped between 0.0 and 1.0
+        let alpha = alpha.clamp(0.0, 1.0);
+
+        // Extract RGB components of the foreground
+        let fg_r = ((foreground >> 16) & 0xFF) as f32;
+        let fg_g = ((foreground >> 8) & 0xFF) as f32;
+        let fg_b = (foreground & 0xFF) as f32;
+
+        // Extract RGB components of the background
+        let bg_r = ((background >> 16) & 0xFF) as f32;
+        let bg_g = ((background >> 8) & 0xFF) as f32;
+        let bg_b = (background & 0xFF) as f32;
+
+        // Blend each channel
+        let blended_r = (alpha * fg_r + (1.0 - alpha) * bg_r).round() as u32;
+        let blended_g = (alpha * fg_g + (1.0 - alpha) * bg_g).round() as u32;
+        let blended_b = (alpha * fg_b + (1.0 - alpha) * bg_b).round() as u32;
+
+        // Recombine into a single u32 color
+        (blended_r << 16) | (blended_g << 8) | blended_b
+    }
 }
 
 #[cfg(test)]
