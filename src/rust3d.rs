@@ -1132,6 +1132,7 @@ pub mod visualization {
                     }
                 } 
             }
+
             // Get read only value since they are internally already computed.
             /// Get alpha Value.
             pub fn get_alpha(self)->f32{
@@ -1153,8 +1154,8 @@ pub mod visualization {
                 self.blue
             }
 
-            /// Change Color.
-            pub fn set_rgb_a_bg(&mut self,red:u8,green:u8,blue:u8,mut alpha:f32,bg_color: u32){
+            /// Mutate Color.
+            pub fn set_from_rgb_a_bg_components(&mut self,red:u8,green:u8,blue:u8,mut alpha:f32,bg_color: u32){
                self.red = red;
                self.green = green;
                self.blue = blue;
@@ -1163,8 +1164,8 @@ pub mod visualization {
                self.value = Some(self.rgba_color(&red, &green, &blue,&mut alpha,&bg_color));
             }
 
-            /// Change internal components from the absolute u32 0rgb color value. 
-            pub fn set_absolute_value(&mut self,value:u32){
+            /// Mutate internals components from the new absolute u32 (0rgb format) color value. 
+            pub fn set_from_absolute_value(&mut self,value:u32){
                 self.red = ((value >> 16) & 0xFF) as u8;
                 self.green = ((value >> 8) & 0xFF) as u8;
                 self.blue = (value & 0xFF) as u8;
@@ -1214,13 +1215,13 @@ pub mod visualization {
                 (blended_r << 16) | (blended_g << 8) | blended_b
             }
 
-            /// public and static version of the private method.  
+            /// Public and static version of the private method.  
             /// Convert R,G,B to an absolute value u32.
             pub fn convert_rgb_color(red: u8, green: u8, blue: u8) -> u32 {
                 (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
             }
 
-            /// get absolute color value from RGB, alpha and Background Color chanels.
+            /// Get absolute color value from RGB, alpha and Background Color chanels.
             pub fn convert_rgba_color(
                 red: u8,
                 green: u8,
