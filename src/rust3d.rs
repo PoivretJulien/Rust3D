@@ -1219,7 +1219,6 @@ pub mod visualization {
                 self.green = ((value >> 8) & 0xFF) as u8;
                 self.blue = (value & 0xFF) as u8;
                 self.alpha = 1.0;
-                self.bg_color = None;
                 self.original_value = None;
                 self.value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
             }
