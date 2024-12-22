@@ -1177,9 +1177,16 @@ pub mod draw {
 }
 
 pub mod utillity {
+
     use core::f64;
     pub fn degree_to_radians(inputangle_in_degre: &f64) -> f64 {
         (*inputangle_in_degre) * (f64::consts::PI * 2.0) / 360.0
+    }
+    
+    /// Convert an rgb value to minifb 0rgb standard. 
+    pub fn rgb_color(red:u8,green:u8,blue:u8)->u32
+    {
+        (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
     }
 }
 
