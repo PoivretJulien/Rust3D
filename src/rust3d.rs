@@ -578,7 +578,7 @@ pub mod visualization {
     pub mod redering_object {
 
         // Todo: (optimize data structure)
-        #[derive(Debug, Copy, Clone)]
+        #[derive(PartialEq, Debug, Copy, Clone)]
         pub struct Vertex {
             pub x: f64,
             pub y: f64,
@@ -677,6 +677,10 @@ pub mod visualization {
             }
         }
 
+        use std::fs::File;
+        use std::io::{self, Write};
+        use tobj;
+
         pub struct Mesh {
             pub vertices: Vec<Vertex>,
             pub triangles: Vec<Triangle>,
@@ -688,6 +692,76 @@ pub mod visualization {
                     vertices,
                     triangles,
                 }
+            }
+
+            /// Export the mesh to an .obj file.
+            pub fn export_to_obj(&self, file_path: &str) -> io::Result<()> {
+                let mut file = File::create(file_path)?;
+
+                // Write vertices
+                for vertex in &self.vertices {
+                    writeln!(file, "v {} {} {}", vertex.x, vertex.y, vertex.z)?;
+                }
+
+                // Write faces
+                for triangle in &self.triangles {
+                    let v0_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v0)
+                        .unwrap()
+                        + 1;
+                    let v1_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v1)
+                        .unwrap()
+                        + 1;
+                    let v2_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v2)
+                        .unwrap()
+                        + 1;
+
+                    writeln!(file, "f {} {} {}", v0_idx, v1_idx, v2_idx)?;
+                }
+
+                Ok(())
+            }
+
+            /// Import a mesh from an .obj file.
+            pub fn import_from_obj(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+                let (models, _materials) =
+                    tobj::load_obj(file_path, &tobj::LoadOptions::default())?;
+                let mut vertices = Vec::new();
+                let mut triangles = Vec::new();
+
+                for model in models {
+                    let mesh = model.mesh;
+
+                    // Add vertices
+                    for i in 0..mesh.positions.len() / 3 {
+                        vertices.push(Vertex {
+                            x: mesh.positions[3 * i] as f64,
+                            y: mesh.positions[3 * i + 1] as f64,
+                            z: mesh.positions[3 * i + 2] as f64,
+                        });
+                    }
+
+                    // Add triangles
+                    for i in 0..mesh.indices.len() / 3 {
+                        let v0 = vertices[mesh.indices[3 * i] as usize];
+                        let v1 = vertices[mesh.indices[3 * i + 1] as usize];
+                        let v2 = vertices[mesh.indices[3 * i + 2] as usize];
+
+                        triangles.push(Triangle::new(v0, v1, v2));
+                    }
+                }
+                Ok(Self {
+                    vertices,
+                    triangles,
+                })
             }
         }
 
@@ -747,8 +821,29 @@ pub mod visualization {
                     None
                 }
             }
-        }
 
+            // Compute the centroid of the triangle
+            pub fn center(&self) -> [f64; 3] {
+                let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
+                [centroid.x, centroid.y, centroid.z]
+            }
+
+            // Compute the bounding box of the triangle
+            pub fn bounding_box(&self) -> AABB {
+                AABB {
+                    min: Vertex {
+                        x: self.v0.x.min(self.v1.x).min(self.v2.x),
+                        y: self.v0.y.min(self.v1.y).min(self.v2.y),
+                        z: self.v0.z.min(self.v1.z).min(self.v2.z),
+                    },
+                    max: Vertex {
+                        x: self.v0.x.max(self.v1.x).max(self.v2.x),
+                        y: self.v0.y.max(self.v1.y).max(self.v2.y),
+                        z: self.v0.z.max(self.v1.z).max(self.v2.z),
+                    },
+                }
+            }
+        }
         #[derive(Debug, Clone)]
         pub struct Ray {
             pub origin: Vertex,
@@ -832,30 +927,6 @@ pub mod visualization {
             },
         }
 
-        impl Triangle {
-            // Compute the centroid of the triangle
-            pub fn center(&self) -> [f64; 3] {
-                let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
-                [centroid.x, centroid.y, centroid.z]
-            }
-
-            // Compute the bounding box of the triangle
-            pub fn bounding_box(&self) -> AABB {
-                AABB {
-                    min: Vertex {
-                        x: self.v0.x.min(self.v1.x).min(self.v2.x),
-                        y: self.v0.y.min(self.v1.y).min(self.v2.y),
-                        z: self.v0.z.min(self.v1.z).min(self.v2.z),
-                    },
-                    max: Vertex {
-                        x: self.v0.x.max(self.v1.x).max(self.v2.x),
-                        y: self.v0.y.max(self.v1.y).max(self.v2.y),
-                        z: self.v0.z.max(self.v1.z).max(self.v2.z),
-                    },
-                }
-            }
-        }
-
         impl BVHNode {
             // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
             // into a tree structure to accelerate ray tracing by
@@ -908,8 +979,6 @@ pub mod visualization {
                     BVHNode::Internal { bounding_box, .. } => bounding_box,
                 }
             }
-        }
-        impl BVHNode {
             pub fn intersect(&self, ray: &Ray) -> Option<(f64, &Triangle)> {
                 if !self.bounding_box().intersects(ray) {
                     return None; // Ray doesn't hit this node
@@ -1053,32 +1122,32 @@ pub mod visualization {
     }
     pub mod coloring {
         /*
-         * Color struct hold the RGB values in 3, 8 bit values and the total 
-         * absolute color value in a single u32 bit value 
+         * Color struct hold the RGB values in 3, 8 bit values and the total
+         * absolute color value in a single u32 bit value
          * Most of the time expressed in Hexadecimal OxFFFFFFFF (4x8bit)
          * by other API.
-         * - the absolute value and back ground value are optionals 
+         * - the absolute value and back ground value are optionals
          *   and can be cached for accelerated process.
          * - alpha is set to 1.0 (opaque) if not needed.
-         * - every components are automatically cached and updated if 
+         * - every components are automatically cached and updated if
          *   they are claimed by runtime.
          * - everything is always kept Updated since structure is private
-         *   and use only getter and setter as unique way to update 
+         *   and use only getter and setter as unique way to update
          *   the color description.
-         * - alpha can be removed and RGB values are restored to the original 
+         * - alpha can be removed and RGB values are restored to the original
          *   opaque colors.
-         * - draw back: it's a low level implementation and so alpha is always 
+         * - draw back: it's a low level implementation and so alpha is always
          *   relative to a defined back ground color on function call.
          * */
-        #[derive(Debug,Clone, Copy)]
+        #[derive(Debug, Clone, Copy)]
         pub struct Color {
             red: u8,
             green: u8,
             blue: u8,
             alpha: f32,
             value: Option<u32>,
-            bg_color:Option<u32>,
-            original_value:Option<u32>,
+            bg_color: Option<u32>,
+            original_value: Option<u32>,
         }
         impl Color {
             // Constructor A (initially without caching).
@@ -1089,8 +1158,8 @@ pub mod visualization {
                     blue,
                     alpha: 1.0,
                     value: None,
-                    bg_color:None,
-                    original_value:None,
+                    bg_color: None,
+                    original_value: None,
                 }
             }
             // Constructor B with cached absolute value.
@@ -1102,8 +1171,8 @@ pub mod visualization {
                     blue,
                     alpha: 1.0,
                     value: Some(absolute_color),
-                    bg_color:None,
-                    original_value:None,
+                    bg_color: None,
+                    original_value: None,
                 }
             }
             // Constructor C (with alpha).
@@ -1120,12 +1189,14 @@ pub mod visualization {
                         self.rgba_color(&red, &green, &blue, &mut alpha, &background_color);
                     Self {
                         red: ((absolute_color >> 16) & 0xFF) as u8,
-                        green:((absolute_color >> 8) & 0xFF) as u8,
+                        green: ((absolute_color >> 8) & 0xFF) as u8,
                         blue: (absolute_color & 0xFF) as u8,
                         alpha,
                         value: Some(absolute_color),
-                        bg_color:Some(background_color),
-                        original_value: Some((red as u32) << 16 | ((green as u32) << 8) | (blue as u32)),
+                        bg_color: Some(background_color),
+                        original_value: Some(
+                            (red as u32) << 16 | ((green as u32) << 8) | (blue as u32),
+                        ),
                     }
                 } else {
                     Self {
@@ -1134,96 +1205,121 @@ pub mod visualization {
                         blue,
                         alpha,
                         value: Some((red as u32) << 16 | ((green as u32) << 8) | (blue as u32)),
-                        bg_color:None,
-                        original_value:None,
+                        bg_color: None,
+                        original_value: None,
                     }
                 }
             }
 
             /// Get absolute the absolute color value in u32.
             /// - compute & update alpha channel if nothing is cached..
-            pub fn get_value(&mut self)->u32{
-                if let Some(value) = self.value{
+            pub fn get_value(&mut self) -> u32 {
+                if let Some(value) = self.value {
                     value // return value if cached.
-                }else{
-                    if self.alpha < 1.0{
+                } else {
+                    if self.alpha < 1.0 {
                         // Update and computed absolute color value from non opaque alpha
-                        self.value = Some(self.rgba_color(&self.red, &self.green, &self.blue, &mut self.alpha, &self.bg_color.unwrap())); 
+                        self.value = Some(self.rgba_color(
+                            &self.red,
+                            &self.green,
+                            &self.blue,
+                            &mut self.alpha,
+                            &self.bg_color.unwrap(),
+                        ));
                         // Backup original value.
-                        self.original_value = Some((self.red as u32) << 16 | ((self.green as u32) << 8) | (self.blue as u32));
-                        // Update RGB description components from updated absolute value.  
+                        self.original_value = Some(
+                            (self.red as u32) << 16
+                                | ((self.green as u32) << 8)
+                                | (self.blue as u32),
+                        );
+                        // Update RGB description components from updated absolute value.
                         self.red = ((self.value.unwrap() >> 16) & 0xFF) as u8;
                         self.green = ((self.value.unwrap() >> 8) & 0xFF) as u8;
                         self.blue = ((self.value.unwrap()) & 0xFF) as u8;
-                        self.value.unwrap()// return the computed absolute value.
-                    }else{
-                        // Update absolute value from RGB. 
-                        self.value =Some((self.red as u32) << 16 | ((self.green as u32) << 8) | (self.blue as u32));
-                        self.value.unwrap()// Return absolute 32bit value.
+                        self.value.unwrap() // return the computed absolute value.
+                    } else {
+                        // Update absolute value from RGB.
+                        self.value = Some(
+                            (self.red as u32) << 16
+                                | ((self.green as u32) << 8)
+                                | (self.blue as u32),
+                        );
+                        self.value.unwrap() // Return absolute 32bit value.
                     }
-                } 
+                }
             }
 
             /// Return Alpha Channel.
-            pub fn get_alpha(self)->f32{
+            pub fn get_alpha(self) -> f32 {
                 self.alpha
             }
 
-            /// Return Red component of value. 
+            /// Return Red component of value.
             pub fn get_red(self) -> u8 {
-                    self.red
+                self.red
             }
 
             /// Get Green.
             pub fn get_green(self) -> u8 {
-                    self.green
+                self.green
             }
 
             /// Get Blue.
             pub fn get_blue(self) -> u8 {
-                    self.blue
+                self.blue
             }
 
             /// Mutate Color and Compute alpha from given background color.
-            pub fn set_from_rgb_a_bg_components(&mut self,red:u8,green:u8,blue:u8,mut alpha:f32,bg_color: u32){
-               // Compute Alpha channel 
-               self.value = Some(self.rgba_color(&red, &green, &blue,&mut alpha,&bg_color));
-               // Backup Original Value.
-               self.original_value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
-               // Update RGBA_BG.
-               self.red = red;
-               self.green = green;
-               self.blue = blue;
-               self.alpha = alpha;
-               self.bg_color = Some(bg_color);
+            pub fn set_from_rgb_a_bg_components(
+                &mut self,
+                red: u8,
+                green: u8,
+                blue: u8,
+                mut alpha: f32,
+                bg_color: u32,
+            ) {
+                // Compute Alpha channel
+                self.value = Some(self.rgba_color(&red, &green, &blue, &mut alpha, &bg_color));
+                // Backup Original Value.
+                self.original_value =
+                    Some((self.red as u32) >> 16 | (self.green as u32) >> 8 | (self.green as u32));
+                // Update RGBA_BG.
+                self.red = red;
+                self.green = green;
+                self.blue = blue;
+                self.alpha = alpha;
+                self.bg_color = Some(bg_color);
             }
 
             /// Remove alpha channel.
-            pub fn set_opaque(&mut self){
-                if self.alpha < 1.0{
+            pub fn set_opaque(&mut self) {
+                if self.alpha < 1.0 {
                     self.red = ((self.original_value.unwrap() >> 16) & 0xFF) as u8;
                     self.green = ((self.original_value.unwrap() >> 8) & 0xFF) as u8;
                     self.blue = ((self.original_value.unwrap()) & 0xFF) as u8;
                     self.alpha = 1.0;
                     self.original_value = None;
-                    self.value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
+                    self.value = Some(
+                        (self.red as u32) >> 16 | (self.green as u32) >> 8 | (self.green as u32),
+                    );
                 }
             }
 
-            /// Mutate internals components and reset alpha state to opaque. 
-            pub fn set_from_absolute_value(&mut self,value:u32){
+            /// Mutate internals components and reset alpha state to opaque.
+            pub fn set_from_absolute_value(&mut self, value: u32) {
                 self.red = ((value >> 16) & 0xFF) as u8;
                 self.green = ((value >> 8) & 0xFF) as u8;
                 self.blue = (value & 0xFF) as u8;
                 self.alpha = 1.0;
                 self.original_value = None;
-                self.value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
+                self.value =
+                    Some((self.red as u32) >> 16 | (self.green as u32) >> 8 | (self.green as u32));
             }
 
             /// Convert an rgb value to minifb 0rgb standard.
             fn rgb_color(self, red: &u8, green: &u8, blue: &u8) -> u32 {
                 (*red as u32) << 16 | (*green as u32) << 8 | (*blue as u32)
-            }  
+            }
 
             /// Blend rgb value with alpha to back ground color.
             /// # Arguments
@@ -1272,7 +1368,7 @@ pub mod visualization {
                 red: u8,
                 green: u8,
                 blue: u8,
-                mut alpha:f32,
+                mut alpha: f32,
                 bg_color: u32,
             ) -> u32 {
                 // Ensure alpha is clamped between 0.0 and 1.0
@@ -1287,10 +1383,8 @@ pub mod visualization {
 
                 // Blend each channel
                 let blended_r = (alpha * red as f32 + (1.0 - alpha) * bg_r).round() as u32;
-                let blended_g =
-                    (alpha * green as f32 + (1.0 - alpha) * bg_g).round() as u32;
-                let blended_b =
-                    (alpha * blue as f32 + (1.0 - alpha) * bg_b).round() as u32;
+                let blended_g = (alpha * green as f32 + (1.0 - alpha) * bg_g).round() as u32;
+                let blended_b = (alpha * blue as f32 + (1.0 - alpha) * bg_b).round() as u32;
                 (blended_r << 16) | (blended_g << 8) | blended_b
             }
 
@@ -1708,9 +1802,9 @@ mod test {
 
     use super::visualization::coloring::Color;
     fn test_color() {
-        let red:u8 = 20;
-        let green:u8 = 19;
-        let blue:u8 = 10;
+        let red: u8 = 20;
+        let green: u8 = 19;
+        let blue: u8 = 10;
         assert_eq!(0x141314, Color::convert_rgb_color(red, green, blue));
     }
 }
