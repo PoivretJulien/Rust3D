@@ -105,7 +105,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
-            *pixel = 0x141314;
+            *pixel = 0x141314;//set a dark gray color as background.
         }
 
         // Project animated point on the 2d screen.

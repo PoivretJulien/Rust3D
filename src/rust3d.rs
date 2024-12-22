@@ -1119,17 +1119,10 @@ pub mod visualization {
                 self.blue
             }
 
-
             /// Convert an rgb value to minifb 0rgb standard.
             fn rgb_color(self, red: &u8, green: &u8, blue: &u8) -> u32 {
                 (*red as u32) << 16 | (*green as u32) << 8 | (*blue as u32)
-            }
-
-            /// public and static version of the private method.  
-            /// Convert R,G,B to an absolute value u32.
-            pub fn convert_rgb_color(red: u8, green: u8, blue: u8) -> u32 {
-                (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
-            }
+            }  
 
             /// Blend rgb value with alpha to back ground color.
             /// # Arguments
@@ -1165,6 +1158,12 @@ pub mod visualization {
                 let blended_b =
                     ((*alpha) * (*blue) as f32 + (1.0 - (*alpha)) * bg_b).round() as u32;
                 (blended_r << 16) | (blended_g << 8) | blended_b
+            }
+
+            /// public and static version of the private method.  
+            /// Convert R,G,B to an absolute value u32.
+            pub fn convert_rgb_color(red: u8, green: u8, blue: u8) -> u32 {
+                (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
             }
 
             pub fn blend_rgb_with_background(
