@@ -769,6 +769,7 @@ pub mod visualization {
         // by reducing the number of intersection tests.
         use std::sync::Arc; // for nodes safety.
 
+        // AABB stand for Axis aligned Bounding Box.
         #[derive(Debug, Clone)]
         pub struct AABB {
             min: Vertex, // Minimum corner of the bounding box
