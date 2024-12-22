@@ -1053,7 +1053,7 @@ pub mod visualization {
     }
     pub mod coloring {
         /*
-         * Color struct hold the RGB values in 3 8 bit values and the total 
+         * Color struct hold the RGB values in 3, 8 bit values and the total 
          * absolute color value in a single u32 bit value 
          * Most of the time expressed in Hexadecimal OxFFFFFFFF (4x8bit)
          * by other API.
