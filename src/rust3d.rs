@@ -1053,13 +1053,22 @@ pub mod visualization {
     }
     pub mod coloring {
         /*
-         * the Color struct hold the RGB values plus the total absolute color value 
-         * in a single u32 bit value Most of the time expressed in Hexadecimal. 
-         * OxFFFFFFFF  (4x8bit)
-         * - the absolute value and back ground value are optional 
-         *   and can be cached... 
-         *  - everything is always kept Updated since structure is private
-         *   and use getter and setter only.
+         * Color struct hold the RGB values in 3 8 bit values and the total 
+         * absolute color value in a single u32 bit value 
+         * Most of the time expressed in Hexadecimal OxFFFFFFFF (4x8bit)
+         * by other API.
+         * - the absolute value and back ground value are optionals 
+         *   and can be cached for accelerated process.
+         * - alpha is set to 1.0 (opaque) if not needed.
+         * - every components are automatically cached and updated if 
+         *   they are claimed by runtime.
+         * - everything is always kept Updated since structure is private
+         *   and use only getter and setter as unique way to update 
+         *   the color description.
+         * - alpha can be removed and RGB values are restored to the original 
+         *   opaque colors.
+         * - draw back: it's a low level implementation and so alpha is always 
+         *   relative to a defined back ground color on function call.
          * */
         #[derive(Debug,Clone, Copy)]
         pub struct Color {
@@ -1072,7 +1081,7 @@ pub mod visualization {
             original_value:Option<u32>,
         }
         impl Color {
-            // Constructor A.
+            // Constructor A (initially without caching).
             pub fn new_rgb_fast(red: u8, green: u8, blue: u8) -> Self {
                 Self {
                     red,
@@ -1084,7 +1093,7 @@ pub mod visualization {
                     original_value:None,
                 }
             }
-            // Constructor B.
+            // Constructor B with cached absolute value.
             pub fn new_rgb(self, red: u8, green: u8, blue: u8) -> Self {
                 let absolute_color = self.rgb_color(&red, &green, &blue);
                 Self {
@@ -1131,7 +1140,7 @@ pub mod visualization {
                 }
             }
 
-            /// Get absolute RGB value.
+            /// Get absolute the absolute color value in u32.
             /// - compute & update alpha channel if nothing is cached..
             pub fn get_value(&mut self)->u32{
                 if let Some(value) = self.value{
@@ -1155,36 +1164,24 @@ pub mod visualization {
                 } 
             }
 
-            /// Get alpha Value.
+            /// Return Alpha Channel.
             pub fn get_alpha(self)->f32{
                 self.alpha
             }
 
-            /// Get Red.
+            /// Return Red component of value. 
             pub fn get_red(self) -> u8 {
-                if let Some(value) = self.value{
-                    ((value >> 16) & 0xFF) as u8
-                }else{
                     self.red
-                }
             }
 
             /// Get Green.
             pub fn get_green(self) -> u8 {
-                if let Some(value) = self.value{
-                    ((value >> 8) & 0xFF) as u8
-                }else{
                     self.green
-                }
             }
 
             /// Get Blue.
             pub fn get_blue(self) -> u8 {
-                if let Some(value) = self.value{
-                    (value as u8) & 0xFF
-                }else{
                     self.blue
-                }
             }
 
             /// Mutate Color and Compute alpha from given background color.
