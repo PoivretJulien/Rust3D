@@ -1051,12 +1051,14 @@ pub mod visualization {
         }
     }
     pub mod coloring {
+        #[derive(Debug,Clone, Copy)]
         pub struct Color {
             red: u8,
             green: u8,
             blue: u8,
             alpha: f32,
             value: Option<u32>,
+            bg_color:Option<u32>
         }
         impl Color {
             pub fn new_rgb_fast(red: u8, green: u8, blue: u8) -> Self {
@@ -1066,8 +1068,10 @@ pub mod visualization {
                     blue,
                     alpha: 1.0,
                     value: None,
+                    bg_color:None,
                 }
             }
+
             pub fn new_rgb(self, red: u8, green: u8, blue: u8) -> Self {
                 let absolute_color = self.rgb_color(&red, &green, &blue);
                 Self {
@@ -1076,8 +1080,10 @@ pub mod visualization {
                     blue: blue,
                     alpha: 1.0,
                     value: Some(absolute_color),
+                    bg_color:None,
                 }
             }
+
             pub fn new_rgb_a(
                 self,
                 red: u8,
@@ -1096,6 +1102,7 @@ pub mod visualization {
                         blue: blue,
                         alpha: alpha,
                         value: Some(absolute_color),
+                        bg_color:Some(background_color),
                     }
                 } else {
                     absolute_color = self.rgb_color(&red, &green, &blue);
@@ -1105,18 +1112,62 @@ pub mod visualization {
                         blue: blue,
                         alpha: alpha,
                         value: Some(absolute_color),
+                        bg_color:None,
                     }
                 }
             }
 
+            /// Get absolute RGB value.
+            pub fn get_value(&mut self)->u32{
+                if let Some(value) = self.value{
+                    value
+                }else{
+                    if self.alpha < 1.0{
+                        self.rgba_color(&self.red, &self.green, &self.blue, &mut self.alpha, &self.bg_color.unwrap()) 
+                    }else{
+                        self.rgb_color(&self.red, &self.green, &self.blue)
+                    }
+                } 
+            }
+            // Get read only value since they are internally already computed.
+            /// Get alpha Value.
+            pub fn get_alpha(self)->f32{
+                self.alpha
+            }
+
+            /// Get Red.
             pub fn get_red(self) -> u8 {
                 self.red
             }
+
+            /// Get Green.
             pub fn get_green(self) -> u8 {
                 self.green
             }
+
+            /// Get Blue.
             pub fn get_blue(self) -> u8 {
                 self.blue
+            }
+
+            /// Change Color.
+            pub fn set_rgb_a_bg(&mut self,red:u8,green:u8,blue:u8,mut alpha:f32,bg_color: u32){
+               self.red = red;
+               self.green = green;
+               self.blue = blue;
+               self.alpha = alpha;
+               self.bg_color = Some(bg_color);
+               self.value = Some(self.rgba_color(&red, &green, &blue,&mut alpha,&bg_color));
+            }
+
+            /// Change internal component from the absolute u32 0rgb color value. 
+            pub fn set_absolute_value(&mut self,value:u32){
+                self.red = ((value >> 16) & 0xFF) as u8;
+                self.green = ((value >> 8) & 0xFF) as u8;
+                self.blue = (value & 0xFF) as u8;
+                self.alpha = 1.0;
+                self.bg_color = None;
+                self.value = Some(self.rgb_color(&self.red, &self.green, &self.blue));
             }
 
             /// Convert an rgb value to minifb 0rgb standard.
@@ -1166,7 +1217,36 @@ pub mod visualization {
                 (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
             }
 
-            pub fn blend_rgb_with_background(
+            /// get absolute color value from RGB, alpha and Background Color chanels.
+            pub fn convert_rgba_color(
+                red: u8,
+                green: u8,
+                blue: u8,
+                mut alpha:f32,
+                bg_color: u32,
+            ) -> u32 {
+                // Ensure alpha is clamped between 0.0 and 1.0
+                alpha = alpha.clamp(0.0, 1.0);
+
+                //TODO: a struct for Background color may be usefull
+                // for caching in u8 form ....
+                // Extract background RGB components as f32.
+                let bg_r = ((bg_color >> 16) & 0xFF) as f32;
+                let bg_g = ((bg_color >> 8) & 0xFF) as f32;
+                let bg_b = (bg_color & 0xFF) as f32;
+
+                // Blend each channel
+                let blended_r = (alpha * red as f32 + (1.0 - alpha) * bg_r).round() as u32;
+                let blended_g =
+                    (alpha * green as f32 + (1.0 - alpha) * bg_g).round() as u32;
+                let blended_b =
+                    (alpha * blue as f32 + (1.0 - alpha) * bg_b).round() as u32;
+                (blended_r << 16) | (blended_g << 8) | blended_b
+            }
+
+            /// Provide a new RGB value blended in Background color from Alpha
+            /// vale 0.0 (Transparent) to 1.0 Opaque.
+            pub fn convert_rgb_with_background_and_alpha(
                 foreground: u32, // 0xRRGGBB
                 background: u32, // 0xRRGGBB
                 alpha: f32,      // Transparency: 0.0 (transparent) to 1.0 (opaque)
@@ -1195,6 +1275,7 @@ pub mod visualization {
         }
     }
 }
+
 /*
  *  A set of early very basic transformations method
  *  of Point3d from world axis and Angles.
