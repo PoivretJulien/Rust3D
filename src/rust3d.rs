@@ -1160,7 +1160,7 @@ pub mod visualization {
                self.value = Some(self.rgba_color(&red, &green, &blue,&mut alpha,&bg_color));
             }
 
-            /// Change internal component from the absolute u32 0rgb color value. 
+            /// Change internal components from the absolute u32 0rgb color value. 
             pub fn set_absolute_value(&mut self,value:u32){
                 self.red = ((value >> 16) & 0xFF) as u8;
                 self.green = ((value >> 8) & 0xFF) as u8;
