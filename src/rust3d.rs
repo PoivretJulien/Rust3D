@@ -1052,6 +1052,15 @@ pub mod visualization {
         }
     }
     pub mod coloring {
+        /*
+         * the Color struct hold the RGB values plus the total absolute color value 
+         * in a single u32 bit value Most of the time expressed in Hexadecimal. 
+         * OxFFFFFFFF  (4x8bit)
+         * - the absolute value and back ground value are optional 
+         *   and can be cached... 
+         *  - everything is always kept Updated since structure is private
+         *   and use getter and setter only.
+         * */
         #[derive(Debug,Clone, Copy)]
         pub struct Color {
             red: u8,
@@ -1059,9 +1068,11 @@ pub mod visualization {
             blue: u8,
             alpha: f32,
             value: Option<u32>,
-            bg_color:Option<u32>
+            bg_color:Option<u32>,
+            original_value:Option<u32>,
         }
         impl Color {
+            // Constructor A.
             pub fn new_rgb_fast(red: u8, green: u8, blue: u8) -> Self {
                 Self {
                     red,
@@ -1070,9 +1081,10 @@ pub mod visualization {
                     alpha: 1.0,
                     value: None,
                     bg_color:None,
+                    original_value:None,
                 }
             }
-
+            // Constructor B.
             pub fn new_rgb(self, red: u8, green: u8, blue: u8) -> Self {
                 let absolute_color = self.rgb_color(&red, &green, &blue);
                 Self {
@@ -1082,9 +1094,10 @@ pub mod visualization {
                     alpha: 1.0,
                     value: Some(absolute_color),
                     bg_color:None,
+                    original_value:None,
                 }
             }
-
+            // Constructor C (with alpha).
             pub fn new_rgb_a(
                 self,
                 red: u8,
@@ -1093,48 +1106,55 @@ pub mod visualization {
                 mut alpha: f32,
                 background_color: u32,
             ) -> Self {
-                let mut absolute_color = 0x0u32;
                 if alpha < 1.0 {
-                    absolute_color =
+                    let absolute_color =
                         self.rgba_color(&red, &green, &blue, &mut alpha, &background_color);
                     Self {
-                        red: red,
-                        green: green,
-                        blue: blue,
-                        alpha: alpha,
+                        red: ((absolute_color >> 16) & 0xFF) as u8,
+                        green:((absolute_color >> 8) & 0xFF) as u8,
+                        blue: (absolute_color & 0xFF) as u8,
+                        alpha,
                         value: Some(absolute_color),
                         bg_color:Some(background_color),
+                        original_value: Some((red as u32) << 16 | ((green as u32) << 8) | (blue as u32)),
                     }
                 } else {
-                    absolute_color = self.rgb_color(&red, &green, &blue);
                     Self {
                         red: red,
                         green: green,
                         blue: blue,
-                        alpha: alpha,
-                        value: Some(absolute_color),
+                        alpha,
+                        value: Some((red as u32) << 16 | ((green as u32) << 8) | (blue as u32)),
                         bg_color:None,
+                        original_value:None,
                     }
                 }
             }
 
             /// Get absolute RGB value.
-            /// compute & update absolute color value if not cached.
+            /// - compute & update alpha channel if nothing is cached..
             pub fn get_value(&mut self)->u32{
                 if let Some(value) = self.value{
-                    value
+                    value // return value if cached.
                 }else{
                     if self.alpha < 1.0{
+                        // Update and computed absolute color value from non opaque alpha
                         self.value = Some(self.rgba_color(&self.red, &self.green, &self.blue, &mut self.alpha, &self.bg_color.unwrap())); 
-                        self.value.unwrap()
+                        // Backup original value.
+                        self.original_value = Some((self.red as u32) << 16 | ((self.green as u32) << 8) | (self.blue as u32));
+                        // Update RGB description components from updated absolute value.  
+                        self.red = ((self.value.unwrap() >> 16) & 0xFF) as u8;
+                        self.green = ((self.value.unwrap() >> 8) & 0xFF) as u8;
+                        self.blue = ((self.value.unwrap()) & 0xFF) as u8;
+                        self.value.unwrap()// return the computed absolute value.
                     }else{
-                        self.value = Some(self.rgb_color(&self.red, &self.green, &self.blue));
-                        self.value.unwrap()
+                        // Update absolute value from RGB. 
+                        self.value =Some((self.red as u32) << 16 | ((self.green as u32) << 8) | (self.blue as u32));
+                        self.value.unwrap()// Return absolute 32bit value.
                     }
                 } 
             }
 
-            // Get read only value since they are internally already computed.
             /// Get alpha Value.
             pub fn get_alpha(self)->f32{
                 self.alpha
@@ -1142,37 +1162,66 @@ pub mod visualization {
 
             /// Get Red.
             pub fn get_red(self) -> u8 {
-                self.red
+                if let Some(value) = self.value{
+                    ((value >> 16) & 0xFF) as u8
+                }else{
+                    self.red
+                }
             }
 
             /// Get Green.
             pub fn get_green(self) -> u8 {
-                self.green
+                if let Some(value) = self.value{
+                    ((value >> 8) & 0xFF) as u8
+                }else{
+                    self.green
+                }
             }
 
             /// Get Blue.
             pub fn get_blue(self) -> u8 {
-                self.blue
+                if let Some(value) = self.value{
+                    (value as u8) & 0xFF
+                }else{
+                    self.blue
+                }
             }
 
-            /// Mutate Color.
+            /// Mutate Color and Compute alpha from given background color.
             pub fn set_from_rgb_a_bg_components(&mut self,red:u8,green:u8,blue:u8,mut alpha:f32,bg_color: u32){
+               // Compute Alpha channel 
+               self.value = Some(self.rgba_color(&red, &green, &blue,&mut alpha,&bg_color));
+               // Backup Original Value.
+               self.original_value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
+               // Update RGBA_BG.
                self.red = red;
                self.green = green;
                self.blue = blue;
                self.alpha = alpha;
                self.bg_color = Some(bg_color);
-               self.value = Some(self.rgba_color(&red, &green, &blue,&mut alpha,&bg_color));
             }
 
-            /// Mutate internals components from the new absolute u32 (0rgb format) color value. 
+            /// Remove alpha channel.
+            pub fn set_opaque(&mut self){
+                if self.alpha < 1.0{
+                    self.red = ((self.original_value.unwrap() >> 16) & 0xFF) as u8;
+                    self.green = ((self.original_value.unwrap() >> 8) & 0xFF) as u8;
+                    self.blue = ((self.original_value.unwrap()) & 0xFF) as u8;
+                    self.alpha = 1.0;
+                    self.original_value = None;
+                    self.value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
+                }
+            }
+
+            /// Mutate internals components and reset alpha state to opaque. 
             pub fn set_from_absolute_value(&mut self,value:u32){
                 self.red = ((value >> 16) & 0xFF) as u8;
                 self.green = ((value >> 8) & 0xFF) as u8;
                 self.blue = (value & 0xFF) as u8;
                 self.alpha = 1.0;
                 self.bg_color = None;
-                self.value = Some(self.rgb_color(&self.red, &self.green, &self.blue));
+                self.original_value = None;
+                self.value = Some((self.red as u32) >>16 | (self.green as u32) >> 8 | (self.green as u32));
             }
 
             /// Convert an rgb value to minifb 0rgb standard.
