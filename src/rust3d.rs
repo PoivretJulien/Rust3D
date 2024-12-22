@@ -668,10 +668,11 @@ pub mod visualization {
                 };
                 // normal is simply the cross Product of edge 1 and 2.
                 let normal = Vertex::new(
-                     edge1.y * edge2.z - edge1.z * edge2.y,
-                     edge1.z * edge2.x - edge1.x * edge2.z,
-                     edge1.x * edge2.y - edge1.y * edge2.x
-                ).unitize();
+                    edge1.y * edge2.z - edge1.z * edge2.y,
+                    edge1.z * edge2.x - edge1.x * edge2.z,
+                    edge1.x * edge2.y - edge1.y * edge2.x,
+                )
+                .unitize();
                 Self { v0, v1, v2, normal }
             }
         }
@@ -1182,10 +1183,9 @@ pub mod utillity {
     pub fn degree_to_radians(inputangle_in_degre: &f64) -> f64 {
         (*inputangle_in_degre) * (f64::consts::PI * 2.0) / 360.0
     }
-    
-    /// Convert an rgb value to minifb 0rgb standard. 
-    pub fn rgb_color(red:u8,green:u8,blue:u8)->u32
-    {
+
+    /// Convert an rgb value to minifb 0rgb standard.
+    pub fn rgb_color(red: u8, green: u8, blue: u8) -> u32 {
         (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
     }
 }
@@ -1435,5 +1435,10 @@ mod test {
             assert!(false);
         }
         assert!(true);
+    }
+
+    fn test_color() {
+        use super::utillity::*;
+        assert_eq!(0x141314, rgb_color(20, 19, 10));
     }
 }
