@@ -1,3 +1,5 @@
+use core::f64;
+
 use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a defined screen size.
 
 // My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
@@ -27,23 +29,23 @@ fn main() {
     const HEIGHT: usize = 600; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
     const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
-    const DISPLAY_OBJ :bool = true;
+    const DISPLAY_OBJ: bool = true;
 
     let mut import_obj = Vec::new();
     // .obj file importation test.
-    if let Some(mesh) = read_obj_file("./geometry/dk.obj"){
-         for vertex in mesh.vertices{
-             import_obj.push(Point3d::new(vertex.x ,vertex.y, vertex.z));
-         }
-         let ratio_dk = 0.2; //Dk scale ratio.
-         let trans_vector = (0.5, -0.4, 0.0); //translation vector.
-         pre_process_obj(
+    if let Some(mesh) = read_obj_file("./geometry/dk.obj") {
+        for vertex in mesh.vertices {
+            import_obj.push(Point3d::new(vertex.x, vertex.y, vertex.z));
+        }
+        let ratio_dk = 0.2; //Dk scale ratio.
+        let trans_vector = (0.5, -0.4, 0.0); //translation vector.
+        pre_process_obj(
             &(trans_vector.0),
             &(trans_vector.1),
             &(trans_vector.2),
             &ratio_dk,
             &mut import_obj,
-            );
+        );
     }
 
     // mutating a static memory involve unsafe code.
@@ -223,8 +225,8 @@ fn main() {
                 &mut is_that_really_a_nuke,
             );
         }
-        if DISPLAY_OBJ{
-            display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj);
+        if DISPLAY_OBJ {
+            display_obj(&camera, &mut buffer, &WIDTH, &mut angle, &mut import_obj);
         }
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
@@ -251,7 +253,7 @@ fn read_obj_file(path: &str) -> Option<Mesh> {
             obj.vertices.len()
         );
         println!("Import success.");
-       // obj.export_to_obj_with_normals_fast("./geometry/high_test.obj").ok();
+        // obj.export_to_obj_with_normals_fast("./geometry/high_test.obj").ok();
         Some(obj)
     } else {
         None
@@ -305,19 +307,20 @@ fn pre_process_obj(
     }
 }
 
+use rust3d::visualization::coloring::Color;
 fn display_obj(
     camera: &Camera,
     buffer: &mut Vec<u32>,
     width: &usize,
-    angle: &f64,
+    angle: &mut f64,
     mode_3d: &mut Vec<Point3d>,
 ) {
     for p in mode_3d.iter_mut() {
         let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
-                                               // use 3d engine to project point.
+        // use 3d engine to project point.
         if let Some(projected_point) = camera.project(pt_rotated) {
-            // write withe pixel on 2d screen representing the rotating 3d model.
-            buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration).
+            buffer[projected_point.1 * width + projected_point.0] =
+                Color::convert_rgba_color(255, 255, 39, 0.93, 0x141314); //  mutate the buffer (we are in a single thread configuration).
         }
     }
 }
