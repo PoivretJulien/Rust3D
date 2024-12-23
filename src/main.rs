@@ -2,6 +2,7 @@ use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a def
 
 // My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
 mod rust3d;
+use redering_object::{Triangle, Vertex};
 use rust3d::draw::*;
 use rust3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
 use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
@@ -18,6 +19,10 @@ use models_3d::NUKE_3D_MODEL;
 //   so a full double precision is used a f128 also is probably overkill...
 
 fn main() {
+
+    read_obj_file("./geometry/medium_geometry.obj");
+
+
     /*
      * First projection of the rust 3d lib using Point3d and Vector3d Objects.
      */
@@ -54,7 +59,7 @@ fn main() {
         panic!("{}", e);
     });
 
-    // a simple allocated array of u 32 initialized at 0
+    // A simple allocated array of u 32 initialized at 0
     // representing the color and the 2d position of points.
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -212,6 +217,17 @@ fn main() {
             angle += 0.005; // increment angle rotation for the animation in loop
         } // enjoy.
     }
+}
+
+fn read_obj_file(path:&str){
+    use rust3d::visualization::redering_object::Mesh;
+    let mesh_data = Mesh::count_obj_elements(path).ok().unwrap();
+    println!("Importing .obj file (test) path:{0}",path);
+    println!("Mesh stat(s) before import Vertex(s):{0} Vertex Normal(s):{1} Triangle(s):{2})",mesh_data.0,mesh_data.1,mesh_data.2);
+    let obj = Mesh::import_obj_with_normals(path).ok().unwrap();
+    println!("After import: Triangles:{0}, Vertex(s):{1}",obj.triangles.len(),obj.vertices.len());
+    println!("Import success.");
+    obj.export_to_obj_with_normals("./geometry/medium_mesh.obj").ok();
 }
 
 fn pre_process_model(

@@ -250,6 +250,7 @@ pub mod geometry {
 
             (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
         }
+
         /// Project a vector on an infinite plane.
         /// # Arguments
         ///   takes plane as an array of two coplanar vectors from a same origin 3d point
@@ -506,6 +507,7 @@ pub mod visualization {
                 ],
             ]
         }
+
         // Create a perspective projection matrix
         fn get_projection_matrix(&self) -> [[f64; 4]; 4] {
             let aspect_ratio = self.width / self.height;
@@ -591,6 +593,7 @@ pub mod visualization {
             pub fn new(x: f64, y: f64, z: f64) -> Self {
                 Self { x, y, z }
             }
+
             // Add two vertices
             pub fn add(&self, other: &Vertex) -> Vertex {
                 Vertex {
@@ -687,7 +690,6 @@ pub mod visualization {
         use std::fs::File;
         use std::io::{self, BufRead, BufReader, Write};
         use tobj;
-        use tobj::load_obj;
 
         #[derive(Debug)]
         pub struct Mesh {
@@ -815,7 +817,7 @@ pub mod visualization {
                     let line = line?;
                     let parts: Vec<&str> = line.split_whitespace().collect();
 
-                    if parts.is_empty() {
+                    if parts.is_empty(){
                         continue; // Skip empty lines
                     }
 
@@ -865,7 +867,7 @@ pub mod visualization {
                 Ok(Mesh::new(vertices, triangles))
             }
 
-            pub fn from_obj_with_normals(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+            pub fn import_obj_with_normals(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
                 use std::fs::File;
                 use std::io::{BufRead, BufReader};
 
@@ -879,6 +881,10 @@ pub mod visualization {
                 for line in reader.lines() {
                     let line = line?;
                     let parts: Vec<&str> = line.split_whitespace().collect();
+
+                    if parts.is_empty(){
+                        continue;
+                    }
 
                     match parts[0] {
                         "v" => {
@@ -941,7 +947,7 @@ pub mod visualization {
                 })
             }
 
-            pub fn to_obj_with_normals(
+            pub fn export_to_obj_with_normals(
                 &self,
                 path: &str,
             ) -> Result<(), Box<dyn std::error::Error>> {
@@ -950,19 +956,29 @@ pub mod visualization {
 
                 let file = File::create(path)?;
                 let mut writer = BufWriter::new(file);
-
+                println!("\x1b[2J"); 
+                println!("\x1b[3;0HExporting:{0}",path);
+                let vertex_count = self.vertices.len();
+                let mut ct = 0;
                 for vertex in &self.vertices {
                     writeln!(writer, "v {} {} {}", vertex.x, vertex.y, vertex.z)?;
+                    ct+=1;
+                    println!("\x1b[4;0HVertex step Progress:{0}/{1}",ct,vertex_count);
                 }
 
+                let triangle_count = self.triangles.len();
+                ct=0;
                 for triangle in &self.triangles {
                     writeln!(
                         writer,
                         "vn {} {} {}",
                         triangle.normal.x, triangle.normal.y, triangle.normal.z
                     )?;
+                    ct+=1;
+                    println!("\x1b[5;0HTriangle step Progress:{0}/{1}",ct,triangle_count);
                 }
 
+                ct=0;
                 for triangle in &self.triangles {
                     let v0_idx = self
                         .vertices
@@ -987,6 +1003,11 @@ pub mod visualization {
                         "f {}/{} {}/{} {}/{}",
                         v0_idx, v0_idx, v1_idx, v1_idx, v2_idx, v2_idx
                     )?;
+                    println!("\x1b[6;0HFace(s) step Progress:{0}/{1}",ct,triangle_count);
+                    ct+=1;
+                    if ct==triangle_count{
+                        break;
+                    }
                 }
 
                 Ok(())
@@ -2039,7 +2060,7 @@ mod test {
     }
     use super::visualization::redering_object::*;
     #[test]
-    fn test_import_export() {
+    fn test_import_export_obj_size_ligh() {
         let vertices = vec![
             Vertex::new(0.0, 0.0, 0.0),
             Vertex::new(1.0, 0.0, 1.0),
@@ -2052,10 +2073,22 @@ mod test {
         ];
         let mesh = Mesh::new(vertices, triangles);
         mesh.export_to_obj("./geometry/exported.obj").ok();
-        let _obj = Mesh::import_from_obj("./geometry/exported.obj").unwrap();
-        let objb = Mesh::import_from_obj_tri_only("./geometry/light_geometry.obj").unwrap();
-        objb.export_to_obj("./geometry/export_from_rust_light.obj").ok();
-        assert_eq!(Some((0usize,0usize,0usize)),Mesh::count_obj_elements("./geometry/light_geometry.obj").ok());
-        assert!(true);
+        let expected_data = Mesh::count_obj_elements("./geometry/exported.obj").ok().unwrap();
+        let imported_mesh = Mesh::import_obj_with_normals("./geometry/exported.obj").unwrap();
+        assert_eq!((expected_data.0,expected_data.2),(imported_mesh.vertices.len(),imported_mesh.triangles.len()));
+    }
+    #[test]
+    fn test_import_export_obj_size_medium() {
+        let expected_data = Mesh::count_obj_elements("./geometry/medium_geometry.obj").ok().unwrap();
+        let imported_mesh = Mesh::import_obj_with_normals("./geometry/medium_geometry.obj").unwrap();
+        assert_eq!((expected_data.0,expected_data.2),(imported_mesh.vertices.len(),imported_mesh.triangles.len()));
+        imported_mesh.export_to_obj("./geometry/medium_geometry_exported_from_rust.obj").ok();
+    }
+    #[test]
+    fn test_import_obj_size_hight() {
+        let expected_data = Mesh::count_obj_elements("./geometry/hight_geometry.obj").ok().unwrap();
+        let imported_mesh = Mesh::import_obj_with_normals("./geometry/hight_geometry.obj").unwrap();
+        assert_eq!((expected_data.0,expected_data.2),(imported_mesh.vertices.len(),imported_mesh.triangles.len()));
+        //imported_mesh.export_to_obj_with_normals("./geometry/hight_geometry_exported_from_rust.obj").ok();
     }
 }
