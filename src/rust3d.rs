@@ -696,7 +696,6 @@ pub mod visualization {
         }
 
         impl Mesh {
-            
             pub fn new(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
                 Self {
                     vertices,
@@ -704,7 +703,12 @@ pub mod visualization {
                 }
             }
 
-            fn count_obj_elements(file_path: &str) -> io::Result<(usize, usize, usize)> {
+            /// Will be needed for multitasking large files IO.
+            /// # Arguments
+            ///     file path of the obj file.
+            /// # Returns
+            ///     Result(vertex count,normal count,face count)
+            pub fn count_obj_elements(file_path: &str) -> io::Result<(usize, usize, usize)> {
                 let file = File::open(file_path)?;
                 let reader = BufReader::new(file);
 
@@ -2051,6 +2055,7 @@ mod test {
         let _obj = Mesh::import_from_obj("./geometry/exported.obj").unwrap();
         let objb = Mesh::import_from_obj_tri_only("./geometry/light_geometry.obj").unwrap();
         objb.export_to_obj("./geometry/export_from_rust_light.obj").ok();
+        assert_eq!(Some((0usize,0usize,0usize)),Mesh::count_obj_elements("./geometry/light_geometry.obj").ok());
         assert!(true);
     }
 }
