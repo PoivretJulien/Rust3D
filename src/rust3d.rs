@@ -2184,11 +2184,11 @@ mod test {
             Triangle::new(vertices[0], vertices[2], vertices[3]),
         ];
         let mesh = Mesh::new(vertices, triangles);
-        mesh.export_to_obj("./geometry/exported.obj").ok();
-        let expected_data = Mesh::count_obj_elements("./geometry/exported.obj")
+        mesh.export_to_obj("./geometry/exported_light_with_rust.obj").ok();
+        let expected_data = Mesh::count_obj_elements("./geometry/exported_light_with_rust.obj")
             .ok()
             .unwrap();
-        let imported_mesh = Mesh::import_obj_with_normals("./geometry/exported.obj").unwrap();
+        let imported_mesh = Mesh::import_obj_with_normals("./geometry/exported_light_with_rust.obj").unwrap();
         assert_eq!(
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
@@ -2201,13 +2201,13 @@ mod test {
             .unwrap();
         let imported_mesh =
             Mesh::import_obj_with_normals("./geometry/medium_geometry.obj").unwrap();
+        imported_mesh
+            .export_to_obj_with_normals_fast ("./geometry/medium_geometry_exported_from_rust.obj")
+            .ok();
         assert_eq!(
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
         );
-        imported_mesh
-            .export_to_obj_with_normals_fast ("./geometry/medium_geometry_exported_from_rust.obj")
-            .ok();
     }
     #[test]
     fn test_import_obj_size_hight() {
@@ -2215,10 +2215,10 @@ mod test {
             .ok()
             .unwrap();
         let imported_mesh = Mesh::import_obj_with_normals("./geometry/hight_geometry.obj").unwrap();
+        imported_mesh.export_to_obj_with_normals_fast("./geometry/hight_geometry_exported_from_rust.obj").ok();
         assert_eq!(
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
         );
-        imported_mesh.export_to_obj_with_normals_fast("./geometry/hight_geometry_exported_from_rust.obj").ok();
     }
 }
