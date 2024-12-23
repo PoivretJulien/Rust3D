@@ -7,8 +7,10 @@ use rust3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d s
 use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
 use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
 
+use rust3d::visualization::redering_object::Mesh;
 mod models_3d; // external file where 3d model(s) are conveniently stored.
 use models_3d::NUKE_3D_MODEL;
+use rayon::*;
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
 //   representing a cube with a dot in the middle + 3 colors axis are
@@ -25,6 +27,24 @@ fn main() {
     const HEIGHT: usize = 600; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
     const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
+    const DISPLAY_OBJ :bool = true;
+
+    let mut import_obj = Vec::new();
+    // .obj file importation test.
+    if let Some(mesh) = read_obj_file("./geometry/dk.obj"){
+         for vertex in mesh.vertices{
+             import_obj.push(Point3d::new(vertex.x ,vertex.y, vertex.z));
+         }
+         let ratio_dk = 0.2; //Dk scale ratio.
+         let trans_vector = (0.5, -0.4, 0.0); //translation vector.
+         pre_process_obj(
+            &(trans_vector.0),
+            &(trans_vector.1),
+            &(trans_vector.2),
+            &ratio_dk,
+            &mut import_obj,
+            );
+    }
 
     // mutating a static memory involve unsafe code.
     // (i want to avoid that so i make a deep copy for the actual thread once not a big deal...)
@@ -54,7 +74,7 @@ fn main() {
         panic!("{}", e);
     });
 
-    // a simple allocated array of u 32 initialized at 0
+    // A simple allocated array of u 32 initialized at 0
     // representing the color and the 2d position of points.
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -99,13 +119,12 @@ fn main() {
     let mut moving_square = [origin; 4];
     let mut ct = 0usize; // memory 'cursor index'
 
-
     // mini frame buffer runtime class initialization.
     // loop infinitely until the windows is closed or the escape key is pressed.
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
-            *pixel = 0x141314;//set a dark gray color as background.
+            *pixel = 0x141314; //set a dark gray color as background.
         }
 
         // Project animated point on the 2d screen.
@@ -204,6 +223,9 @@ fn main() {
                 &mut is_that_really_a_nuke,
             );
         }
+        if DISPLAY_OBJ{
+            display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj);
+        }
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
             // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
@@ -211,6 +233,28 @@ fn main() {
         } else {
             angle += 0.005; // increment angle rotation for the animation in loop
         } // enjoy.
+    }
+}
+
+fn read_obj_file(path: &str) -> Option<Mesh> {
+    use rust3d::visualization::redering_object::Mesh;
+    let mesh_data = Mesh::count_obj_elements(path).unwrap();
+    println!("Importing .obj file (test) path:{0}", path);
+    println!(
+        "Mesh stat(s) before import Vertex(s):{0} Vertex Normal(s):{1} Triangle(s):{2})",
+        mesh_data.0, mesh_data.1, mesh_data.2
+    );
+    if let Some(obj) = Mesh::import_obj_with_normals(path).ok() {
+        println!(
+            "After import: Triangles:{0}, Vertex(s):{1}",
+            obj.triangles.len(),
+            obj.vertices.len()
+        );
+        println!("Import success.");
+       // obj.export_to_obj_with_normals_fast("./geometry/high_test.obj").ok();
+        Some(obj)
+    } else {
+        None
     }
 }
 
@@ -238,7 +282,39 @@ fn display_nuke(
 ) {
     for p in mode_3d.iter_mut() {
         let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
-        // use 3d engine to project point.
+                                               // use 3d engine to project point.
+        if let Some(projected_point) = camera.project(pt_rotated) {
+            // write withe pixel on 2d screen representing the rotating 3d model.
+            buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration).
+        }
+    }
+}
+
+fn pre_process_obj(
+    trans_x: &f64,
+    trans_y: &f64,
+    trans_z: &f64,
+    scale_ratio: &f64,
+    model_3d: &mut Vec<Point3d>,
+) {
+    for i in 0..model_3d.len() {
+        model_3d[i].X += *trans_x;
+        model_3d[i].Y += *trans_y;
+        model_3d[i].Z += *trans_z;
+        model_3d[i] *= *scale_ratio;
+    }
+}
+
+fn display_obj(
+    camera: &Camera,
+    buffer: &mut Vec<u32>,
+    width: &usize,
+    angle: &f64,
+    mode_3d: &mut Vec<Point3d>,
+) {
+    for p in mode_3d.iter_mut() {
+        let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
+                                               // use 3d engine to project point.
         if let Some(projected_point) = camera.project(pt_rotated) {
             // write withe pixel on 2d screen representing the rotating 3d model.
             buffer[projected_point.1 * width + projected_point.0] = 0xFFFFFF; // mutate the buffer (we are in a single thread configuration).
