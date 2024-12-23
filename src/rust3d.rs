@@ -678,10 +678,8 @@ pub mod visualization {
         }
 
         use std::fs::File;
-        use std::io::{self, Write};
+        use std::io::{self, Write,BufRead};
         use tobj;
-        use obj::Obj;
-        use tobj::load_obj;
 
         #[derive(Debug)]
         pub struct Mesh {
@@ -733,7 +731,7 @@ pub mod visualization {
             }
 
             /// Import a mesh from an .obj file.
-            pub fn import_from_obj(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+            pub fn import_from_obj_tri_only(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
                 let (models, _materials) =
                     tobj::load_obj(file_path, &tobj::LoadOptions::default())?;
                 let mut vertices = Vec::new();
@@ -764,6 +762,68 @@ pub mod visualization {
                     vertices,
                     triangles,
                 })
+            }
+
+            pub fn import_from_obj(file_path: &str) -> io::Result<Self> {
+                let file = File::open(file_path)?;
+                let reader = io::BufReader::new(file);
+
+                let mut vertices: Vec<Vertex> = Vec::new();
+                let mut triangles: Vec<Triangle> = Vec::new();
+
+                for line in reader.lines() {
+                    let line = line?;
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+
+                    if parts.is_empty() {
+                        continue; // Skip empty lines
+                    }
+
+                    match parts[0] {
+                        "v" => {
+                            // Parse a vertex
+                            let x: f64 = parts[1].parse().expect("Invalid vertex format");
+                            let y: f64 = parts[2].parse().expect("Invalid vertex format");
+                            let z: f64 = parts[3].parse().expect("Invalid vertex format");
+                            vertices.push(Vertex::new(x, y, z));
+                        }
+                        "f" => {
+                            // Parse a face (convert quads to triangles)
+                            let indices: Vec<usize> = parts[1..]
+                                .iter()
+                                .map(|s| s.split('/').next().unwrap().parse::<usize>().unwrap() - 1)
+                                .collect();
+
+                            if indices.len() == 3 {
+                                // Triangle face
+                                triangles.push(Triangle::new(
+                                    vertices[indices[0]],
+                                    vertices[indices[1]],
+                                    vertices[indices[2]],
+                                ));
+                            } else if indices.len() == 4 {
+                                // Quad face, split into two triangles
+                                triangles.push(Triangle::new(
+                                    vertices[indices[0]],
+                                    vertices[indices[1]],
+                                    vertices[indices[2]],
+                                ));
+                                triangles.push(Triangle::new(
+                                    vertices[indices[0]],
+                                    vertices[indices[2]],
+                                    vertices[indices[3]],
+                                ));
+                            } else {
+                                panic!("Unsupported face format: more than 4 vertices per face.");
+                            }
+                        }
+                        _ => {
+                            // Ignore other lines
+                        }
+                    }
+                }
+
+                Ok(Mesh::new(vertices, triangles))
             }
         }
 
@@ -1813,23 +1873,21 @@ mod test {
     use super::visualization::redering_object::*;
     #[test]
     fn test_import_export() {
-        //let obj = Mesh::import_from_obj("model.obj").unwrap();
-        //obj.export_to_obj("new_model_from_Rust.obj").ok();
-
-        
-                let vertices = vec![
-                    Vertex::new(0.0, 0.0, 0.0),
-                    Vertex::new(1.0, 0.0, 1.0),
-                    Vertex::new(1.0, 1.0, 0.0),
-                    Vertex::new(0.0, 1.0, 0.2),
-                ];
-                let triangles = vec![
-                    Triangle::new(vertices[0], vertices[1], vertices[2]),
-                    Triangle::new(vertices[0], vertices[2], vertices[3]),
-                ];
-                let mesh = Mesh::new(vertices, triangles);
-                mesh.export_to_obj("exported.obj").ok();
-                let obj = Mesh::import_from_obj("exported.obj").unwrap();
+        let vertices = vec![
+            Vertex::new(0.0, 0.0, 0.0),
+            Vertex::new(1.0, 0.0, 1.0),
+            Vertex::new(1.0, 1.0, 0.0),
+            Vertex::new(0.0, 1.0, 0.2),
+        ];
+        let triangles = vec![
+            Triangle::new(vertices[0], vertices[1], vertices[2]),
+            Triangle::new(vertices[0], vertices[2], vertices[3]),
+        ];
+        let mesh = Mesh::new(vertices, triangles);
+        mesh.export_to_obj("exported.obj").ok();
+        let _obj = Mesh::import_from_obj("exported.obj").unwrap();
+        let objb = Mesh::import_from_obj("Cones.obj").unwrap();
+        objb.export_to_obj("testCone.obj").ok();
         assert!(true);
     }
 }
