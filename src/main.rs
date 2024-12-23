@@ -4,13 +4,13 @@ use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a def
 
 // My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
 mod rust3d;
+mod models_3d; // external file where 3d model(s) are conveniently stored.
 use rust3d::draw::*;
 use rust3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
 use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
 use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
-
+use rust3d::utillity::*;
 use rust3d::visualization::redering_object::Mesh;
-mod models_3d; // external file where 3d model(s) are conveniently stored.
 use models_3d::NUKE_3D_MODEL;
 use rayon::*;
 
@@ -207,7 +207,6 @@ fn main() {
             camera.project(moving_square[1]).unwrap(),
             0xFF3C00, // Orange
         );
-
         draw_line(
             &mut buffer,
             WIDTH,
@@ -228,19 +227,21 @@ fn main() {
         if DISPLAY_OBJ {
             display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj);
         }
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
-        if angle >= (std::f64::MAX - 0.005) {
+        let step = 0.5;// step in degree.
+        if (angle*360.0)/(f64::consts::PI*2.0) >= 359.0 {
             // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
             angle = 0.0;
         } else {
-            angle += 0.005; // increment angle rotation for the animation in loop
+            angle += degree_to_radians(&step); // increment angle rotation for the animation in loop
         } // enjoy.
+        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
     }
 }
 
 fn read_obj_file(path: &str) -> Option<Mesh> {
     use rust3d::visualization::redering_object::Mesh;
     let mesh_data = Mesh::count_obj_elements(path).unwrap();
+    println!("\x1b[2J");
     println!("Importing .obj file (test) path:{0}", path);
     println!(
         "Mesh stat(s) before import Vertex(s):{0} Vertex Normal(s):{1} Triangle(s):{2})",
@@ -253,7 +254,7 @@ fn read_obj_file(path: &str) -> Option<Mesh> {
             obj.vertices.len()
         );
         println!("Import success.");
-        // obj.export_to_obj_with_normals_fast("./geometry/high_test.obj").ok();
+        //obj.export_to_obj_with_normals_fast("./geometry/high_test.obj").ok();
         Some(obj)
     } else {
         None
@@ -319,7 +320,7 @@ fn display_obj(
         let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
         // use 3d engine to project point.
         if let Some(projected_point) = camera.project(pt_rotated) {
-            buffer[projected_point.1 * width + projected_point.0] =
+            buffer[projected_point.1 * width + projected_point.0] = 
                 Color::convert_rgba_color(255, 255, 39, 0.93, 0x141314); //  mutate the buffer (we are in a single thread configuration).
         }
     }
