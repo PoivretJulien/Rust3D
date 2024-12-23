@@ -226,7 +226,7 @@ fn main() {
             );
         }
         if DISPLAY_OBJ {
-            display_obj(&camera, &mut buffer, &WIDTH, &mut angle, &mut import_obj);
+            display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj);
         }
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
         if angle >= (std::f64::MAX - 0.005) {
@@ -312,7 +312,7 @@ fn display_obj(
     camera: &Camera,
     buffer: &mut Vec<u32>,
     width: &usize,
-    angle: &mut f64,
+    angle: &f64,
     mode_3d: &mut Vec<Point3d>,
 ) {
     for p in mode_3d.iter_mut() {
