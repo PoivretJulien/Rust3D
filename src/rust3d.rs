@@ -582,11 +582,28 @@ pub mod visualization {
         // Todo: (optimize data structure)
         // Vertex is use as multi purpose usage
         // can be use as Point3d or Vector3d.
-        #[derive(PartialEq, Debug, Copy, Clone)]
+        #[derive(Debug, Copy, Clone)]
         pub struct Vertex {
             pub x: f64,
             pub y: f64,
             pub z: f64,
+        }
+        use std::hash::{Hash, Hasher};
+
+        impl PartialEq for Vertex {
+            fn eq(&self, other: &Self) -> bool {
+                self.x == other.x && self.y == other.y && self.z == other.z
+            }
+        }
+
+        impl Eq for Vertex {}
+
+        impl Hash for Vertex {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.x.to_bits().hash(state);
+                self.y.to_bits().hash(state);
+                self.z.to_bits().hash(state);
+            }
         }
 
         impl Vertex {
@@ -694,7 +711,7 @@ pub mod visualization {
         use std::iter::Iterator;
         use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::{Arc, Mutex};
-        use tobj; // For parallel iterators
+        use tobj; // For parallel iterators;
 
         #[derive(Debug)]
         pub struct Mesh {
@@ -1015,6 +1032,99 @@ pub mod visualization {
                     println!("\x1b[6;0HFace(s) step Progress:{0}/{1}", ct, triangle_count);
                 }
 
+                Ok(())
+            }
+   
+            pub fn export_to_obj_with_normals_fast(
+                &self,
+                path: &str,
+            ) -> Result<(), Box<dyn std::error::Error>> {
+                let file = File::create(path)?;
+                let mut writer = BufWriter::new(file);
+
+                println!("\x1b[2J");
+                println!("\x1b[3;0HExporting (optimized) Path:({})", path);
+
+                // Step 1: Precompute vertex-to-index mapping
+                let vertex_index_map: HashMap<&Vertex, usize> = self
+                    .vertices
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| (v, i + 1)) // OBJ indices are 1-based
+                    .collect();
+
+                let vertex_count = self.vertices.len();
+                let triangle_count = self.triangles.len();
+
+                // Step 2: Generate vertex data in parallel
+                println!("\x1b[4;0HGenerating vertex data...");
+                let vertex_data: Vec<String> = self
+                    .vertices
+                    .par_iter()
+                    .map(|vertex| format!("v {} {} {}\n", vertex.x, vertex.y, vertex.z))
+                    .collect();
+
+                // Step 3: Generate normal data in parallel
+                println!("\x1b[5;0HGenerating normal data...");
+                let normal_data: Vec<String> = self
+                    .triangles
+                    .par_iter()
+                    .map(|triangle| {
+                        format!(
+                            "vn {} {} {}\n",
+                            triangle.normal.x, triangle.normal.y, triangle.normal.z
+                        )
+                    })
+                    .collect();
+
+                // Step 4: Generate face data in parallel
+                println!("\x1b[6;0HGenerating face data...");
+                let face_data: Vec<String> = self
+                    .triangles
+                    .par_iter()
+                    .map(|triangle| {
+                        let v0_idx = *vertex_index_map.get(&triangle.v0).unwrap();
+                        let v1_idx = *vertex_index_map.get(&triangle.v1).unwrap();
+                        let v2_idx = *vertex_index_map.get(&triangle.v2).unwrap();
+                        format!(
+                            "f {}/{} {}/{} {}/{}\n",
+                            v0_idx, v0_idx, v1_idx, v1_idx, v2_idx, v2_idx
+                        )
+                    })
+                    .collect();
+
+                // Step 5: Write data to file in batches
+                println!("\x1b[7;0HWriting data to file...");
+                for (i, line) in vertex_data.iter().enumerate() {
+                    writer.write_all(line.as_bytes())?;
+                    if i % 1000 == 0 || i == vertex_count - 1 {
+                        println!("\x1b[4;0HVertex step Progress: {}/{}", i + 1, vertex_count);
+                    }
+                }
+
+                for (i, line) in normal_data.iter().enumerate() {
+                    writer.write_all(line.as_bytes())?;
+                    if i % 1000 == 0 || i == triangle_count - 1 {
+                        println!(
+                            "\x1b[5;0HVertex Normals step Progress: {}/{}",
+                            i + 1,
+                            triangle_count
+                        );
+                    }
+                }
+
+                for (i, line) in face_data.iter().enumerate() {
+                    writer.write_all(line.as_bytes())?;
+                    if i % 1000 == 0 || i == triangle_count - 1 {
+                        println!(
+                            "\x1b[6;0HFace(s) step Progress: {}/{}",
+                            i + 1,
+                            triangle_count
+                        );
+                    }
+                }
+
+                println!("\x1b[8;0HExport completed successfully!");
                 Ok(())
             }
         }
