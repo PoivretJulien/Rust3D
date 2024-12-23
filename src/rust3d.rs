@@ -671,8 +671,8 @@ pub mod visualization {
                     edge1.y * edge2.z - edge1.z * edge2.y,
                     edge1.z * edge2.x - edge1.x * edge2.z,
                     edge1.x * edge2.y - edge1.y * edge2.x,
-                )
-                .unitize();
+                );
+                //.unitize();
                 Self { v0, v1, v2, normal }
             }
         }
@@ -680,7 +680,10 @@ pub mod visualization {
         use std::fs::File;
         use std::io::{self, Write};
         use tobj;
+        use obj::Obj;
+        use tobj::load_obj;
 
+        #[derive(Debug)]
         pub struct Mesh {
             pub vertices: Vec<Vertex>,
             pub triangles: Vec<Triangle>,
@@ -726,7 +729,6 @@ pub mod visualization {
 
                     writeln!(file, "f {} {} {}", v0_idx, v1_idx, v2_idx)?;
                 }
-
                 Ok(())
             }
 
@@ -1555,7 +1557,7 @@ pub mod utillity {
 
 #[cfg(test)]
 mod test {
-    use crate::project_3d_point_on_plane;
+    use crate::{project_3d_point_on_plane, redering_object};
 
     use super::geometry::*;
     #[test]
@@ -1801,10 +1803,33 @@ mod test {
     }
 
     use super::visualization::coloring::Color;
+    #[test]
     fn test_color() {
         let red: u8 = 20;
         let green: u8 = 19;
-        let blue: u8 = 10;
+        let blue: u8 = 20;
         assert_eq!(0x141314, Color::convert_rgb_color(red, green, blue));
+    }
+    use super::visualization::redering_object::*;
+    #[test]
+    fn test_import_export() {
+        //let obj = Mesh::import_from_obj("model.obj").unwrap();
+        //obj.export_to_obj("new_model_from_Rust.obj").ok();
+
+        
+                let vertices = vec![
+                    Vertex::new(0.0, 0.0, 0.0),
+                    Vertex::new(1.0, 0.0, 1.0),
+                    Vertex::new(1.0, 1.0, 0.0),
+                    Vertex::new(0.0, 1.0, 0.2),
+                ];
+                let triangles = vec![
+                    Triangle::new(vertices[0], vertices[1], vertices[2]),
+                    Triangle::new(vertices[0], vertices[2], vertices[3]),
+                ];
+                let mesh = Mesh::new(vertices, triangles);
+                mesh.export_to_obj("exported.obj").ok();
+                let obj = Mesh::import_from_obj("exported.obj").unwrap();
+        assert!(true);
     }
 }
