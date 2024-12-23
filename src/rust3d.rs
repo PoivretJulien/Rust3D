@@ -2206,7 +2206,7 @@ mod test {
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
         );
         imported_mesh
-            .export_to_obj("./geometry/medium_geometry_exported_from_rust.obj")
+            .export_to_obj_with_normals_fast ("./geometry/medium_geometry_exported_from_rust.obj")
             .ok();
     }
     #[test]
@@ -2219,6 +2219,6 @@ mod test {
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
         );
-        //imported_mesh.export_to_obj_with_normals("./geometry/hight_geometry_exported_from_rust.obj").ok();
+        imported_mesh.export_to_obj_with_normals_fast("./geometry/hight_geometry_exported_from_rust.obj").ok();
     }
 }
