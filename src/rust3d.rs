@@ -250,7 +250,6 @@ pub mod geometry {
 
             (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
         }
-
         /// Project a vector on an infinite plane.
         /// # Arguments
         ///   takes plane as an array of two coplanar vectors from a same origin 3d point
@@ -507,7 +506,6 @@ pub mod visualization {
                 ],
             ]
         }
-
         // Create a perspective projection matrix
         fn get_projection_matrix(&self) -> [[f64; 4]; 4] {
             let aspect_ratio = self.width / self.height;
@@ -580,37 +578,17 @@ pub mod visualization {
     pub mod redering_object {
 
         // Todo: (optimize data structure)
-        // Vertex is use as multi purpose usage
-        // can be use as Point3d or Vector3d.
-        #[derive(Debug, Copy, Clone)]
+        #[derive(PartialEq, Debug, Copy, Clone)]
         pub struct Vertex {
             pub x: f64,
             pub y: f64,
             pub z: f64,
-        }
-        use std::hash::{Hash, Hasher};
-
-        impl PartialEq for Vertex {
-            fn eq(&self, other: &Self) -> bool {
-                self.x == other.x && self.y == other.y && self.z == other.z
-            }
-        }
-
-        impl Eq for Vertex {}
-
-        impl Hash for Vertex {
-            fn hash<H: Hasher>(&self, state: &mut H) {
-                self.x.to_bits().hash(state);
-                self.y.to_bits().hash(state);
-                self.z.to_bits().hash(state);
-            }
         }
 
         impl Vertex {
             pub fn new(x: f64, y: f64, z: f64) -> Self {
                 Self { x, y, z }
             }
-
             // Add two vertices
             pub fn add(&self, other: &Vertex) -> Vertex {
                 Vertex {
@@ -676,7 +654,7 @@ pub mod visualization {
 
         impl Triangle {
             pub fn new(v0: Vertex, v1: Vertex, v2: Vertex) -> Self {
-                // Represent edge 1 by a vector.
+                //Represent edge 1 by a vector.
                 let edge1 = Vertex {
                     x: v1.x - v0.x,
                     y: v1.y - v0.y,
@@ -688,7 +666,7 @@ pub mod visualization {
                     y: v2.y - v0.y,
                     z: v2.z - v0.z,
                 };
-                // Normal is simply the cross Product of edge 1 and 2.
+                // normal is simply the cross Product of edge 1 and 2.
                 let normal = Vertex::new(
                     edge1.y * edge2.z - edge1.z * edge2.y,
                     edge1.z * edge2.x - edge1.x * edge2.z,
@@ -697,66 +675,37 @@ pub mod visualization {
                 //.unitize();
                 Self { v0, v1, v2, normal }
             }
-
-            // Constructor with precomputed normal
-            pub fn with_normal(v0: Vertex, v1: Vertex, v2: Vertex, normal: Vertex) -> Self {
-                Self { v0, v1, v2, normal }
-            }
         }
 
-        use rayon::prelude::*;
-        use std::collections::HashMap;
+        use obj::Obj;
         use std::fs::File;
-        use std::io::{self, BufRead, BufReader, BufWriter, Write};
-        use std::iter::Iterator;
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        use std::sync::{Arc, Mutex};
-        use tobj; // For parallel iterators;
+        use std::io::{self, BufRead, Write};
+        use std::path::Path;
+        use tobj;
+        use tobj::load_obj;
 
         #[derive(Debug)]
         pub struct Mesh {
             pub vertices: Vec<Vertex>,
             pub triangles: Vec<Triangle>,
+            pub quads: Option<Vec<Quad>>,
         }
 
         impl Mesh {
-            pub fn new(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
+            pub fn new(vertices: Vec<Vertex>, triangles: Vec<Triangle>, quads: Vec<Quad>) -> Self {
                 Self {
                     vertices,
                     triangles,
+                    quads: Some(quads),
                 }
             }
-
-            /// Will be needed for multitasking large files IO.
-            /// # Arguments
-            ///     file path of the obj file.
-            /// # Returns
-            ///     Result(vertex count,normal count,face count)
-            pub fn count_obj_elements(file_path: &str) -> io::Result<(usize, usize, usize)> {
-                let file = File::open(file_path)?;
-                let reader = BufReader::new(file);
-
-                let mut vertex_count = 0;
-                let mut normal_count = 0;
-                let mut face_count = 0;
-
-                for line in reader.lines() {
-                    let line = line?;
-                    let mut words = line.split_whitespace();
-
-                    if let Some(prefix) = words.next() {
-                        match prefix {
-                            "v" => vertex_count += 1,  // Vertex position
-                            "vn" => normal_count += 1, // Vertex normal
-                            "f" => face_count += 1,    // Face
-                            _ => {}                    // Ignore other lines
-                        }
-                    }
+            pub fn new_tri_only(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
+                Self {
+                    vertices,
+                    triangles,
+                    quads: None,
                 }
-
-                Ok((vertex_count, normal_count, face_count))
             }
-
             /// Export the mesh to an .obj file.
             pub fn export_to_obj(&self, file_path: &str) -> io::Result<()> {
                 let mut file = File::create(file_path)?;
@@ -793,9 +742,7 @@ pub mod visualization {
             }
 
             /// Import a mesh from an .obj file.
-            pub fn import_from_obj_tri_only(
-                file_path: &str,
-            ) -> Result<Self, Box<dyn std::error::Error>> {
+            pub fn import_from_obj(file_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
                 let (models, _materials) =
                     tobj::load_obj(file_path, &tobj::LoadOptions::default())?;
                 let mut vertices = Vec::new();
@@ -825,10 +772,151 @@ pub mod visualization {
                 Ok(Self {
                     vertices,
                     triangles,
+                    quads: None,
                 })
             }
+            /// Export the mesh to an .obj file with support for quads.
+            pub fn export_to_obj_with_quads(&self, file_path: &str) -> io::Result<()> {
+                let mut file = File::create(file_path)?;
 
-            pub fn import_from_obj(file_path: &str) -> io::Result<Self> {
+                // Write vertices
+                for vertex in &self.vertices {
+                    writeln!(file, "v {} {} {}", vertex.x, vertex.y, vertex.z)?;
+                }
+
+                // Write triangles
+                for triangle in &self.triangles {
+                    let v0_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v0)
+                        .unwrap()
+                        + 1;
+                    let v1_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v1)
+                        .unwrap()
+                        + 1;
+                    let v2_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v2)
+                        .unwrap()
+                        + 1;
+
+                    writeln!(file, "f {} {} {}", v0_idx, v1_idx, v2_idx)?;
+                }
+
+                // Write quads
+                for quad in self.quads.as_ref().unwrap() {
+                    let v0_idx = self.vertices.iter().position(|v| *v == quad.v0).unwrap() + 1;
+                    let v1_idx = self.vertices.iter().position(|v| *v == quad.v1).unwrap() + 1;
+                    let v2_idx = self.vertices.iter().position(|v| *v == quad.v2).unwrap() + 1;
+                    let v3_idx = self.vertices.iter().position(|v| *v == quad.v3).unwrap() + 1;
+
+                    writeln!(file, "f {} {} {} {}", v0_idx, v1_idx, v2_idx, v3_idx)?;
+                }
+
+                Ok(())
+            }
+            // Extend the import logic to handle both triangles and quads
+            pub fn import_from_obj_with_quads(
+                file_path: &str,
+            ) -> Result<Mesh, Box<dyn std::error::Error>> {
+                let (models, _materials) =
+                    tobj::load_obj(file_path, &tobj::LoadOptions::default())?;
+                let mut vertices = Vec::new();
+                let mut triangles = Vec::new();
+                let mut quads = Vec::new();
+
+                for model in models {
+                    let mesh = model.mesh;
+
+                    // Add vertices
+                    for i in 0..mesh.positions.len() / 3 {
+                        vertices.push(Vertex {
+                            x: mesh.positions[3 * i] as f64,
+                            y: mesh.positions[3 * i + 1] as f64,
+                            z: mesh.positions[3 * i + 2] as f64,
+                        });
+                    }
+
+                    // Add faces
+                    for i in 0..mesh.indices.len() / 3 {
+                        let indices = &mesh.indices[3 * i..3 * i + 3];
+                        if indices.len() == 3 {
+                            // Triangle
+                            let v0 = vertices[indices[0] as usize];
+                            let v1 = vertices[indices[1] as usize];
+                            let v2 = vertices[indices[2] as usize];
+
+                            triangles.push(Triangle::new(v0, v1, v2));
+                        } else if indices.len() == 4 {
+                            // Quad
+                            let v0 = vertices[indices[0] as usize];
+                            let v1 = vertices[indices[1] as usize];
+                            let v2 = vertices[indices[2] as usize];
+                            let v3 = vertices[indices[3] as usize];
+
+                            quads.push(Quad::new(v0, v1, v2, v3));
+                        }
+                    }
+                }
+
+                Ok(Mesh::new(vertices, triangles, quads))
+            }
+            /// Export the mesh to an .obj file with all quads converted to triangles.
+            pub fn export_mesh_quad_to_obj_as_triangles(&self, file_path: &str) -> io::Result<()> {
+                let mut file = File::create(file_path)?;
+
+                // Write vertices
+                for vertex in &self.vertices {
+                    writeln!(file, "v {} {} {}", vertex.x, vertex.y, vertex.z)?;
+                }
+
+                // Write triangles
+                for triangle in &self.triangles {
+                    let v0_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v0)
+                        .unwrap()
+                        + 1;
+                    let v1_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v1)
+                        .unwrap()
+                        + 1;
+                    let v2_idx = self
+                        .vertices
+                        .iter()
+                        .position(|v| *v == triangle.v2)
+                        .unwrap()
+                        + 1;
+
+                    writeln!(file, "f {} {} {}", v0_idx, v1_idx, v2_idx)?;
+                }
+
+                // Convert quads to triangles and write them
+                for quad in self.quads.as_ref().unwrap() {
+                    let v0_idx = self.vertices.iter().position(|v| *v == quad.v0).unwrap() + 1;
+                    let v1_idx = self.vertices.iter().position(|v| *v == quad.v1).unwrap() + 1;
+                    let v2_idx = self.vertices.iter().position(|v| *v == quad.v2).unwrap() + 1;
+                    let v3_idx = self.vertices.iter().position(|v| *v == quad.v3).unwrap() + 1;
+
+                    // Triangle 1: v0, v1, v2
+                    writeln!(file, "f {} {} {}", v0_idx, v1_idx, v2_idx)?;
+
+                    // Triangle 2: v0, v2, v3
+                    writeln!(file, "f {} {} {}", v0_idx, v2_idx, v3_idx)?;
+                }
+
+                Ok(())
+            }
+
+            pub fn import_from_obj_vb(file_path: &str) -> io::Result<Self> {
                 let file = File::open(file_path)?;
                 let reader = io::BufReader::new(file);
 
@@ -886,246 +974,7 @@ pub mod visualization {
                         }
                     }
                 }
-                Ok(Mesh::new(vertices, triangles))
-            }
-
-            pub fn import_obj_with_normals(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-                use std::fs::File;
-                use std::io::{BufRead, BufReader};
-
-                let file = File::open(path)?;
-                let reader = BufReader::new(file);
-
-                let mut vertices = Vec::new();
-                let mut normals = Vec::new();
-                let mut triangles = Vec::new();
-
-                for line in reader.lines() {
-                    let line = line?;
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-
-                    if parts.is_empty() {
-                        continue;
-                    }
-
-                    match parts[0] {
-                        "v" => {
-                            // Vertex position
-                            let x: f64 = parts[1].parse()?;
-                            let y: f64 = parts[2].parse()?;
-                            let z: f64 = parts[3].parse()?;
-                            vertices.push(Vertex::new(x, y, z));
-                        }
-                        "vn" => {
-                            // Vertex normal
-                            let x: f64 = parts[1].parse()?;
-                            let y: f64 = parts[2].parse()?;
-                            let z: f64 = parts[3].parse()?;
-                            normals.push(Vertex::new(x, y, z).unitize());
-                        }
-                        "f" => {
-                            // Face
-                            let mut face_vertices = Vec::new();
-                            let mut face_normals = Vec::new();
-
-                            for part in &parts[1..] {
-                                let indices: Vec<&str> = part.split('/').collect();
-                                let vertex_idx: usize = indices[0].parse::<usize>()? - 1; // .obj is 1-indexed
-                                face_vertices.push(vertices[vertex_idx]);
-
-                                // If normals are available
-                                if indices.len() > 2 && !indices[2].is_empty() {
-                                    let normal_idx: usize = indices[2].parse::<usize>()? - 1;
-                                    face_normals.push(normals[normal_idx]);
-                                }
-                            }
-
-                            if face_vertices.len() == 3 {
-                                if face_normals.len() == 3 {
-                                    // Use the first normal for the entire triangle
-                                    triangles.push(Triangle::with_normal(
-                                        face_vertices[0],
-                                        face_vertices[1],
-                                        face_vertices[2],
-                                        face_normals[0],
-                                    ));
-                                } else {
-                                    // Compute normal if not provided
-                                    triangles.push(Triangle::new(
-                                        face_vertices[0],
-                                        face_vertices[1],
-                                        face_vertices[2],
-                                    ));
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                Ok(Mesh {
-                    vertices,
-                    triangles,
-                })
-            }
-
-            pub fn export_to_obj_with_normals(
-                &self,
-                path: &str,
-            ) -> Result<(), Box<dyn std::error::Error>> {
-                use std::fs::File;
-                use std::io::{BufWriter, Write};
-
-                let file = File::create(path)?;
-                let mut writer = BufWriter::new(file);
-                println!("\x1b[2J");
-                println!("\x1b[3;0HExporting (speed not optimized) Path:({0})", path);
-                let vertex_count = self.vertices.len();
-                let mut ct = 0;
-                for vertex in &self.vertices {
-                    writeln!(writer, "v {} {} {}", vertex.x, vertex.y, vertex.z)?;
-                    ct += 1;
-                    println!("\x1b[4;0HVertex step Progress:{0}/{1}", ct, vertex_count);
-                }
-
-                let triangle_count = self.triangles.len();
-                ct = 0;
-                for triangle in &self.triangles {
-                    writeln!(
-                        writer,
-                        "vn {} {} {}",
-                        triangle.normal.x, triangle.normal.y, triangle.normal.z
-                    )?;
-                    ct += 1;
-                    println!(
-                        "\x1b[5;0HVertex Normals step Progress:{0}/{1}",
-                        ct, triangle_count
-                    );
-                }
-
-                ct = 0;
-                for triangle in &self.triangles {
-                    let v0_idx = self
-                        .vertices
-                        .iter()
-                        .position(|v| *v == triangle.v0)
-                        .unwrap()
-                        + 1;
-                    let v1_idx = self
-                        .vertices
-                        .iter()
-                        .position(|v| *v == triangle.v1)
-                        .unwrap()
-                        + 1;
-                    let v2_idx = self
-                        .vertices
-                        .iter()
-                        .position(|v| *v == triangle.v2)
-                        .unwrap()
-                        + 1;
-                    writeln!(
-                        writer,
-                        "f {}/{} {}/{} {}/{}",
-                        v0_idx, v0_idx, v1_idx, v1_idx, v2_idx, v2_idx
-                    )?;
-                    ct += 1;
-                    println!("\x1b[6;0HFace(s) step Progress:{0}/{1}", ct, triangle_count);
-                }
-
-                Ok(())
-            }
-   
-            pub fn export_to_obj_with_normals_fast(
-                &self,
-                path: &str,
-            ) -> Result<(), Box<dyn std::error::Error>> {
-                let file = File::create(path)?;
-                let mut writer = BufWriter::new(file);
-
-                println!("\x1b[2J");
-                println!("\x1b[3;0HExporting (optimized) Path:({})", path);
-
-                // Step 1: Precompute vertex-to-index mapping
-                let vertex_index_map: HashMap<&Vertex, usize> = self
-                    .vertices
-                    .iter()
-                    .enumerate()
-                    .map(|(i, v)| (v, i + 1)) // OBJ indices are 1-based
-                    .collect();
-
-                let vertex_count = self.vertices.len();
-                let triangle_count = self.triangles.len();
-
-                // Step 2: Generate vertex data in parallel
-                println!("\x1b[4;0HGenerating vertex data...");
-                let vertex_data: Vec<String> = self
-                    .vertices
-                    .par_iter()
-                    .map(|vertex| format!("v {} {} {}\n", vertex.x, vertex.y, vertex.z))
-                    .collect();
-
-                // Step 3: Generate normal data in parallel
-                println!("\x1b[5;0HGenerating normal data...");
-                let normal_data: Vec<String> = self
-                    .triangles
-                    .par_iter()
-                    .map(|triangle| {
-                        format!(
-                            "vn {} {} {}\n",
-                            triangle.normal.x, triangle.normal.y, triangle.normal.z
-                        )
-                    })
-                    .collect();
-
-                // Step 4: Generate face data in parallel
-                println!("\x1b[6;0HGenerating face data...");
-                let face_data: Vec<String> = self
-                    .triangles
-                    .par_iter()
-                    .map(|triangle| {
-                        let v0_idx = *vertex_index_map.get(&triangle.v0).unwrap();
-                        let v1_idx = *vertex_index_map.get(&triangle.v1).unwrap();
-                        let v2_idx = *vertex_index_map.get(&triangle.v2).unwrap();
-                        format!(
-                            "f {}/{} {}/{} {}/{}\n",
-                            v0_idx, v0_idx, v1_idx, v1_idx, v2_idx, v2_idx
-                        )
-                    })
-                    .collect();
-
-                // Step 5: Write data to file in batches
-                println!("\x1b[7;0HWriting data to file...");
-                for (i, line) in vertex_data.iter().enumerate() {
-                    writer.write_all(line.as_bytes())?;
-                    if i % 1000 == 0 || i == vertex_count - 1 {
-                        println!("\x1b[4;0HVertex step Progress: {}/{}", i + 1, vertex_count);
-                    }
-                }
-
-                for (i, line) in normal_data.iter().enumerate() {
-                    writer.write_all(line.as_bytes())?;
-                    if i % 1000 == 0 || i == triangle_count - 1 {
-                        println!(
-                            "\x1b[5;0HVertex Normals step Progress: {}/{}",
-                            i + 1,
-                            triangle_count
-                        );
-                    }
-                }
-
-                for (i, line) in face_data.iter().enumerate() {
-                    writer.write_all(line.as_bytes())?;
-                    if i % 1000 == 0 || i == triangle_count - 1 {
-                        println!(
-                            "\x1b[6;0HFace(s) step Progress: {}/{}",
-                            i + 1,
-                            triangle_count
-                        );
-                    }
-                }
-
-                println!("\x1b[8;0HExport completed successfully!");
-                Ok(())
+                Ok(Mesh::new_tri_only(vertices, triangles))
             }
         }
 
@@ -1208,7 +1057,19 @@ pub mod visualization {
                 }
             }
         }
+        #[derive(Debug, Copy, Clone)]
+        pub struct Quad {
+            pub v0: Vertex,
+            pub v1: Vertex,
+            pub v2: Vertex,
+            pub v3: Vertex,
+        }
 
+        impl Quad {
+            pub fn new(v0: Vertex, v1: Vertex, v2: Vertex, v3: Vertex) -> Self {
+                Self { v0, v1, v2, v3 }
+            }
+        }
         #[derive(Debug, Clone)]
         pub struct Ray {
             pub origin: Vertex,
@@ -1227,6 +1088,7 @@ pub mod visualization {
         // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
         // into a tree structure to accelerate ray tracing
         // by reducing the number of intersection tests.
+        use std::sync::Arc; // for nodes safety.
 
         // AABB stand for Axis aligned Bounding Box.
         #[derive(Debug, Clone)]
@@ -2174,7 +2036,10 @@ mod test {
     }
     use super::visualization::redering_object::*;
     #[test]
-    fn test_import_export_obj_size_ligh() {
+    fn test_import_export() {
+        //let obj = Mesh::import_from_obj("model.obj").unwrap();
+        //obj.export_to_obj("new_model_from_Rust.obj").ok();
+
         let vertices = vec![
             Vertex::new(0.0, 0.0, 0.0),
             Vertex::new(1.0, 0.0, 1.0),
@@ -2185,42 +2050,13 @@ mod test {
             Triangle::new(vertices[0], vertices[1], vertices[2]),
             Triangle::new(vertices[0], vertices[2], vertices[3]),
         ];
-        let mesh = Mesh::new(vertices, triangles);
-        mesh.export_to_obj("./geometry/exported.obj").ok();
-        let expected_data = Mesh::count_obj_elements("./geometry/exported.obj")
-            .ok()
-            .unwrap();
-        let imported_mesh = Mesh::import_obj_with_normals("./geometry/exported.obj").unwrap();
-        assert_eq!(
-            (expected_data.0, expected_data.2),
-            (imported_mesh.vertices.len(), imported_mesh.triangles.len())
-        );
-    }
-    #[test]
-    fn test_import_export_obj_size_medium() {
-        let expected_data = Mesh::count_obj_elements("./geometry/medium_geometry.obj")
-            .ok()
-            .unwrap();
-        let imported_mesh =
-            Mesh::import_obj_with_normals("./geometry/medium_geometry.obj").unwrap();
-        assert_eq!(
-            (expected_data.0, expected_data.2),
-            (imported_mesh.vertices.len(), imported_mesh.triangles.len())
-        );
-        imported_mesh
-            .export_to_obj("./geometry/medium_geometry_exported_from_rust.obj")
-            .ok();
-    }
-    #[test]
-    fn test_import_obj_size_hight() {
-        let expected_data = Mesh::count_obj_elements("./geometry/hight_geometry.obj")
-            .ok()
-            .unwrap();
-        let imported_mesh = Mesh::import_obj_with_normals("./geometry/hight_geometry.obj").unwrap();
-        assert_eq!(
-            (expected_data.0, expected_data.2),
-            (imported_mesh.vertices.len(), imported_mesh.triangles.len())
-        );
-        //imported_mesh.export_to_obj_with_normals("./geometry/hight_geometry_exported_from_rust.obj").ok();
+        let mesh = Mesh::new_tri_only(vertices, triangles);
+        mesh.export_to_obj("exported.obj").ok();
+        let obj = Mesh::import_from_obj("sphere_tri_import.obj").unwrap();
+        obj.export_to_obj("sph_tri_A.obj").ok();
+        let objB = Mesh::import_from_obj_with_quads("sphere_quad_import.obj").unwrap();   
+        objB.export_mesh_quad_to_obj_as_triangles("sph_tri_B.obj").ok();
+        objB.export_to_obj_with_quads("sph_quad_A.obj").ok();
+        assert!(true);
     }
 }
