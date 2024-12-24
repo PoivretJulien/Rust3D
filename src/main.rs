@@ -141,7 +141,7 @@ fn main() {
     }
 
     let mut circle = Vec::new();
-    let pln = Vector3d::new(0.2, 0.2, 0.8);
+    let pln = Vector3d::new(0.2, -0.2, 0.8);
     let plane_origin = Point3d::new(1.0 * 0.2, 0.0, 0.85 * DISPLAY_RATIO);
     let plane = CPlane::new(&plane_origin, &pln);
     if DISPLAY_CIRCLE {
