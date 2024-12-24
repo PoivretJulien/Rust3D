@@ -3,16 +3,16 @@ use core::f64;
 use minifb::{Key, Window, WindowOptions}; // render a 2d point in color on a defined screen size.
 
 // My 3d lib for computational processing (resource: mcneel.com (for vector3d point3d), openia.com for basic 3d engine)
-mod rust3d;
-mod models_3d; // external file where 3d model(s) are conveniently stored.
-use rust3d::draw::*;
-use rust3d::geometry::{Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
-use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
-use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
-use rust3d::utillity::*;
-use rust3d::visualization::redering_object::Mesh;
+mod models_3d;
+mod rust3d; // external file where 3d model(s) are conveniently stored.
 use models_3d::NUKE_3D_MODEL;
 use rayon::*;
+use rust3d::draw::*;
+use rust3d::geometry::{CPlane, Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
+use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
+use rust3d::utillity::*;
+use rust3d::visualization::redering_object::Mesh;
+use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
 //   representing a cube with a dot in the middle + 3 colors axis are
@@ -30,7 +30,9 @@ fn main() {
     const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
     const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
     const DISPLAY_OBJ: bool = true;
-    const BACK_GROUND_COLOR:u32 = 0x141314;
+    const DISPLAY_GRID: bool = true;
+    const BACK_GROUND_COLOR: u32 = 0x141314;
+    const DISPLAY_TEXT: bool = true;
 
     let mut import_obj = Vec::new();
     // .obj file importation test.
@@ -118,6 +120,24 @@ fn main() {
 
     // Define the world coordinates origin 3d point.
     let origin = Point3d::new(0.0, 0.0, 0.0);
+    let mut grid = Vec::new();
+
+    // Make a world grid. 
+    if DISPLAY_GRID {
+        let grid_mv = Vector3d::new(5.0, -5.0, 0.0);
+        let zaxis = Vector3d::new(0.0, 0.0, 1.0);
+        let plane = CPlane::new(&origin, &zaxis); // Grid local coordinates.
+        let xmax = 10.0; // Grid max x
+        let ymax = 10.0; // Grid max y
+        let unit = 5.0;
+        grid = draw_grid(&plane, &xmax, &ymax, &unit);
+        println!("->{0}", grid.len());
+        for pt in grid.iter_mut() {
+            (*pt) *= DISPLAY_RATIO;
+            (*pt) += grid_mv * DISPLAY_RATIO;
+        }
+    }
+
     // init memory for an animated 3d square.
     let mut moving_square = [origin; 4];
     let mut ct = 0usize; // memory 'cursor index'
@@ -129,6 +149,18 @@ fn main() {
         for pixel in buffer.iter_mut() {
             *pixel = BACK_GROUND_COLOR; //set a dark gray color as background.
         }
+        /////Draw Grid./////////////////////////////////////////////////////////
+        if DISPLAY_GRID {
+            for point in grid.iter() {
+                let rotated_point = rotate_z(*point, angle);
+                if let Some(projected_point) = camera.project(rotated_point) {
+                    buffer[projected_point.1 * WIDTH + projected_point.0] =
+                        Color::convert_rgba_color(255, 0, 255, 0.9, BACK_GROUND_COLOR);
+                    //  mutate the buffer (we are in a single thread configuration).
+                }
+            }
+        }
+        /////Draw Text./////////////////////////////////////////////////////////
 
         // Project animated point on the 2d screen.
         // Compute only the animated 3d point in that loop.
@@ -226,20 +258,38 @@ fn main() {
             );
         }
         if DISPLAY_OBJ {
-            display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj,&BACK_GROUND_COLOR);
+            display_obj(
+                &camera,
+                &mut buffer,
+                &WIDTH,
+                &angle,
+                &mut import_obj,
+                &BACK_GROUND_COLOR,
+            );
         }
-        let step = 0.5;// step in degree.
-        let degree = (angle*360.0)/(f64::consts::PI*2.0); 
+        let step = 0.5; // step in degree.
+        let degree = (angle * 360.0) / (f64::consts::PI * 2.0);
         if (degree) >= 359.0 {
             // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
             angle = 0.0;
         } else {
             angle += degree_to_radians(&step); // increment angle rotation for the animation in loop
         } // enjoy.
-        let (x,y) = ((WIDTH/2)-125,(HEIGHT/2)+100);
-        let color=Color::convert_rgb_color(0,250,0);
-        let text_height = 2usize;
-        draw_text(&mut buffer, &HEIGHT, &WIDTH, &x, &y, format!("Rotating angle: {:05.1} Deg",degree).as_str(), &text_height,&color);
+        if DISPLAY_TEXT {
+            let (x, y) = ((WIDTH / 2) - 125, (HEIGHT / 2) + 100);
+            let color = Color::convert_rgb_color(0, 250, 0);
+            let text_height = 2usize;
+            draw_text(
+                &mut buffer,
+                &HEIGHT,
+                &WIDTH,
+                &x,
+                &y,
+                format!("Rotating angle: {:05.1} Deg", degree).as_str(),
+                &text_height,
+                &color,
+            );
+        }
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
     }
 }
@@ -321,14 +371,15 @@ fn display_obj(
     width: &usize,
     angle: &f64,
     mode_3d: &mut Vec<Point3d>,
-    back_ground_color:&u32,
+    back_ground_color: &u32,
 ) {
     for p in mode_3d.iter_mut() {
         let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
-        // use 3d engine to project point.
+                                               // use 3d engine to project point.
         if let Some(projected_point) = camera.project(pt_rotated) {
-            buffer[projected_point.1 * width + projected_point.0] = 
-                Color::convert_rgba_color(255, 255, 39, 0.93, *back_ground_color); //  mutate the buffer (we are in a single thread configuration).
+            buffer[projected_point.1 * width + projected_point.0] =
+                Color::convert_rgba_color(255, 255, 39, 0.93, *back_ground_color);
+            //  mutate the buffer (we are in a single thread configuration).
         }
     }
 }

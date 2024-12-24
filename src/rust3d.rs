@@ -1932,7 +1932,9 @@ pub mod draw {
         }
     }
 
-    use crate::models_3d::FONT_5X7;
+    use crate::{models_3d::FONT_5X7, redering_object::Vertex};
+
+    use super::geometry::Point3d;
     pub fn draw_text(
         buffer: &mut Vec<u32>,
         height: &usize,
@@ -1945,28 +1947,28 @@ pub mod draw {
     ) {
         for (i, c) in text.chars().enumerate() {
             let index = match c {
-    'A'..='Z' => c as usize - 'A' as usize,
-    'a'..='z' => c as usize - 'a' as usize + 26,
-    '0'..='9' => c as usize - '0' as usize + 52,
-    ' ' => 62, // Space character index
-    '!' => 63,
-    '"' => 64,
-    '#' => 65,
-    '$' => 66,
-    '%' => 67,
-    '&' => 68,
-    '\'' => 69,
-    '(' => 70,
-    ')' => 71,
-    '*' => 72,
-    '+' => 73,
-    ',' => 74,
-    '-' => 75,
-    '.' => 76,
-    '/' => 77,
-    ':' => 78,
-    _ => continue, // Ignore unsupported characters
-};
+                'A'..='Z' => c as usize - 'A' as usize,
+                'a'..='z' => c as usize - 'a' as usize + 26,
+                '0'..='9' => c as usize - '0' as usize + 52,
+                ' ' => 62, // Space character index
+                '!' => 63,
+                '"' => 64,
+                '#' => 65,
+                '$' => 66,
+                '%' => 67,
+                '&' => 68,
+                '\'' => 69,
+                '(' => 70,
+                ')' => 71,
+                '*' => 72,
+                '+' => 73,
+                ',' => 74,
+                '-' => 75,
+                '.' => 76,
+                '/' => 77,
+                ':' => 78,
+                _ => continue, // Ignore unsupported characters
+            };
             let char_data = &FONT_5X7[index];
             for (row, &row_data) in char_data.iter().enumerate() {
                 for col in 0..5 {
@@ -1988,6 +1990,37 @@ pub mod draw {
                 }
             }
         }
+    }
+
+    /*
+     * Draw a contextual Grid representing the gradual depth in
+     * a static place in world Coordinates
+     * ( providing relative orientation to world when every
+     *  thing will spin or move while in conception phase
+     *  or visual evaluation phase ).
+     */
+    use super::geometry::CPlane;
+    pub fn draw_grid(
+        plane: &CPlane,
+        x_max: &f64,
+        y_max: &f64,
+        grid_spacing_unit: &f64,
+    ) -> Vec<Point3d> {
+        let mut grid_points = Vec::new();
+        let grid_unit =  grid_spacing_unit / x_max;
+        let mut x = 0.0;
+        let mut y = 0.0;
+        while x <= *x_max {
+            while y <= *y_max {
+                grid_points.push((*plane).point_on_plane_uv(&x, &y));
+                y += grid_unit;
+            }
+            if y >= *y_max {
+                y = 0.0; 
+            }
+            x += grid_unit;
+        }
+        grid_points
     }
 }
 
