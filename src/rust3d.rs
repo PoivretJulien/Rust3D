@@ -122,7 +122,7 @@ pub mod geometry {
                 X: x,
                 Y: y,
                 Z: z,
-                Length: Vector3d::compute_length(x, y, z),
+                Length: Vector3d::compute_length_byref(&x, &y, &z),
             }
         }
         pub fn set_X(&mut self, new_x_value: f64) {
@@ -165,6 +165,10 @@ pub mod geometry {
             (x * x + y * y + z * z).sqrt()
         }
 
+        pub fn compute_length_byref(x: &f64, y: &f64, z: &f64) -> f64 {
+            ((*x) * (*x) + (*y) * (*y) + (*z) * (*z)).sqrt()
+        }
+
         // Vector3d Cross Product.
         pub fn cross_product(vector_a: &Vector3d, vector_b: &Vector3d) -> Self {
             Vector3d::new(
@@ -195,9 +199,13 @@ pub mod geometry {
             f64::acos(
                 ((*vector_a) * (*vector_b))
                     / (f64::sqrt(
-                        (*vector_a).X*(*vector_a).X + (*vector_a).Y*(*vector_a).Y + (*vector_a).Z*(*vector_a).Z,
+                        (*vector_a).X * (*vector_a).X
+                            + (*vector_a).Y * (*vector_a).Y
+                            + (*vector_a).Z * (*vector_a).Z,
                     ) * f64::sqrt(
-                        (*vector_b).X*(*vector_b).X + (*vector_b).Y*(*vector_b).Y + (*vector_b).Z*(*vector_b).Z,
+                        (*vector_b).X * (*vector_b).X
+                            + (*vector_b).Y * (*vector_b).Y
+                            + (*vector_b).Z * (*vector_b).Z,
                     )),
             )
         }
