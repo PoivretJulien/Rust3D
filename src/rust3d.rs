@@ -153,7 +153,7 @@ pub mod geometry {
 
         /// Compute the vector length.
         fn update_length(&mut self) {
-            self.Length = (((self.X)*(self.X)) + ((self.Y)*(self.Y)) + ((self.Z)*(self.Z))).sqrt();
+            self.Length = (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt();
         }
 
         /// static way to compute vector length.
@@ -162,7 +162,7 @@ pub mod geometry {
         /// # Returns
         /// return a f 64 length distance.
         pub fn compute_length(x: f64, y: f64, z: f64) -> f64 {
-            ((x*x) + (y*y) + (z*z)).sqrt()
+            (x * x + y * y + z * z).sqrt()
         }
 
         // Vector3d Cross Product.
@@ -195,9 +195,9 @@ pub mod geometry {
             f64::acos(
                 ((*vector_a) * (*vector_b))
                     / (f64::sqrt(
-                        (*vector_a).X.powi(2) + (*vector_a).Y.powi(2) + (*vector_a).Z.powi(2),
+                        (*vector_a).X*(*vector_a).X + (*vector_a).Y*(*vector_a).Y + (*vector_a).Z*(*vector_a).Z,
                     ) * f64::sqrt(
-                        (*vector_b).X.powi(2) + (*vector_b).Y.powi(2) + (*vector_b).Z.powi(2),
+                        (*vector_b).X*(*vector_b).X + (*vector_b).Y*(*vector_b).Y + (*vector_b).Z*(*vector_b).Z,
                     )),
             )
         }
@@ -1032,7 +1032,7 @@ pub mod visualization {
                 }
                 Ok(())
             }
-   
+
             pub fn export_to_obj_with_normals_fast(
                 &self,
                 path: &str,
@@ -2184,11 +2184,13 @@ mod test {
             Triangle::new(vertices[0], vertices[2], vertices[3]),
         ];
         let mesh = Mesh::new(vertices, triangles);
-        mesh.export_to_obj("./geometry/exported_light_with_rust.obj").ok();
+        mesh.export_to_obj("./geometry/exported_light_with_rust.obj")
+            .ok();
         let expected_data = Mesh::count_obj_elements("./geometry/exported_light_with_rust.obj")
             .ok()
             .unwrap();
-        let imported_mesh = Mesh::import_obj_with_normals("./geometry/exported_light_with_rust.obj").unwrap();
+        let imported_mesh =
+            Mesh::import_obj_with_normals("./geometry/exported_light_with_rust.obj").unwrap();
         assert_eq!(
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
@@ -2202,7 +2204,7 @@ mod test {
         let imported_mesh =
             Mesh::import_obj_with_normals("./geometry/medium_geometry.obj").unwrap();
         imported_mesh
-            .export_to_obj_with_normals_fast ("./geometry/medium_geometry_exported_from_rust.obj")
+            .export_to_obj_with_normals_fast("./geometry/medium_geometry_exported_from_rust.obj")
             .ok();
         assert_eq!(
             (expected_data.0, expected_data.2),
@@ -2215,7 +2217,9 @@ mod test {
             .ok()
             .unwrap();
         let imported_mesh = Mesh::import_obj_with_normals("./geometry/hight_geometry.obj").unwrap();
-        imported_mesh.export_to_obj_with_normals_fast("./geometry/hight_geometry_exported_from_rust.obj").ok();
+        imported_mesh
+            .export_to_obj_with_normals_fast("./geometry/hight_geometry_exported_from_rust.obj")
+            .ok();
         assert_eq!(
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
