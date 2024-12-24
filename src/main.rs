@@ -11,9 +11,10 @@ use rust3d::draw::*;
 use rust3d::geometry::{CPlane, Point3d, Vector3d}; // My rust Objects for computing 3d scalars.
 use rust3d::transformation::*; // Basic 3d transformation of 3d Point.
 use rust3d::utillity::*;
-use std::cell::RefCell;
 use rust3d::visualization::redering_object::Mesh;
-use rust3d::visualization::*; // a basic 3d engine plotting a 3d point on 2d screen.
+use rust3d::visualization::*;
+use std::cell::RefCell;
+use std::rc::Rc; // a basic 3d engine plotting a 3d point on 2d screen.
 
 // - a basic Rust program using CPU for animating 9 3d points on screen
 //   representing a cube with a dot in the middle + 3 colors axis are
@@ -34,7 +35,7 @@ fn main() {
     const DISPLAY_GRID: bool = true;
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const DISPLAY_TEXT: bool = true;
-    const DISPLAY_CIRCLE:bool = true;
+    const DISPLAY_CIRCLE: bool = true;
 
     let mut import_obj = Vec::new();
     // .obj file importation test.
@@ -124,7 +125,7 @@ fn main() {
     let origin = Point3d::new(0.0, 0.0, 0.0);
     let mut grid = Vec::new();
 
-    // Make a world grid. 
+    // Make a world grid.
     if DISPLAY_GRID {
         let grid_mv = Vector3d::new(5.0, -5.0, 0.0);
         let zaxis = Vector3d::new(0.0, 0.0, 1.0);
@@ -140,18 +141,19 @@ fn main() {
     }
 
     let mut circle = Vec::new();
-    let mut circle_after_move = Vec::new(); // an Rc<RefCell<Point3d>> must to be use
-                                                          // for avoiding memory copy.
-    let pln = Vector3d::new(0.2,0.2,0.8);
-    let plane_origin = Point3d::new(1.0*0.2 ,0.0, 0.85*DISPLAY_RATIO);
-    let plane =  CPlane::new(&plane_origin,&pln);
-    if DISPLAY_CIRCLE{
-        circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 1.3,400.0);
-        for (i,pt) in circle.iter().enumerate(){
-            circle_after_move.push(plane.point_on_plane_uv(&((*pt).X*DISPLAY_RATIO ), &((*pt).Y*DISPLAY_RATIO)));
+    let pln = Vector3d::new(0.2, 0.2, 0.8);
+    let plane_origin = Point3d::new(1.0 * 0.2, 0.0, 0.85 * DISPLAY_RATIO);
+    let plane = CPlane::new(&plane_origin, &pln);
+    if DISPLAY_CIRCLE {
+        circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 1.3, 400.0);
+        for (i, _) in circle.iter().enumerate() {
+            unsafe { // Evaluate as safe in that context (no concurrent access). 
+                let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
+                *ptr = plane
+                    .point_on_plane_uv(&((*ptr).X * DISPLAY_RATIO), &((*ptr).Y * DISPLAY_RATIO));
+            }
         }
     }
-    circle.clear();//free memory.
 
     // init memory for an animated 3d square.
     let mut moving_square = [origin; 4];
@@ -217,8 +219,8 @@ fn main() {
             );
         }
         ////Draw Circle (test).
-        if DISPLAY_CIRCLE{
-            for point in circle_after_move.iter() {
+        if DISPLAY_CIRCLE {
+            for point in circle.iter() {
                 let rotated_point = rotate_z(*point, angle);
                 if let Some(projected_point) = camera.project(rotated_point) {
                     buffer[projected_point.1 * WIDTH + projected_point.0] =
