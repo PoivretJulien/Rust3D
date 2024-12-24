@@ -194,6 +194,23 @@ pub mod geometry {
             )
         }
 
+        /// Test if a vector point to the direction of an other vector.
+        /// # Arguments
+        /// - ref &self, 
+        /// - other_vector:Vector3d (other vector to compare with),
+        /// - threshold :f64
+        /// (threshold should be closer to one for getting more precision. like: 0.99991)
+        /// #Returns
+        /// - true if looking in same direction or false if looking in other direction 
+        ///   (always from threshold value).
+        pub fn is_same_direction(&self, other_vector:&Vector3d,threshold:f64)->bool{
+            if (*self).unitize_b() * (*other_vector).unitize_b() >= threshold{
+                true
+            }else{
+                false
+            }
+        }
+
         /// return the angle between two vectors
         pub fn compute_angle(vector_a: &Vector3d, vector_b: &Vector3d) -> f64 {
             f64::acos(
@@ -1960,6 +1977,14 @@ mod test {
         vector.unitize();
         vector *= 4.0;
         assert_eq!(4.0, vector.Length());
+    }
+
+    #[test]
+    fn test_vector_is_same_direction(){
+        let v1 = Vector3d::new(0.426427,-0.904522,0.0);
+        let v2 = Vector3d::new(0.688525, -0.7255212, 0.0);
+        assert!(v1.is_same_direction(&v2, 0.94));
+
     }
     use core::f64;
     use std::f64::consts::PI;
