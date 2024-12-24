@@ -146,7 +146,7 @@ fn main() {
     let plane = CPlane::new(&plane_origin, &pln);
     if DISPLAY_CIRCLE {
         circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 1.3, 400.0);
-        for (i, _) in circle.iter().enumerate() {
+        for i in 0..circle.len(){
             unsafe { // Evaluate as safe in that context (no concurrent access). 
                 let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
                 *ptr = plane
