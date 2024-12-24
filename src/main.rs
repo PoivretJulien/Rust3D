@@ -30,6 +30,7 @@ fn main() {
     const DISPLAY_RATIO: f64 = 0.109; // Display space model scale unit dimension.
     const DISPLAY_NUKE: bool = false; // Optional (for Graphical purpose).
     const DISPLAY_OBJ: bool = true;
+    const BACK_GROUND_COLOR:u32 = 0x141314;
 
     let mut import_obj = Vec::new();
     // .obj file importation test.
@@ -126,7 +127,7 @@ fn main() {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // Clear the screen (0x0 = Black)
         for pixel in buffer.iter_mut() {
-            *pixel = 0x141314; //set a dark gray color as background.
+            *pixel = BACK_GROUND_COLOR; //set a dark gray color as background.
         }
 
         // Project animated point on the 2d screen.
@@ -225,7 +226,7 @@ fn main() {
             );
         }
         if DISPLAY_OBJ {
-            display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj);
+            display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj,&BACK_GROUND_COLOR);
         }
         let step = 0.5;// step in degree.
         if (angle*360.0)/(f64::consts::PI*2.0) >= 359.0 {
@@ -315,13 +316,14 @@ fn display_obj(
     width: &usize,
     angle: &f64,
     mode_3d: &mut Vec<Point3d>,
+    back_ground_color:&u32,
 ) {
     for p in mode_3d.iter_mut() {
         let pt_rotated = rotate_z(*p, *angle); // rotate selected 3d point.
         // use 3d engine to project point.
         if let Some(projected_point) = camera.project(pt_rotated) {
             buffer[projected_point.1 * width + projected_point.0] = 
-                Color::convert_rgba_color(255, 255, 39, 0.93, 0x141314); //  mutate the buffer (we are in a single thread configuration).
+                Color::convert_rgba_color(255, 255, 39, 0.93, *back_ground_color); //  mutate the buffer (we are in a single thread configuration).
         }
     }
 }
