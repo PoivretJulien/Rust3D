@@ -146,6 +146,7 @@ pub mod geometry {
         pub fn get_Z(&self) -> f64 {
             self.Z
         }
+
         /// Return the read only length
         pub fn Length(&self) -> f64 {
             self.Length
@@ -167,6 +168,19 @@ pub mod geometry {
 
         pub fn compute_length_byref(x: &f64, y: &f64, z: &f64) -> f64 {
             ((*x) * (*x) + (*y) * (*y) + (*z) * (*z)).sqrt()
+        }
+
+        /// Represent the rate of change between two points in time
+        /// where the magnitude of the result is the speed expressed 
+        /// in unit of time/space relationship of the input.
+        pub fn compute_velocity(
+            initial_position: &Point3d, 
+            final_position: &Point3d, 
+            initial_time: f64, 
+            final_time: f64) -> Vector3d { 
+            let delta_position = (*final_position) - (*initial_position);
+            let delta_time = final_time - initial_time; 
+            delta_position * (1.0 / delta_time) 
         }
 
         // Vector3d Cross Product.
