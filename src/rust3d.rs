@@ -395,6 +395,122 @@ pub mod geometry {
             }
         }
     }
+
+    pub struct NurbsCurve {
+        pub control_points: Vec<Point3d>,
+        pub degree: usize,
+        pub knots: Vec<f64>,
+        pub weights: Vec<f64>,
+    }
+
+    impl NurbsCurve {
+        /// Constructor for a NURBS curve
+        pub fn new(control_points: Vec<Point3d>, degree: usize) -> Self {
+            let n = control_points.len(); // Number of control points
+            let num_knots = n + degree + 1; // Number of knots
+
+            // Generate a clamped knot vector
+            let mut knots = vec![0.0; num_knots];
+            let interior_knots = n - degree; // Number of non-clamped (interior) knots
+
+            // Fill the clamped start and end
+            for i in 0..=degree {
+                knots[i] = 0.0; // Clamped at the start
+                knots[num_knots - 1 - i] = 1.0; // Clamped at the end
+            }
+
+            // Fill the interior knots with uniform spacing
+            for i in 1..interior_knots {
+                knots[degree + i] = i as f64 / interior_knots as f64;
+            }
+
+            // Default weights (all 1.0)
+            let weights = vec![1.0; n];
+
+            // Construct the NurbsCurve
+            NurbsCurve {
+                control_points,
+                degree,
+                knots,
+                weights,
+            }
+        }
+
+        /// Evaluate a NURBS curve at parameter t using the De Boor algorithm
+        pub fn evaluate(&self, t: f64) -> Point3d {
+            let p = self.degree;
+
+            // Find the knot span
+            let k = self.find_span(t);
+
+            // Allocate the working points array
+            let mut d = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0,
+                };
+                p + 1
+            ];
+
+            // Initialize the points for the De Boor recursion
+            for j in 0..=p {
+                let cp = &self.control_points[k - p + j];
+                let w = self.weights[k - p + j];
+                d[j] = Point3d {
+                    X: cp.X * w,
+                    Y: cp.Y * w,
+                    Z: cp.Z * w,
+                };
+            }
+
+            // Perform the De Boor recursion
+            for r in 1..=p {
+                for j in (r..=p).rev() {
+                    let alpha = (t - self.knots[k + j - p])
+                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p]);
+
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
+                }
+            }
+
+            // Normalize by the weight
+            let weight = self.weights[k];
+            Point3d {
+                X: d[p].X / weight,
+                Y: d[p].Y / weight,
+                Z: d[p].Z / weight,
+            }
+        }
+
+        pub fn find_span(&self, t: f64) -> usize {
+            let n = self.control_points.len() - 1;
+            if t >= self.knots[n + 1] {
+                return n;
+            }
+            if t <= self.knots[self.degree] {
+                return self.degree;
+            }
+            for i in self.degree..=n {
+                if t >= self.knots[i] && t < self.knots[i + 1] {
+                    return i;
+                }
+            }
+            n // Default case
+        }
+
+        pub fn draw(&self) -> Vec<Point3d> {
+            let mut curve_points = Vec::new();
+            let mut t = 0.0;
+            while t <= 1.0 {
+                curve_points.push(self.evaluate(t));
+                t += 0.01;
+            }
+            curve_points
+        }
+    }
 }
 
 pub mod intersection {
@@ -1934,8 +2050,8 @@ pub mod draw {
 
     use core::f64;
 
-    use crate::models_3d::FONT_5X7;
     use super::geometry::Point3d;
+    use crate::models_3d::FONT_5X7;
 
     pub fn draw_text(
         buffer: &mut Vec<u32>,
@@ -2009,7 +2125,7 @@ pub mod draw {
         grid_spacing_unit: &f64,
     ) -> Vec<Point3d> {
         let mut grid_points = Vec::new();
-        let grid_unit =  grid_spacing_unit / x_max;
+        let grid_unit = grid_spacing_unit / x_max;
         let mut x = 0.0;
         let mut y = 0.0;
         while x <= *x_max {
@@ -2018,7 +2134,7 @@ pub mod draw {
                 y += grid_unit;
             }
             if y >= *y_max {
-                y = 0.0; 
+                y = 0.0;
             }
             x += grid_unit;
         }
@@ -2026,15 +2142,19 @@ pub mod draw {
     }
 
     /// Draw a circle.
-    pub fn draw_3d_circle(origin:Point3d,radius:f64,step:f64)->Vec<Point3d>{
+    pub fn draw_3d_circle(origin: Point3d, radius: f64, step: f64) -> Vec<Point3d> {
         let mut increm = 0.0f64;
         let mut circle_pts = Vec::new();
-        while  increm <= (f64::consts::PI*2.0){
-            circle_pts.push(Point3d::new((f64::sin(increm)*radius)+origin.X,(f64::cos(increm)*radius)+origin.Y,0.0+origin.Z));
-            increm += (f64::consts::PI*2.0)/step;
+        while increm <= (f64::consts::PI * 2.0) {
+            circle_pts.push(Point3d::new(
+                (f64::sin(increm) * radius) + origin.X,
+                (f64::cos(increm) * radius) + origin.Y,
+                0.0 + origin.Z,
+            ));
+            increm += (f64::consts::PI * 2.0) / step;
         }
         circle_pts
-    } 
+    }
 }
 
 pub mod utillity {
@@ -2360,5 +2480,25 @@ mod test {
             (expected_data.0, expected_data.2),
             (imported_mesh.vertices.len(), imported_mesh.triangles.len())
         );
+    }
+    #[test]
+    fn test_nurbs_curve() {
+        let cv = vec![
+            Point3d::new(0.0, 0.0, 0.0),
+            Point3d::new(0.0, 10.0, 0.0),
+            Point3d::new(10.0, 10.0, 0.0),
+            Point3d::new(10.0, 0.0, 0.0),
+            Point3d::new(20.0, 0.0, 0.0),
+            Point3d::new(20.0, 10.0, 0.0),
+        ];
+        let crv = NurbsCurve::new(cv, 5);
+        assert_eq!(Point3d::new(10.0, 5.0, 0.0), crv.evaluate(0.5));
+        let pt = crv.evaluate(0.638);
+        let expected_result = Point3d::new(13.445996, 3.535805, 0.0);
+        if (pt - expected_result).Length() < 1e-5 {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
     }
 }
