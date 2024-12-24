@@ -222,7 +222,7 @@ fn main() {
                 let rotated_point = rotate_z(*point, angle);
                 if let Some(projected_point) = camera.project(rotated_point) {
                     buffer[projected_point.1 * WIDTH + projected_point.0] =
-                        Color::convert_rgba_color(0, 0, 255, 0.9, BACK_GROUND_COLOR);
+                        Color::convert_rgba_color(0, 123, 244, 1.0, BACK_GROUND_COLOR);
                     //  mutate the buffer (we are in a single thread configuration).
                 }
             }
