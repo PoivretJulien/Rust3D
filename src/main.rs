@@ -229,12 +229,17 @@ fn main() {
             display_obj(&camera, &mut buffer, &WIDTH, &angle, &mut import_obj,&BACK_GROUND_COLOR);
         }
         let step = 0.5;// step in degree.
-        if (angle*360.0)/(f64::consts::PI*2.0) >= 359.0 {
+        let degree = (angle*360.0)/(f64::consts::PI*2.0); 
+        if (degree) >= 359.0 {
             // prevent to panic in case of f64 overflow (subtraction will be optimized at compile time)
             angle = 0.0;
         } else {
             angle += degree_to_radians(&step); // increment angle rotation for the animation in loop
         } // enjoy.
+        let (x,y) = ((WIDTH/2)-125,(HEIGHT/2)+100);
+        let color=Color::convert_rgb_color(0,250,0);
+        let text_height = 2usize;
+        draw_text(&mut buffer, &HEIGHT, &WIDTH, &x, &y, format!("Rotating angle: {:05.1} Deg",degree).as_str(), &text_height,&color);
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
     }
 }

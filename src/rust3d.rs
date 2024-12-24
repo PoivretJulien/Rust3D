@@ -1931,6 +1931,64 @@ pub mod draw {
             }
         }
     }
+
+    use crate::models_3d::FONT_5X7;
+    pub fn draw_text(
+        buffer: &mut Vec<u32>,
+        height: &usize,
+        width: &usize,
+        x: &usize,
+        y: &usize,
+        text: &str,
+        scale: &usize,
+        text_color: &u32,
+    ) {
+        for (i, c) in text.chars().enumerate() {
+            let index = match c {
+    'A'..='Z' => c as usize - 'A' as usize,
+    'a'..='z' => c as usize - 'a' as usize + 26,
+    '0'..='9' => c as usize - '0' as usize + 52,
+    ' ' => 62, // Space character index
+    '!' => 63,
+    '"' => 64,
+    '#' => 65,
+    '$' => 66,
+    '%' => 67,
+    '&' => 68,
+    '\'' => 69,
+    '(' => 70,
+    ')' => 71,
+    '*' => 72,
+    '+' => 73,
+    ',' => 74,
+    '-' => 75,
+    '.' => 76,
+    '/' => 77,
+    ':' => 78,
+    _ => continue, // Ignore unsupported characters
+};
+            let char_data = &FONT_5X7[index];
+            for (row, &row_data) in char_data.iter().enumerate() {
+                for col in 0..5 {
+                    if (row_data & (1 << (4 - col))) != 0 {
+                        let px = x + i * 6 * scale + col * scale; // Adjust for character spacing and scaling
+                        let py = y + row * scale;
+
+                        // Draw scaled pixel
+                        for dy in 0..(*scale) {
+                            for dx in 0..(*scale) {
+                                let sx = px + dx;
+                                let sy = py + dy;
+                                if sx < *width && sy < *height {
+                                    buffer[sy * width + sx] = *text_color; // White pixel
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub mod utillity {
