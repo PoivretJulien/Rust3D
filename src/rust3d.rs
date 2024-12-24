@@ -1932,9 +1932,11 @@ pub mod draw {
         }
     }
 
-    use crate::{models_3d::FONT_5X7, redering_object::Vertex};
+    use core::f64;
 
+    use crate::models_3d::FONT_5X7;
     use super::geometry::Point3d;
+
     pub fn draw_text(
         buffer: &mut Vec<u32>,
         height: &usize,
@@ -2000,7 +2002,7 @@ pub mod draw {
      *  or visual evaluation phase ).
      */
     use super::geometry::CPlane;
-    pub fn draw_grid(
+    pub fn draw_3d_grid(
         plane: &CPlane,
         x_max: &f64,
         y_max: &f64,
@@ -2022,6 +2024,17 @@ pub mod draw {
         }
         grid_points
     }
+
+    /// Draw a circle.
+    pub fn draw_3d_circle(origin:Point3d,radius:f64,step:f64)->Vec<Point3d>{
+        let mut increm = 0.0f64;
+        let mut circle_pts = Vec::new();
+        while  increm <= (f64::consts::PI*2.0){
+            circle_pts.push(Point3d::new((f64::sin(increm)*radius)+origin.X,(f64::cos(increm)*radius)+origin.Y,0.0+origin.Z));
+            increm += (f64::consts::PI*2.0)/step;
+        }
+        circle_pts
+    } 
 }
 
 pub mod utillity {
