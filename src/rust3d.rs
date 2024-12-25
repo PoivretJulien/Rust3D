@@ -815,6 +815,43 @@ pub mod visualization {
             Some((screen_x as usize, screen_y as usize))
         }
 
+        pub fn project_with_depth(&self, point: Point3d) -> Option<(usize, usize, f64)> {
+            let view_matrix = self.get_view_matrix();
+            let projection_matrix = self.get_projection_matrix();
+
+            // Step 1: Transform the point into camera space
+            let camera_space_point = self.multiply_matrix_vector(view_matrix, point);
+
+            // Extract depth in camera space (before projection)
+            let depth_in_camera_space = camera_space_point.Z;
+
+            // Step 2: Project the point using the projection matrix
+            let projected_point =
+                self.multiply_matrix_vector(projection_matrix, camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.X / projected_point.Z;
+            let y = projected_point.Y / projected_point.Z;
+
+            // Extract normalized depth from the projection
+            //let _depth_in_ndc = projected_point.Z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            if screen_x < 0
+                || screen_x >= self.width as isize
+                || screen_y < 0
+                || screen_y >= self.height as isize
+            {
+                return None; // Point is out of screen bounds
+            }
+
+            // Return screen coordinates and the depth
+            Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
+        }
+
         // Multiply 3d point by a matrix vector.
         fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Point3d) -> Point3d {
             Point3d::new(
@@ -2157,7 +2194,162 @@ pub mod visualization {
         }
     }
 }
+// Visualization v2.0 which take care of the depth
+// parralelisation
+pub mod visualization_v2 {
+    use super::geometry::{Point3d, Vector3d};
 
+    pub struct Camera {
+        pub position: Point3d,
+        pub target: Point3d,
+        pub up: Vector3d,
+        pub fov: f64,
+        pub width: f64,
+        pub height: f64,
+        pub near: f64,
+        pub far: f64,
+        pub view_matrix: [[f64; 4]; 4], // Precomputed view matrix
+        pub projection_matrix: [[f64; 4]; 4], // Precomputed projection matrix
+    }
+    use rayon::prelude::*;
+
+    impl Camera {
+        /// Construct a camera with cached matrix convertion
+        /// which involve to update the matrix if one of th camera
+        /// has changed. use .update_matrices() on the camera object.
+        pub fn new(
+            position: Point3d,
+            target: Point3d,
+            up: Vector3d,
+            width: f64,
+            height: f64,
+            fov: f64,
+            near: f64,
+            far: f64,
+        ) -> Self {
+            let mut camera = Self {
+                position,
+                target,
+                up,
+                fov,
+                width,
+                height,
+                near,
+                far,
+                view_matrix: [[0.0; 4]; 4], // Temporary initialization
+                projection_matrix: [[0.0; 4]; 4], // Temporary initialization
+            };
+
+            // Precompute the matrices
+            camera.update_matrices();
+
+            camera
+        }
+
+        pub fn project_points(&self, points: Vec<Point3d>) -> Vec<(usize, usize, f64)> {
+            points
+                .par_iter() // Use parallel iterator
+                .filter_map(|point| self.project(*point)) // Apply the project method in parallel
+                .collect() // Collect results into a Vec
+        }
+
+        /// Update the view and projection matrices (call when camera parameters change)
+        pub fn update_matrices(&mut self) {
+            self.view_matrix = self.compute_view_matrix();
+            self.projection_matrix = self.compute_projection_matrix();
+        }
+
+        /// Compute the view matrix
+        pub fn compute_view_matrix(&self) -> [[f64; 4]; 4] {
+            let forward = Vector3d::new(
+                self.position.X - self.target.X,
+                self.position.Y - self.target.Y,
+                self.position.Z - self.target.Z,
+            )
+            .unitize_b();
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+
+            let translation = Point3d::new(-self.position.X, -self.position.Y, -self.position.Z);
+            [
+                [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
+                [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
+                [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
+                [
+                    (right.get_X() * translation.X)
+                        + (right.get_Y() * translation.Y)
+                        + (right.get_Z() * translation.Z),
+                    (up.get_X() * translation.X)
+                        + (up.get_Y() * translation.Y)
+                        + (right.get_Z() * translation.Z),
+                    (forward.get_X() * translation.X)
+                        + (forward.get_Y() * translation.Y)
+                        + (forward.get_Z() * translation.Z),
+                    1.0,
+                ],
+            ]
+        }
+
+        /// Compute the projection matrix
+        pub fn compute_projection_matrix(&self) -> [[f64; 4]; 4] {
+            let aspect_ratio = self.width / self.height;
+            let fov_rad = self.fov.to_radians();
+            let f = 1.0 / (fov_rad / 2.0).tan();
+            [
+                [f / aspect_ratio, 0.0, 0.0, 0.0],
+                [0.0, f, 0.0, 0.0],
+                [
+                    0.0,
+                    0.0,
+                    (self.far + self.near) / (self.near - self.far),
+                    -1.0,
+                ],
+                [
+                    0.0,
+                    0.0,
+                    (2.0 * self.far * self.near) / (self.near - self.far),
+                    0.0,
+                ],
+            ]
+        }
+        pub fn project(&self, point: Point3d) -> Option<(usize, usize, f64)> {
+            // Use precomputed matrices
+            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+
+            // Extract depth in camera space (before projection)
+            let depth_in_camera_space = camera_space_point.Z;
+
+            let projected_point =
+                self.multiply_matrix_vector(self.projection_matrix, camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.X / projected_point.Z;
+            let y = projected_point.Y / projected_point.Z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            if screen_x < 0
+                || screen_x >= self.width as isize
+                || screen_y < 0
+                || screen_y >= self.height as isize
+            {
+                return None; // Point is out of screen bounds
+            }
+
+            Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
+        }
+
+        pub fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Point3d) -> Point3d {
+            Point3d::new(
+                matrix[0][0] * v.X + matrix[0][1] * v.Y + matrix[0][2] * v.Z + matrix[0][3],
+                matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
+                matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
+            )
+        }
+    }
+}
 /*
  *  A set of early very basic transformations method
  *  of Point3d from world axis and Angles.
