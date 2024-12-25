@@ -529,15 +529,20 @@ pub mod geometry {
             n // Default case
         }
 
-        pub fn draw(&self) -> Vec<Point3d> {
+        /// Describe the path by a list of Point3d.
+        pub fn draw(&self, step_resolution: f64) -> Vec<Point3d> {
+            if step_resolution == 0.0 {
+                panic!("Step resolution cannot be 0.0.")
+            }
             let mut curve_points = Vec::new();
             let mut t = 0.0;
             while t <= 1.0 {
                 curve_points.push(self.evaluate(t));
-                t += 0.01;
+                t += step_resolution;
             }
             curve_points
         }
+
         /// Compute the first derivative of the NURBS curve at parameter t
         pub fn derivative(&self, t: f64) -> Point3d {
             let p = self.degree;
@@ -840,6 +845,25 @@ pub mod visualization {
             pub z: f64,
         }
         use std::hash::{Hash, Hasher};
+        use std::ops::{Add, Mul, MulAssign, Sub};
+        impl Sub for Vertex {
+            type Output = Self; // Specify the result type of the addition
+            fn sub(self, other: Self) -> Self {
+                Vertex::new(self.x - other.x, self.y - other.y, self.z - other.z)
+            }
+        }
+        impl Add for Vertex {
+            type Output = Self; // Specify the result type of the addition
+            fn add(self, other: Self) -> Self {
+                Vertex::new(self.x + other.x, self.y + other.y, self.z + other.z)
+            }
+        }
+        impl Mul for Vertex {
+            type Output = Self; // Specify the result type of the addition
+            fn mul(self, other: Self) -> Self {
+                Vertex::new(self.x * other.x, self.y * other.y, self.z * other.z)
+            }
+        }
 
         impl PartialEq for Vertex {
             fn eq(&self, other: &Self) -> bool {
@@ -864,6 +888,16 @@ pub mod visualization {
                 self.x.to_bits().hash(state);
                 self.y.to_bits().hash(state);
                 self.z.to_bits().hash(state);
+            }
+        }
+
+        impl Mul<f64> for Vertex {
+            type Output = Vertex;
+            fn mul(self, scalar: f64) -> Self {
+                let v_x = self.x * scalar;
+                let v_y = self.y * scalar;
+                let v_z = self.z * scalar;
+                Vertex::new(v_x, v_y, v_z)
             }
         }
 
@@ -1009,8 +1043,8 @@ pub mod visualization {
 
             /// Compute the area of the triangle.
             pub fn get_triangle_area(&self) -> f64 {
-                let va = self.v1.sub(&self.v0);
-                let vb = self.v2.sub(&self.v0);
+                let va = self.v1.sub(self.v0);
+                let vb = self.v2.sub(self.v0);
                 va.cross_product(&vb).magnitude() / 2.0
             }
 
@@ -1080,7 +1114,7 @@ pub mod visualization {
 
             // Compute the centroid of the triangle
             pub fn center(&self) -> [f64; 3] {
-                let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
+                let centroid = self.v0.add(self.v1).add(self.v2).div(3.0);
                 [centroid.x, centroid.y, centroid.z]
             }
 
@@ -1755,8 +1789,8 @@ pub mod visualization {
                 // Compute ray direction in camera space
                 let ray_direction = self
                     .forward
-                    .add(&self.right.mul(pixel_camera_x))
-                    .add(&self.up.mul(pixel_camera_y))
+                    .add(self.right.mul(pixel_camera_x))
+                    .add(self.up.mul(pixel_camera_y))
                     .unitize(); // Normalize to get unit vector
 
                 // Create the ray
