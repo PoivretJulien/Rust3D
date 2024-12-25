@@ -2194,8 +2194,9 @@ pub mod visualization {
         }
     }
 }
-// Visualization v2.0 which take care of the depth
-// parralelisation
+
+// Visualization v2.0 which take care of the depth for Z buffer
+// parralelisation for performances and some caching optimizations.
 pub mod visualization_v2 {
     use super::geometry::{Point3d, Vector3d};
 
