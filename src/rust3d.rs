@@ -750,7 +750,7 @@ pub mod visualization {
         // Todo: (optimize data structure)
         // Vertex is use as multi purpose usage
         // can be use as Point3d or Vector3d.
-        #[derive(Debug, Copy, Clone)]
+        #[derive(Debug, Copy, Clone, PartialOrd)]
         pub struct Vertex {
             pub x: f64,
             pub y: f64,
@@ -980,6 +980,9 @@ pub mod visualization {
                     },
                 }
             }
+            pub fn edges(&self) -> [(Vertex, Vertex); 3] { 
+                [(self.v0, self.v1), (self.v1, self.v2), (self.v2, self.v0)]
+            }
         }
 
         use rayon::prelude::*;
@@ -987,11 +990,9 @@ pub mod visualization {
         use std::fs::File;
         use std::io::{self, BufRead, BufReader, BufWriter, Write};
         use std::iter::Iterator;
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        use std::sync::{Arc, Mutex};
+        use std::sync::Arc;
         use tobj;
 
-        use crate::rust3d::geometry::Vector3d; // For parallel iterators;
 
         #[derive(Debug)]
         pub struct Mesh {
@@ -1006,7 +1007,25 @@ pub mod visualization {
                     triangles,
                 }
             }
-            // Give the volume of the mesh in file system base unit.
+            
+            pub fn is_watertight(&self) -> bool {
+                let mut edge_count: HashMap<(Vertex, Vertex), i32> = HashMap::new();
+                for triangle in self.triangles.iter() { 
+                    for &(start, end) in &triangle.edges() {
+                        let edge = if start < end {
+                            (start, end)
+                        } else {
+                            (end, start)
+                        }; 
+                        let counter = edge_count.entry(edge).or_insert(0); 
+                        *counter += 1; 
+                    } 
+                } 
+                edge_count.values().all(|&count| count == 2) 
+            }
+
+            /// Give the volume of the mesh in file system base unit.
+            /// Based on divergence theorem (also known as Gauss's theorem)
             pub fn compute_volume(&self) -> f64 {
                 self.triangles.iter().map(|tri| tri.signed_volume()).sum()
             }
@@ -2590,12 +2609,32 @@ mod test {
             assert!(false);
         }
     }
+    
     #[test]
     fn volume_mesh_test(){
         let obj = Mesh::import_obj_with_normals("./geometry/mesh_volume.obj").unwrap();
         let volume =  obj.compute_volume();
         let expected_volume = 214.585113;
         if (volume - expected_volume).abs() < 1e-5{
+            assert!(true);
+        }else{
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn volume_mesh_water_tight_a(){
+        let obj = Mesh::import_obj_with_normals("./geometry/mesh_volume.obj").unwrap();
+        if obj.is_watertight() {
+            assert!(true);
+        }else{
+            assert!(false);
+        }
+    }
+    #[test]
+    fn volume_mesh_water_tight_b(){
+        let obj = Mesh::import_obj_with_normals("./geometry/non_water_tight.obj").unwrap();
+        if !obj.is_watertight() {
             assert!(true);
         }else{
             assert!(false);
