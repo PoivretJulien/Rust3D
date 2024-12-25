@@ -171,16 +171,17 @@ pub mod geometry {
         }
 
         /// Represent the rate of change between two points in time
-        /// where the magnitude of the result is the speed expressed 
+        /// where the magnitude of the result is the speed expressed
         /// in unit of time/space relationship of the input.
         pub fn compute_velocity(
-            initial_position: &Point3d, 
-            final_position: &Point3d, 
-            initial_time: f64, 
-            final_time: f64) -> Vector3d { 
+            initial_position: &Point3d,
+            final_position: &Point3d,
+            initial_time: f64,
+            final_time: f64,
+        ) -> Vector3d {
             let delta_position = (*final_position) - (*initial_position);
-            let delta_time = final_time - initial_time; 
-            delta_position * (1.0 / delta_time) 
+            let delta_time = final_time - initial_time;
+            delta_position * (1.0 / delta_time)
         }
 
         // Vector3d Cross Product.
@@ -391,16 +392,16 @@ pub mod geometry {
         }
 
         /// Construct a Plane with specific x axis vector.
-        pub fn new_with_x(origin:&Point3d,x_axis:&Vector3d,normal:&Vector3d)->Self{
-               let normalized_normal = normal.unitize_b();
-               let u =Vector3d::cross_product(x_axis,&normalized_normal).unitize_b();
-               let v =Vector3d::cross_product(&normalized_normal,&u).unitize_b();
-               Self{
-                   origin:*origin,
-                   normal:normalized_normal,
-                   u,
-                   v,
-               }
+        pub fn new_with_x(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
+            let normalized_normal = normal.unitize_b();
+            let u = Vector3d::cross_product(x_axis, &normalized_normal).unitize_b();
+            let v = Vector3d::cross_product(&normalized_normal, &u).unitize_b();
+            Self {
+                origin: *origin,
+                normal: normalized_normal,
+                u,
+                v,
+            }
         }
 
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
@@ -778,12 +779,29 @@ pub mod visualization {
                 Self { x, y, z }
             }
 
+            pub fn cross_product(self, other: &Vertex) -> Self {
+                Self {
+                    x: self.y * (*other).z - self.z * (*other).y,
+                    y: self.z * (*other).x - self.x * (*other).z,
+                    z: self.x * (*other).y - self.y * (*other).x,
+                }
+            }
+
             // Add two vertices
             pub fn add(&self, other: &Vertex) -> Vertex {
                 Vertex {
                     x: self.x + other.x,
                     y: self.y + other.y,
                     z: self.z + other.z,
+                }
+            }
+
+            // Sub two vertices
+            pub fn sub(&self, other: &Vertex) -> Vertex {
+                Vertex {
+                    x: self.x - other.x,
+                    y: self.y - other.y,
+                    z: self.z - other.z,
                 }
             }
 
@@ -869,6 +887,99 @@ pub mod visualization {
             pub fn with_normal(v0: Vertex, v1: Vertex, v2: Vertex, normal: Vertex) -> Self {
                 Self { v0, v1, v2, normal }
             }
+
+            /// Compute the area of the triangle.
+            pub fn get_triangle_area(&self) -> f64 {
+                let va = self.v1.sub(&self.v0);
+                let vb = self.v2.sub(&self.v0);
+                va.cross_product(&vb).magnitude() / 2.0
+            }
+
+            // Compute the signed volume of the tetrahedron formed by the triangle and the origin
+            pub fn signed_volume(&self) -> f64 {
+                (self.v0.x * (self.v1.y * self.v2.z - self.v1.z * self.v2.y)
+                    - self.v0.y * (self.v1.x * self.v2.z - self.v1.z * self.v2.x)
+                    + self.v0.z * (self.v1.x * self.v2.y - self.v1.y * self.v2.x))
+                    / 6.0
+            }
+
+            // Möller–Trumbore algorithm.
+            pub fn intersect(&self, ray: &Ray) -> Option<f64> {
+                let edge1 = Vertex {
+                    x: self.v1.x - self.v0.x,
+                    y: self.v1.y - self.v0.y,
+                    z: self.v1.z - self.v0.z,
+                };
+                let edge2 = Vertex {
+                    x: self.v2.x - self.v0.x,
+                    y: self.v2.y - self.v0.y,
+                    z: self.v2.z - self.v0.z,
+                };
+
+                let h = Vertex {
+                    x: ray.direction.y * edge2.z - ray.direction.z * edge2.y,
+                    y: ray.direction.z * edge2.x - ray.direction.x * edge2.z,
+                    z: ray.direction.x * edge2.y - ray.direction.y * edge2.x,
+                };
+                let a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
+
+                if a > -1e-8 && a < 1e-8 {
+                    return None; // Ray is parallel to the triangle.
+                }
+
+                let f = 1.0 / a;
+                let s = Vertex {
+                    x: ray.origin.x - self.v0.x,
+                    y: ray.origin.y - self.v0.y,
+                    z: ray.origin.z - self.v0.z,
+                };
+                let u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
+
+                if u < 0.0 || u > 1.0 {
+                    return None;
+                }
+
+                let q = Vertex {
+                    x: s.y * edge1.z - s.z * edge1.y,
+                    y: s.z * edge1.x - s.x * edge1.z,
+                    z: s.x * edge1.y - s.y * edge1.x,
+                };
+                let v = f * (ray.direction.x * q.x + ray.direction.y * q.y + ray.direction.z * q.z);
+
+                if v < 0.0 || u + v > 1.0 {
+                    return None;
+                }
+
+                let t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
+
+                if t > 1e-8 {
+                    Some(t) // Intersection distance
+                } else {
+                    None
+                }
+            }
+
+            // Compute the centroid of the triangle
+            pub fn center(&self) -> [f64; 3] {
+                let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
+                [centroid.x, centroid.y, centroid.z]
+            }
+
+            // Compute the bounding box of the triangle
+            pub fn bounding_box(&self) -> AABB {
+                AABB {
+                    min: Vertex {
+                        x: self.v0.x.min(self.v1.x).min(self.v2.x),
+                        y: self.v0.y.min(self.v1.y).min(self.v2.y),
+                        z: self.v0.z.min(self.v1.z).min(self.v2.z),
+                    },
+                    max: Vertex {
+                        x: self.v0.x.max(self.v1.x).max(self.v2.x),
+                        y: self.v0.y.max(self.v1.y).max(self.v2.y),
+                        z: self.v0.z.max(self.v1.z).max(self.v2.z),
+                    },
+                }
+            }
         }
 
         use rayon::prelude::*;
@@ -878,7 +989,9 @@ pub mod visualization {
         use std::iter::Iterator;
         use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::{Arc, Mutex};
-        use tobj; // For parallel iterators;
+        use tobj;
+
+        use crate::rust3d::geometry::Vector3d; // For parallel iterators;
 
         #[derive(Debug)]
         pub struct Mesh {
@@ -892,6 +1005,10 @@ pub mod visualization {
                     vertices,
                     triangles,
                 }
+            }
+            // Give the volume of the mesh in file system base unit.
+            pub fn compute_volume(&self) -> f64 {
+                self.triangles.iter().map(|tri| tri.signed_volume()).sum()
             }
 
             /// Display Statistics of obj file.
@@ -1291,86 +1408,6 @@ pub mod visualization {
 
                 println!("\x1b[8;0HExport completed successfully!");
                 Ok(())
-            }
-        }
-
-        impl Triangle {
-            // Möller–Trumbore algorithm.
-            pub fn intersect(&self, ray: &Ray) -> Option<f64> {
-                let edge1 = Vertex {
-                    x: self.v1.x - self.v0.x,
-                    y: self.v1.y - self.v0.y,
-                    z: self.v1.z - self.v0.z,
-                };
-                let edge2 = Vertex {
-                    x: self.v2.x - self.v0.x,
-                    y: self.v2.y - self.v0.y,
-                    z: self.v2.z - self.v0.z,
-                };
-
-                let h = Vertex {
-                    x: ray.direction.y * edge2.z - ray.direction.z * edge2.y,
-                    y: ray.direction.z * edge2.x - ray.direction.x * edge2.z,
-                    z: ray.direction.x * edge2.y - ray.direction.y * edge2.x,
-                };
-                let a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
-
-                if a > -1e-8 && a < 1e-8 {
-                    return None; // Ray is parallel to the triangle.
-                }
-
-                let f = 1.0 / a;
-                let s = Vertex {
-                    x: ray.origin.x - self.v0.x,
-                    y: ray.origin.y - self.v0.y,
-                    z: ray.origin.z - self.v0.z,
-                };
-                let u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
-
-                if u < 0.0 || u > 1.0 {
-                    return None;
-                }
-
-                let q = Vertex {
-                    x: s.y * edge1.z - s.z * edge1.y,
-                    y: s.z * edge1.x - s.x * edge1.z,
-                    z: s.x * edge1.y - s.y * edge1.x,
-                };
-                let v = f * (ray.direction.x * q.x + ray.direction.y * q.y + ray.direction.z * q.z);
-
-                if v < 0.0 || u + v > 1.0 {
-                    return None;
-                }
-
-                let t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
-
-                if t > 1e-8 {
-                    Some(t) // Intersection distance
-                } else {
-                    None
-                }
-            }
-
-            // Compute the centroid of the triangle
-            pub fn center(&self) -> [f64; 3] {
-                let centroid = self.v0.add(&self.v1).add(&self.v2).div(3.0);
-                [centroid.x, centroid.y, centroid.z]
-            }
-
-            // Compute the bounding box of the triangle
-            pub fn bounding_box(&self) -> AABB {
-                AABB {
-                    min: Vertex {
-                        x: self.v0.x.min(self.v1.x).min(self.v2.x),
-                        y: self.v0.y.min(self.v1.y).min(self.v2.y),
-                        z: self.v0.z.min(self.v1.z).min(self.v2.z),
-                    },
-                    max: Vertex {
-                        x: self.v0.x.max(self.v1.x).max(self.v2.x),
-                        y: self.v0.y.max(self.v1.y).max(self.v2.y),
-                        z: self.v0.z.max(self.v1.z).max(self.v2.z),
-                    },
-                }
             }
         }
 
@@ -2188,8 +2225,8 @@ pub mod utillity {
     pub fn degree_to_radians(input_angle_in_degre: &f64) -> f64 {
         (*input_angle_in_degre) * (f64::consts::PI * 2.0) / 360.0
     }
-    pub fn radians_to_degree(input_angle_in_radians:&f64)->f64{
-        (*input_angle_in_radians) * 360.0  / (f64::consts::PI * 2.0) 
+    pub fn radians_to_degree(input_angle_in_radians: &f64) -> f64 {
+        (*input_angle_in_radians) * 360.0 / (f64::consts::PI * 2.0)
     }
 }
 
@@ -2534,6 +2571,33 @@ mod test {
         if (pt - expected_result).Length() < 1e-5 {
             assert!(true);
         } else {
+            assert!(false);
+        }
+    }
+    use super::visualization::redering_object::{Triangle, Vertex};
+    #[test]
+    fn test_triangle_area() {
+        // The following Triangle is flat in XY plane.
+        let v1 = Vertex::new(1.834429, 0.0, -0.001996);
+        let v2 = Vertex::new(1.975597, 0.0, 0.893012);
+        let v3 = Vertex::new(2.579798, 0.0, 0.150466);
+        let tri = Triangle::new(v1, v2, v3);
+        let expected_reuslt_area = 0.322794;
+        let result = tri.get_triangle_area();
+        if (expected_reuslt_area - result).abs() < 1e-6 {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
+    #[test]
+    fn volume_mesh_test(){
+        let obj = Mesh::import_obj_with_normals("./geometry/mesh_volume.obj").unwrap();
+        let volume =  obj.compute_volume();
+        let expected_volume = 214.585113;
+        if (volume - expected_volume).abs() < 1e-5{
+            assert!(true);
+        }else{
             assert!(false);
         }
     }
