@@ -2185,8 +2185,11 @@ pub mod draw {
 
 pub mod utillity {
     use core::f64;
-    pub fn degree_to_radians(inputangle_in_degre: &f64) -> f64 {
-        (*inputangle_in_degre) * (f64::consts::PI * 2.0) / 360.0
+    pub fn degree_to_radians(input_angle_in_degre: &f64) -> f64 {
+        (*input_angle_in_degre) * (f64::consts::PI * 2.0) / 360.0
+    }
+    pub fn radians_to_degree(input_angle_in_radians:&f64)->f64{
+        (*input_angle_in_radians) * 360.0  / (f64::consts::PI * 2.0) 
     }
 }
 
@@ -2372,10 +2375,17 @@ mod test {
     }
 
     #[test]
-    fn test_degrees_to_radian() {
+    fn test_degrees_to_radians() {
         use super::utillity::*;
         let angle_to_test = 90.0;
         assert_eq!(f64::consts::PI / 2.0, degree_to_radians(&angle_to_test));
+    }
+
+    #[test]
+    fn test_radians_to_degrees() {
+        use super::utillity::*;
+        let angle_to_test = f64::consts::PI / 2.0;
+        assert_eq!(90.0, radians_to_degree(&angle_to_test));
     }
 
     #[test]
