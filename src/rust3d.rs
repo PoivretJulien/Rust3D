@@ -538,6 +538,89 @@ pub mod geometry {
             }
             curve_points
         }
+        /// Compute the first derivative of the NURBS curve at parameter t
+        pub fn derivative(&self, t: f64) -> Point3d {
+            let p = self.degree;
+
+            // Find the knot span
+            let k = self.find_span(t);
+
+            // Allocate the working points array for derivatives
+            let mut d = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0,
+                };
+                p
+            ];
+
+            // Initialize the derivative control points
+            for j in 0..p {
+                let cp1 = &self.control_points[k - p + j];
+                let cp2 = &self.control_points[k - p + j + 1];
+                let w1 = self.weights[k - p + j];
+                let w2 = self.weights[k - p + j + 1];
+                let denom = self.knots[k + j + 1] - self.knots[k + j - p + 1];
+
+                // Compute the weighted difference
+                d[j] = Point3d {
+                    X: p as f64 * (cp2.X * w2 - cp1.X * w1) / denom,
+                    Y: p as f64 * (cp2.Y * w2 - cp1.Y * w1) / denom,
+                    Z: p as f64 * (cp2.Z * w2 - cp1.Z * w1) / denom,
+                };
+            }
+
+            // Perform the De Boor recursion for derivatives
+            for r in 1..p {
+                for j in (r..p).rev() {
+                    let alpha = (t - self.knots[k + j - p])
+                        / (self.knots[k + j - p + 1] - self.knots[k + j - p]);
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
+                }
+            }
+
+            // The derivative at t
+            d[p - 1]
+        }
+
+        /// Compute the normal vector at parameter t
+        pub fn normal(&self, t: f64) -> Point3d {
+            let tangent = self.derivative(t);
+
+            // Example: Compute a normal assuming a 2D curve in the XY plane
+            Point3d {
+                X: -tangent.Y, // Rotate tangent by 90 degrees
+                Y: tangent.X,
+                Z: 0.0, // Normal to the XY plane
+            }
+        }
+        pub fn tangent(&self, t: f64) -> Point3d {
+            let derivative = self.derivative(t); // Get the derivative of the curve
+
+            // Normalize the derivative vector to get the unit tangent vector
+            let magnitude = (derivative.X * derivative.X
+                + derivative.Y * derivative.Y
+                + derivative.Z * derivative.Z)
+                .sqrt();
+
+            if magnitude > 0.0 {
+                Point3d {
+                    X: derivative.X / magnitude,
+                    Y: derivative.Y / magnitude,
+                    Z: derivative.Z / magnitude,
+                }
+            } else {
+                // If the derivative is zero, return a zero vector
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0,
+                }
+            }
+        }
     }
 }
 
