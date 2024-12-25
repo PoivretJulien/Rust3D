@@ -765,6 +765,16 @@ pub mod visualization {
         }
 
         impl Eq for Vertex {}
+        use std::fmt;
+        impl fmt::Display for Vertex {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(
+                    f,
+                    "Vertex(x: {:.2}, y: {:.2}, z: {:.2})",
+                    self.x, self.y, self.z
+                )
+            }
+        }
 
         impl Hash for Vertex {
             fn hash<H: Hasher>(&self, state: &mut H) {
@@ -832,12 +842,13 @@ pub mod visualization {
                     _ => panic!("Invalid axis index!"), // You can handle this more gracefully if needed
                 }
             }
-            // Compute the magnitude (length) of the vector
+
+            /// Compute the magnitude (length) of the vector
             pub fn magnitude(&self) -> f64 {
                 (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
             }
 
-            // Normalize the vector (make it unit-length)
+            /// Normalize the vector (make it unit-length)
             pub fn unitize(&self) -> Vertex {
                 let magnitude = self.magnitude();
                 if magnitude == 0.0 {
@@ -848,6 +859,31 @@ pub mod visualization {
                     y: self.y / magnitude,
                     z: self.z / magnitude,
                 }
+            }
+
+            /// Test if a point is inside a given mesh.
+            pub fn is_inside_a_mesh(&self, mesh_to_test: &Mesh) -> bool {
+                let direction = Vertex::new(1.0, 0.0, 0.0);
+                let ray = Ray::new(*self, direction);
+                let mut intersection_count = 0;
+
+                // Use a HashSet to store truncated distances as integers for hashing
+                use std::collections::HashSet;
+                let mut distances = HashSet::new();
+
+                for triangle in mesh_to_test.triangles.iter() {
+                    if let Some(t) = triangle.intersect(&ray) {
+                        // Scale and truncate to an integer to make it hashable
+                        let scaled_t = (t * 10000.0).trunc() as i64;
+
+                        // Only count the intersection if it's unique
+                        if distances.insert(scaled_t) {
+                            intersection_count += 1;
+                        }
+                    }
+                }
+                // Odd intersection count means the point is inside the mesh
+                (intersection_count % 2) != 0
             }
         }
 
@@ -980,7 +1016,7 @@ pub mod visualization {
                     },
                 }
             }
-            pub fn edges(&self) -> [(Vertex, Vertex); 3] { 
+            pub fn edges(&self) -> [(Vertex, Vertex); 3] {
                 [(self.v0, self.v1), (self.v1, self.v2), (self.v2, self.v0)]
             }
         }
@@ -992,7 +1028,6 @@ pub mod visualization {
         use std::iter::Iterator;
         use std::sync::Arc;
         use tobj;
-
 
         #[derive(Debug)]
         pub struct Mesh {
@@ -1007,21 +1042,22 @@ pub mod visualization {
                     triangles,
                 }
             }
-            
+
+            /// Test if a mesh is closed (watertight).
             pub fn is_watertight(&self) -> bool {
                 let mut edge_count: HashMap<(Vertex, Vertex), i32> = HashMap::new();
-                for triangle in self.triangles.iter() { 
+                for triangle in self.triangles.iter() {
                     for &(start, end) in &triangle.edges() {
                         let edge = if start < end {
                             (start, end)
                         } else {
                             (end, start)
-                        }; 
-                        let counter = edge_count.entry(edge).or_insert(0); 
-                        *counter += 1; 
-                    } 
-                } 
-                edge_count.values().all(|&count| count == 2) 
+                        };
+                        let counter = edge_count.entry(edge).or_insert(0);
+                        *counter += 1;
+                    }
+                }
+                edge_count.values().all(|&count| count == 2)
             }
 
             /// Give the volume of the mesh in file system base unit.
@@ -2609,35 +2645,44 @@ mod test {
             assert!(false);
         }
     }
-    
+
     #[test]
-    fn volume_mesh_test(){
+    fn volume_mesh_test() {
         let obj = Mesh::import_obj_with_normals("./geometry/mesh_volume.obj").unwrap();
-        let volume =  obj.compute_volume();
+        let volume = obj.compute_volume();
         let expected_volume = 214.585113;
-        if (volume - expected_volume).abs() < 1e-5{
+        if (volume - expected_volume).abs() < 1e-5 {
             assert!(true);
-        }else{
+        } else {
             assert!(false);
         }
     }
 
     #[test]
-    fn volume_mesh_water_tight_a(){
+    fn volume_mesh_water_tight_a() {
         let obj = Mesh::import_obj_with_normals("./geometry/mesh_volume.obj").unwrap();
         if obj.is_watertight() {
             assert!(true);
-        }else{
+        } else {
             assert!(false);
         }
     }
     #[test]
-    fn volume_mesh_water_tight_b(){
+    fn volume_mesh_water_tight_b() {
         let obj = Mesh::import_obj_with_normals("./geometry/non_water_tight.obj").unwrap();
         if !obj.is_watertight() {
             assert!(true);
-        }else{
+        } else {
             assert!(false);
         }
+    }
+    use super::visualization::redering_object::Mesh;
+    #[test]
+    fn test_inside_a_mesh() {
+        let obj = Mesh::import_obj_with_normals("./geometry/torus.obj").unwrap();
+        let v1_to_test = Vertex::new(0.0, 0.0, 0.0); // should be outside the torus.
+        let v2_to_test = Vertex::new(4.0, 0.0, 0.0); // should be inside.
+        assert_eq!(false, v1_to_test.is_inside_a_mesh(&obj));
+        assert_eq!(true, v2_to_test.is_inside_a_mesh(&obj));
     }
 }
