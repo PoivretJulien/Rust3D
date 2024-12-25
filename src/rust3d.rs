@@ -390,6 +390,19 @@ pub mod geometry {
             }
         }
 
+        /// Construct a Plane with specific x axis vector.
+        pub fn new_with_x(origin:&Point3d,x_axis:&Vector3d,normal:&Vector3d)->Self{
+               let normalized_normal = normal.unitize_b();
+               let u =Vector3d::cross_product(x_axis,&normalized_normal).unitize_b();
+               let v =Vector3d::cross_product(&normalized_normal,&u).unitize_b();
+               Self{
+                   origin:*origin,
+                   normal:normalized_normal,
+                   u,
+                   v,
+               }
+        }
+
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
         pub fn point_on_plane_uv(&self, u: &f64, v: &f64) -> Point3d {
             Point3d {
@@ -558,7 +571,6 @@ pub mod intersection {
     /// a Point3d , a Vector3d and a CPlane.
     /// # Returns
     /// return a Point3d on success None if vector don't point on the plane.
-    /// (work in progress not tested yet)
     pub fn intersect_ray_with_plane(
         point: &Point3d,      // Starting point of the line (P0)
         direction: &Vector3d, // Direction vector of the line (V)
