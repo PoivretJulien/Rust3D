@@ -2247,7 +2247,7 @@ pub mod visualization_v2 {
             camera
         }
 
-        pub fn project_points(&self, points: Vec<Point3d>) -> Vec<(usize, usize, f64)> {
+        pub fn project_points(&self, points: &Vec<Point3d>) -> Vec<(usize, usize, f64)> {
             points
                 .par_iter() // Use parallel iterator
                 .filter_map(|point| self.project(*point)) // Apply the project method in parallel
