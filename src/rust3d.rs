@@ -2213,8 +2213,8 @@ pub mod visualization_v2 {
         pub view_matrix: [[f64; 4]; 4], // Precomputed view matrix
         pub projection_matrix: [[f64; 4]; 4], // Precomputed projection matrix
     }
-    use rayon::prelude::*;
 
+    use rayon::prelude::*;
     impl Camera {
         /// Construct a camera with cached matrix convertion
         /// which involve to update the matrix if one of th camera
@@ -2244,7 +2244,6 @@ pub mod visualization_v2 {
 
             // Precompute the matrices
             camera.update_matrices();
-
             camera
         }
 
@@ -2314,6 +2313,7 @@ pub mod visualization_v2 {
                 ],
             ]
         }
+
         pub fn project(&self, point: Point3d) -> Option<(usize, usize, f64)> {
             // Use precomputed matrices
             let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);

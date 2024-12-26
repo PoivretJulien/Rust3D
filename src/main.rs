@@ -10,19 +10,30 @@ use rust3d::visualization::redering_object::Mesh;
 use rust3d::visualization_v2::Camera;
 
 fn main() {
+
     /*
-       V2 bring CPU parallelization & camera movement and a more convenient Api.
+    Log 12/26/24:
+         - V2 bring CPU parallelization & Camera movement via Matrix Transformation
+           making a more convenient Api.
+    - notes:
+        Rust feel like the perfect low level language for operating machine with 
+        the safe spirit of ada designed for embeded system or real time operating 
+        machines (like medical x-ray), requiring a high level of reliability 
+        and security.
+    - it's high level features language with low a level focus and optimization.
     */
+
     const WIDTH: usize = 1470 / 2; // screen pixel width.
     const HEIGHT: usize = 956 / 2; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
-    const DISPLAY_CIRCLE: bool = false;
-    // The following is not need anymore.
+    const DISPLAY_CIRCLE: bool = true;
+
     let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
     println!("\x1b[2J");
     let mut import_obj = Vec::new();
+
     /////////IMPORT MESH (.obj file)////////////////////////////////////////////
     if let Some(mesh) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj").ok() {
         println!(
@@ -34,8 +45,9 @@ fn main() {
             println!("Volume:({0})cubic/unit(s)", mesh.compute_volume());
         }
         /*
-            for now switch to the Point3d format
-            instead of Vertex (this is going to change soon).
+            for now switch the mesh vertices to the CAD Point3d format CAD of 
+            the api instead of Vertex (designed for the 3d display engine) 
+            (this is going to change very soon).
         */
         for vertex in mesh.vertices {
             // Center and scale the Cloud of point.
@@ -63,16 +75,17 @@ fn main() {
     if DISPLAY_CIRCLE {
         circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 800.0);
         for i in 0..circle.len() {
-            unsafe {
-                // Evaluate as safe in that context (no concurrent access).
-                let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
-                *ptr = plane
-                    .point_on_plane_uv(&((*ptr).X * DISPLAY_RATIO), &((*ptr).Y * DISPLAY_RATIO));
-            }
-        }
+            circle[i] = plane.point_on_plane_uv( &(circle[i].X*DISPLAY_RATIO),&(circle[i].Y*DISPLAY_RATIO));
+           // unsafe {
+           //     // Evaluate as safe in that context (no concurrent access).
+           //     let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
+           //     *ptr = plane
+           //         .point_on_plane_uv(&((*ptr).X * DISPLAY_RATIO), &((*ptr).Y * DISPLAY_RATIO));
+           // }
+        }   
     }
     ////////////////////////////////////////////////////////////////////////////
-    // A simple allocated array of u 32 initialized at 0
+    // A simple allocated array of u32 initialized at 0
     // representing the color and the 2d position of points.
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     // Define the Display Unit Projection System.
