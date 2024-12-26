@@ -391,11 +391,13 @@ pub mod geometry {
             }
         }
 
-        /// Construct a Plane with specific x axis vector.
+        /// Construct a Plane with specific a specific x axis vector.
         pub fn new_with_x(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
             let normalized_normal = normal.unitize_b();
-            let u = Vector3d::cross_product(x_axis, &normalized_normal).unitize_b();
-            let v = Vector3d::cross_product(&normalized_normal, &u).unitize_b();
+            // Define local X 'u'
+            let u = x_axis.unitize_b();
+            // Define local V 'v'
+            let v = Vector3d::cross_product(&u, &normalized_normal).unitize_b();
             Self {
                 origin: *origin,
                 normal: normalized_normal,
@@ -2417,7 +2419,7 @@ pub mod visualization_v2 {
                 .map(|point| self.multiply_matrix_vector(transformation_matrix, *point))
                 .collect()
         }
-        /// Apply a transformation matrix to a Vec<Point3d> and return the transformed points
+        /// Apply a transformation matrix to a mutable Vec<Point3d>
         pub fn transform_points_mut(
             &self,
             points: &mut Vec<Point3d>,
@@ -2470,7 +2472,7 @@ pub mod visualization_v2 {
             ]
         }
 
-        /// Apply panning to a set of 3D points
+        /// Apply panning to a set of 3D points.
         pub fn pan_points(
             &self,
             points: &Vec<Point3d>,
@@ -2486,7 +2488,8 @@ pub mod visualization_v2 {
                 .map(|point| self.multiply_matrix_vector(pan_matrix, *point))
                 .collect()
         }
-        /// Apply panning to a set of 3D points
+
+        /// Apply panning to a set of mutable 3D points.
         pub fn pan_points_mut(&self, points: &mut Vec<Point3d>, right_amount: f64, up_amount: f64) {
             // Step 1: Get the pan transformation matrix
             let pan_matrix = self.get_pan_matrix(right_amount, up_amount);
@@ -2496,6 +2499,7 @@ pub mod visualization_v2 {
                 (*point) = self.multiply_matrix_vector(pan_matrix, *point);
             });
         }
+
         /// Generate a panning transformation matrix
         /// `dx` and `dy` are the offsets in world space along the right and up directions.
         pub fn pan_point_matrix(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
@@ -2569,6 +2573,7 @@ pub mod visualization_v2 {
         }
 
         /// Combine multiple transformation matrices into one
+        /// they have to be call from a stack vector use macro vec! for that.
         pub fn combine_matrices(matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
             // Start with the identity matrix
             let mut result = [
@@ -2976,6 +2981,7 @@ mod test {
             assert!(false);
         }
     }
+
     use super::transformation::project_3d_point_on_plane;
     #[test]
     fn test_project_point_on_plane() {
