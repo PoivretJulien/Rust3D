@@ -2213,8 +2213,8 @@ pub mod visualization_v2 {
         pub view_matrix: [[f64; 4]; 4], // Precomputed view matrix
         pub projection_matrix: [[f64; 4]; 4], // Precomputed projection matrix
     }
-    use rayon::prelude::*;
 
+    use rayon::prelude::*;
     impl Camera {
         /// Construct a camera with cached matrix convertion
         /// which involve to update the matrix if one of th camera
@@ -2244,7 +2244,6 @@ pub mod visualization_v2 {
 
             // Precompute the matrices
             camera.update_matrices();
-
             camera
         }
 
@@ -2314,6 +2313,7 @@ pub mod visualization_v2 {
                 ],
             ]
         }
+
         pub fn project(&self, point: Point3d) -> Option<(usize, usize, f64)> {
             // Use precomputed matrices
             let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
@@ -2419,7 +2419,7 @@ pub mod visualization_v2 {
                 .map(|point| self.multiply_matrix_vector(transformation_matrix, *point))
                 .collect()
         }
-        /// Apply a transformation matrix to a Vec<Point3d> and return the transformed points
+        /// Apply a transformation matrix to a mutable Vec<Point3d>
         pub fn transform_points_mut(
             &self,
             points: &mut Vec<Point3d>,
@@ -2472,7 +2472,7 @@ pub mod visualization_v2 {
             ]
         }
 
-        /// Apply panning to a set of 3D points
+        /// Apply panning to a set of 3D points.
         pub fn pan_points(
             &self,
             points: &Vec<Point3d>,
@@ -2488,7 +2488,8 @@ pub mod visualization_v2 {
                 .map(|point| self.multiply_matrix_vector(pan_matrix, *point))
                 .collect()
         }
-        /// Apply panning to a set of 3D points
+
+        /// Apply panning to a set of mutable 3D points.
         pub fn pan_points_mut(&self, points: &mut Vec<Point3d>, right_amount: f64, up_amount: f64) {
             // Step 1: Get the pan transformation matrix
             let pan_matrix = self.get_pan_matrix(right_amount, up_amount);
@@ -2498,6 +2499,7 @@ pub mod visualization_v2 {
                 (*point) = self.multiply_matrix_vector(pan_matrix, *point);
             });
         }
+
         /// Generate a panning transformation matrix
         /// `dx` and `dy` are the offsets in world space along the right and up directions.
         pub fn pan_point_matrix(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
@@ -2571,6 +2573,7 @@ pub mod visualization_v2 {
         }
 
         /// Combine multiple transformation matrices into one
+        /// they have to be call from a stack vector use macro vec! for that.
         pub fn combine_matrices(matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
             // Start with the identity matrix
             let mut result = [
