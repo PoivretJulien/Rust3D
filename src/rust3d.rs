@@ -1860,7 +1860,6 @@ pub mod visualization {
             ) -> (u8, u8, u8) {
                 let intensity = 1.0 / (1.0 + attenuation * distance);
                 let (r, g, b) = base_color;
-
                 (
                     (r as f64 * intensity) as u8,
                     (g as f64 * intensity) as u8,
@@ -2348,6 +2347,169 @@ pub mod visualization_v2 {
                 matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
                 matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
             )
+        }
+    }
+
+    // This code is in test.
+    impl Camera {
+        /// Generate a transformation matrix for the camera's movement and rotation
+        pub fn get_transformation_matrix(
+            &self,
+            forward_amount: f64,
+            yaw_angle: f64,
+            pitch_angle: f64,
+        ) -> [[f64; 4]; 4] {
+            // Step 1: Compute the forward direction vector
+            let forward = Vector3d::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .unitize_b();
+
+            // Step 2: Compute the translation vector for the camera movement
+            let translation = forward * (-forward_amount);
+
+            // Step 3: Compute rotation matrices
+            // Yaw (rotation around the Y-axis)
+            let yaw_cos = yaw_angle.to_radians().cos();
+            let yaw_sin = yaw_angle.to_radians().sin();
+            let yaw_matrix = [
+                [yaw_cos, 0.0, yaw_sin, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [-yaw_sin, 0.0, yaw_cos, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Pitch (rotation around the X-axis)
+            let pitch_cos = pitch_angle.to_radians().cos();
+            let pitch_sin = pitch_angle.to_radians().sin();
+            let pitch_matrix = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, pitch_cos, -pitch_sin, 0.0],
+                [0.0, pitch_sin, pitch_cos, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Step 4: Combine yaw and pitch into a single rotation matrix
+            let rotation_matrix = self.multiply_matrices(yaw_matrix, pitch_matrix);
+
+            // Step 5: Create the translation matrix
+            let translation_matrix = [
+                [1.0, 0.0, 0.0, translation.get_X()],
+                [0.0, 1.0, 0.0, translation.get_Y()],
+                [0.0, 0.0, 1.0, translation.get_Z()],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Step 6: Combine rotation and translation matrices into a single transformation matrix
+            self.multiply_matrices(rotation_matrix, translation_matrix)
+        }
+
+        /// Apply a transformation matrix to a Vec<Point3d> and return the transformed points
+        pub fn transform_points(
+            &self,
+            points: &Vec<Point3d>,
+            transformation_matrix: [[f64; 4]; 4],
+        ) -> Vec<Point3d> {
+            points
+                .iter()
+                .map(|point| self.multiply_matrix_vector(transformation_matrix, *point))
+                .collect()
+        }
+        /// Apply a transformation matrix to a Vec<Point3d> and return the transformed points
+        pub fn transform_points_mut(
+            &self,
+            points: &mut Vec<Point3d>,
+            transformation_matrix: [[f64; 4]; 4],
+        ) {
+            points
+                .iter_mut()
+                .for_each(|point|{ *point = self.multiply_matrix_vector(transformation_matrix, *point);});
+        }
+
+        /// Utility function: Multiply two 4x4 matrices
+        fn multiply_matrices(&self, a: [[f64; 4]; 4], b: [[f64; 4]; 4]) -> [[f64; 4]; 4] {
+            let mut result = [[0.0; 4]; 4];
+            for i in 0..4 {
+                for j in 0..4 {
+                    result[i][j] = a[i][0] * b[0][j]
+                        + a[i][1] * b[1][j]
+                        + a[i][2] * b[2][j]
+                        + a[i][3] * b[3][j];
+                }
+            }
+            result
+        }
+        /*
+                /// Utility function: Multiply a 4x4 matrix by a Point3d
+                pub fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Point3d) -> Point3d {
+                    Point3d::new(
+                        matrix[0][0] * v.X + matrix[0][1] * v.Y + matrix[0][2] * v.Z + matrix[0][3],
+                        matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
+                        matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
+                    )
+                }
+        */
+
+        /// Generate a transformation matrix for panning the camera
+        pub fn get_pan_matrix(&self, right_amount: f64, up_amount: f64) -> [[f64; 4]; 4] {
+            // Step 1: Compute the forward direction vector
+            let forward = Vector3d::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .unitize_b();
+
+            // Step 2: Compute the right direction vector (cross product of forward and up)
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+
+            // Step 3: Compute the true up direction (orthogonalized)
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+
+            // Step 4: Scale the right and up vectors by the panning amounts
+            let pan_translation = right * (-right_amount) + (up * up_amount);
+
+            // Step 5: Create the translation matrix for panning
+            [
+                [1.0, 0.0, 0.0, pan_translation.get_X()],
+                [0.0, 1.0, 0.0, pan_translation.get_Y()],
+                [0.0, 0.0, 1.0, pan_translation.get_Z()],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        }
+
+        /// Apply panning to a set of 3D points
+        pub fn pan_points(
+            &self,
+            points: &Vec<Point3d>,
+            right_amount: f64,
+            up_amount: f64,
+        ) -> Vec<Point3d> {
+            // Step 1: Get the pan transformation matrix
+            let pan_matrix = self.get_pan_matrix(right_amount, up_amount);
+
+            // Step 2: Apply the pan transformation to all points
+            points
+                .iter()
+                .map(|point| self.multiply_matrix_vector(pan_matrix, *point))
+                .collect()
+        }
+        /// Apply panning to a set of 3D points
+        pub fn pan_points_mut(
+            &self,
+            points: &mut Vec<Point3d>,
+            right_amount: f64,
+            up_amount: f64,
+        ){
+            // Step 1: Get the pan transformation matrix
+            let pan_matrix = self.get_pan_matrix(right_amount, up_amount);
+
+            // Step 2: Apply the pan transformation to all points
+            points
+                .iter_mut()
+                .for_each(|point| {(*point) = self.multiply_matrix_vector(pan_matrix, *point);});
         }
     }
 }
