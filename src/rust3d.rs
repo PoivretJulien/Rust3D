@@ -2423,9 +2423,9 @@ pub mod visualization_v2 {
             points: &mut Vec<Point3d>,
             transformation_matrix: [[f64; 4]; 4],
         ) {
-            points
-                .iter_mut()
-                .for_each(|point|{ *point = self.multiply_matrix_vector(transformation_matrix, *point);});
+            points.iter_mut().for_each(|point| {
+                *point = self.multiply_matrix_vector(transformation_matrix, *point);
+            });
         }
 
         /// Utility function: Multiply two 4x4 matrices
@@ -2441,17 +2441,7 @@ pub mod visualization_v2 {
             }
             result
         }
-        /*
-                /// Utility function: Multiply a 4x4 matrix by a Point3d
-                pub fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Point3d) -> Point3d {
-                    Point3d::new(
-                        matrix[0][0] * v.X + matrix[0][1] * v.Y + matrix[0][2] * v.Z + matrix[0][3],
-                        matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
-                        matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
-                    )
-                }
-        */
-
+        
         /// Generate a transformation matrix for panning the camera
         pub fn get_pan_matrix(&self, right_amount: f64, up_amount: f64) -> [[f64; 4]; 4] {
             // Step 1: Compute the forward direction vector
@@ -2497,19 +2487,88 @@ pub mod visualization_v2 {
                 .collect()
         }
         /// Apply panning to a set of 3D points
-        pub fn pan_points_mut(
-            &self,
-            points: &mut Vec<Point3d>,
-            right_amount: f64,
-            up_amount: f64,
-        ){
+        pub fn pan_points_mut(&self, points: &mut Vec<Point3d>, right_amount: f64, up_amount: f64) {
             // Step 1: Get the pan transformation matrix
             let pan_matrix = self.get_pan_matrix(right_amount, up_amount);
 
             // Step 2: Apply the pan transformation to all points
-            points
-                .iter_mut()
-                .for_each(|point| {(*point) = self.multiply_matrix_vector(pan_matrix, *point);});
+            points.iter_mut().for_each(|point| {
+                (*point) = self.multiply_matrix_vector(pan_matrix, *point);
+            });
+        }
+        /// Create a rotation matrix from angles (in degrees) for X, Y, and Z axes
+        pub fn rotation_matrix_from_angles(
+            x_angle: f64,
+            y_angle: f64,
+            z_angle: f64,
+        ) -> [[f64; 4]; 4] {
+            // Convert angles from degrees to radians
+            let x_rad = x_angle.to_radians();
+            let y_rad = y_angle.to_radians();
+            let z_rad = z_angle.to_radians();
+
+            // Rotation matrix around the X-axis
+            let rotation_x = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, x_rad.cos(), -x_rad.sin(), 0.0],
+                [0.0, x_rad.sin(), x_rad.cos(), 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Rotation matrix around the Y-axis
+            let rotation_y = [
+                [y_rad.cos(), 0.0, y_rad.sin(), 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Rotation matrix around the Z-axis
+            let rotation_z = [
+                [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
+                [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Combine the rotation matrices: R = Rz * Ry * Rx
+            let rotation_xy = Self::multiply_matrices_axb(rotation_y, rotation_x);
+            let rotation_xyz = Self::multiply_matrices_axb(rotation_z, rotation_xy);
+
+            rotation_xyz
+        }
+
+        /// Combine multiple transformation matrices into one
+        pub fn combine_matrices(matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
+            // Start with the identity matrix
+            let mut result = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Multiply all matrices together in sequence
+            for matrix in matrices {
+                result = Self::multiply_matrices_axb(result, matrix);
+            }
+
+            result
+        }
+
+        /// Helper function to multiply two 4x4 matrices
+        pub fn multiply_matrices_axb(a: [[f64; 4]; 4], b: [[f64; 4]; 4]) -> [[f64; 4]; 4] {
+            let mut result = [[0.0; 4]; 4];
+
+            for i in 0..4 {
+                for j in 0..4 {
+                    result[i][j] = a[i][0] * b[0][j]
+                        + a[i][1] * b[1][j]
+                        + a[i][2] * b[2][j]
+                        + a[i][3] * b[3][j];
+                }
+            }
+            result
         }
     }
 }
