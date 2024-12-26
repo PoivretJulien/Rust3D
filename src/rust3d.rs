@@ -2848,8 +2848,6 @@ pub mod utillity {
 
 #[cfg(test)]
 mod test {
-    use crate::{project_3d_point_on_plane, redering_object};
-
     use super::geometry::*;
     #[test]
     fn test_cross_product() {
@@ -2978,7 +2976,7 @@ mod test {
             assert!(false);
         }
     }
-
+    use super::transformation::project_3d_point_on_plane;
     #[test]
     fn test_project_point_on_plane() {
         let plane = [
