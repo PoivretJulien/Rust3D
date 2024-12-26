@@ -3,7 +3,6 @@ mod models_3d;
 mod rust3d;
 use rust3d::draw::*;
 use rust3d::geometry::*;
-use rust3d::transformation;
 use rust3d::transformation::rotate_z;
 use rust3d::utillity::degree_to_radians;
 use rust3d::visualization::coloring::Color;
