@@ -23,8 +23,8 @@ fn main() {
     - it's high level features language with low a level focus and optimization.
     */
 
-    const WIDTH: usize = 1470 / 2; // screen pixel width.
-    const HEIGHT: usize = 956 / 2; // screen pixel height.
+    const WIDTH: usize = 1470 / 1; // screen pixel width.
+    const HEIGHT: usize = 956 / 1; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
@@ -73,7 +73,7 @@ fn main() {
     let plane_origin = Point3d::new(0.0, 0.0, 0.15 * DISPLAY_RATIO);
     let plane = CPlane::new(&plane_origin, &plane_normal);
     if DISPLAY_CIRCLE {
-        circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 800.0);
+        circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
         for i in 0..circle.len() {
             circle[i] = plane.point_on_plane_uv( &(circle[i].X*DISPLAY_RATIO),&(circle[i].Y*DISPLAY_RATIO));
            // unsafe {
@@ -133,7 +133,7 @@ fn main() {
          *    local space.
          */
         /////////////////////////////////////////////////////////////////////////
-        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
+        const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
 
