@@ -10,13 +10,17 @@ use rust3d::visualization::redering_object::Mesh;
 use rust3d::visualization_v2::Camera;
 
 fn main() {
-    const WIDTH: usize = 1470/2; // screen pixel width.
-    const HEIGHT: usize = 956/2; // screen pixel height.
+    /*
+       V2 bring CPU parallelization & camera movement and a more convinient Api.
+    */
+    const WIDTH: usize = 1470 / 1; // screen pixel width.
+    const HEIGHT: usize = 956 / 1; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
     const DISPLAY_CIRCLE: bool = true;
-    let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.438 //translation vector.
+    // The following is not need anymore.
+    let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
     println!("\x1b[2J");
     let mut import_obj = Vec::new();
     /////////IMPORT MESH (.obj file)////////////////////////////////////////////
@@ -26,6 +30,9 @@ fn main() {
             mesh.vertices.len(),
             mesh.triangles.len()
         );
+        if mesh.is_watertight() {
+            println!("Volume:({0})cubic/unit(s)", mesh.compute_volume());
+        }
         /*
             for now switch to the Point3d format
             instead of Vertex (this is going to change soon).
@@ -48,7 +55,7 @@ fn main() {
         // panic on error (unwind stack and clean memory)
         panic!("{}", e);
     });
-    //// init a Circle representation on a CPlane.
+    //// init a Circle representation on a CPlane.//////////////////////////////
     let mut circle = Vec::new();
     let plane_normal = Vector3d::new(0.2, -0.2, 0.8);
     let plane_origin = Point3d::new(0.0, 0.0, 0.15 * DISPLAY_RATIO);
@@ -64,7 +71,7 @@ fn main() {
             }
         }
     }
-    //////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // A simple allocated array of u 32 initialized at 0
     // representing the color and the 2d position of points.
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
@@ -94,12 +101,6 @@ fn main() {
                 circle[index] = rotate_z(circle[index], step);
                 index += 1;
             }
-            let result = camera.project_points(&circle);
-            for data in result.iter() {
-                buffer[data.1 * WIDTH + data.0] =
-                    Color::convert_rgba_color(0, 123, 244, 1.0, BACK_GROUND_COLOR);
-                //  mutate the buffer (we are in a single thread configuration).
-            }
         }
         ///// Compute Vertex Rotation ./////////////////////////////////////////
         index = 0; //reset indexer.
@@ -107,40 +108,61 @@ fn main() {
             import_obj[index] = rotate_z(import_obj[index], step);
             index += 1;
         }
-       /////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////
         /*
-         *    Pre process point via matrix to simulate camera movement 
-         *    for the unit projection system.
+         *    notes:
+         *    Pre process point via matrix to simulate camera movement
+         *    for the unit projection system...
+         *    (it's may not be the most efficient way but it's work.)
+         *    tree versions though... one to mutate in place the other copy data
+         *    for Undo and Redo operation stack.
+         *    and the last one use combined matrix transformations of the original
+         *    local space.
          */
-        const TEST_MOVE_SIMULATION: bool = true; // Switch on off matrix test.
+        /////////////////////////////////////////////////////////////////////////
+        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
         let mut result = Vec::new();
-        if TEST_MOVE_SIMULATION {
-            // Camera Movement and Rotation Parameters
-            let forward_amount = 0.5; // Move forward
-            let yaw_angle = 0.0; // Rotate 15 degrees around the Y-axis
-            let pitch_angle = 25.0; // Rotate 10 degrees around the X-axis
+        let mut result_circle = Vec::new();
 
-            // Generate the transformation matrix
+        if TEST_MOVE_SIMULATION {
+            // Camera Movement and Rotation Parameters.
+            let forward_amount = 0.4; // Move forward (may be negative.)
+            let yaw_angle = 0.0; // Rotate (in degrees around the Y-axis)
+            let pitch_angle = 25.0; // Rotate (in degrees around the X-axis)
+
+            ///////////////////////////////////////////////////////////
+            // Generate the transformation matrix /////////////////////
             let transformation_matrix =
                 camera.get_transformation_matrix(forward_amount, yaw_angle, pitch_angle);
+            let transformation_matrix_pan = camera.pan_point_matrix(0.0, 0.35);
+            let final_matrix = Camera::combine_matrices(vec![transformation_matrix,transformation_matrix_pan]);
+            ///////////////////////////////////////////////////////////
 
             // Transform the points via transformation matrix.
-            let t1 = camera.transform_points(&import_obj, transformation_matrix);
-            let t2 = camera.pan_points(&t1, 0.0, 0.35);
+            let t1 = camera.transform_points(&import_obj, final_matrix);
+            let t2 = camera.transform_points(&circle, final_matrix);
 
+            // Raytrace //////////
+            //-------------------
+            // Then Compute Projection.
             // Compute projection case A.
-            result = camera.project_points(&t2);
+            result = camera.project_points(&t1);
+            result_circle = camera.project_points(&t2);
         } else {
             // Compute projection case B.
             result = camera.project_points(&import_obj);
+            result_circle = camera.project_points(&circle);
         }
-
-        // Then write buffer.
+        // Then Rasterization of circle and geometry.
+        for data in result_circle.iter() {
+            buffer[data.1 * WIDTH + data.0] =
+                    Color::convert_rgba_color(0, 123, 244, 1.0, BACK_GROUND_COLOR);    
+        }
         for data in result.iter() {
             buffer[data.1 * WIDTH + data.0] =
                 Color::convert_rgba_color(255, 0, 255, 1.0, BACK_GROUND_COLOR);
         }
-        // Write Text.
+        // Write infos feedback Text.
         let (x, y) = (1, 1);
         let color = Color::convert_rgb_color(0, 250, 0);
         let text_height = 1usize;

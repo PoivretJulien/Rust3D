@@ -2441,7 +2441,7 @@ pub mod visualization_v2 {
             }
             result
         }
-        
+
         /// Generate a transformation matrix for panning the camera
         pub fn get_pan_matrix(&self, right_amount: f64, up_amount: f64) -> [[f64; 4]; 4] {
             // Step 1: Compute the forward direction vector
@@ -2496,6 +2496,36 @@ pub mod visualization_v2 {
                 (*point) = self.multiply_matrix_vector(pan_matrix, *point);
             });
         }
+        /// Generate a panning transformation matrix
+        /// `dx` and `dy` are the offsets in world space along the right and up directions.
+        pub fn pan_point_matrix(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
+            // Calculate the right and up vectors based on the camera's orientation
+            let forward = Vector3d::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .unitize_b();
+
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+
+            // Translation in the right and up directions
+            let translation = Point3d::new(
+                dx * right.get_X() + dy * up.get_X(),
+                dx * right.get_Y() + dy * up.get_Y(),
+                dx * right.get_Z() + dy * up.get_Z(),
+            );
+
+            // Construct the transformation matrix
+            [
+                [1.0, 0.0, 0.0, translation.X],
+                [0.0, 1.0, 0.0, translation.Y],
+                [0.0, 0.0, 1.0, translation.Z],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        }
+
         /// Create a rotation matrix from angles (in degrees) for X, Y, and Z axes
         pub fn rotation_matrix_from_angles(
             x_angle: f64,
