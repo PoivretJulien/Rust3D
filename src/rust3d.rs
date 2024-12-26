@@ -628,6 +628,109 @@ pub mod geometry {
                 }
             }
         }
+        /////
+        /// Compute the second derivative of the NURBS curve at parameter t
+        pub fn second_derivative(&self, t: f64) -> Point3d {
+            let p = self.degree;
+
+            // Find the knot span
+            let k = self.find_span(t);
+
+            // Allocate the working points array for second derivatives
+            let mut d = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0,
+                };
+                p - 1
+            ];
+
+            // Initialize the second derivative control points
+            for j in 0..(p - 1) {
+                let cp1 = &self.control_points[k - p + j];
+                let cp2 = &self.control_points[k - p + j + 1];
+                let cp3 = &self.control_points[k - p + j + 2];
+                let w1 = self.weights[k - p + j];
+                let w2 = self.weights[k - p + j + 1];
+                let w3 = self.weights[k - p + j + 2];
+                let denom1 = self.knots[k + j + 1] - self.knots[k + j - p + 1];
+                let denom2 = self.knots[k + j + 2] - self.knots[k + j - p + 2];
+
+                // Compute the weighted second differences
+                d[j] = Point3d {
+                    X: p as f64
+                        * (p as f64 - 1.0)
+                        * ((cp3.X * w3 - 2.0 * cp2.X * w2 + cp1.X * w1) / (denom1 * denom2)),
+                    Y: p as f64
+                        * (p as f64 - 1.0)
+                        * ((cp3.Y * w3 - 2.0 * cp2.Y * w2 + cp1.Y * w1) / (denom1 * denom2)),
+                    Z: p as f64
+                        * (p as f64 - 1.0)
+                        * ((cp3.Z * w3 - 2.0 * cp2.Z * w2 + cp1.Z * w1) / (denom1 * denom2)),
+                };
+            }
+
+            // Perform the De Boor recursion for second derivatives
+            for r in 1..(p - 1) {
+                for j in (r..(p - 1)).rev() {
+                    let alpha = (t - self.knots[k + j - p])
+                        / (self.knots[k + j - p + 2] - self.knots[k + j - p]);
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
+                }
+            }
+
+            // The second derivative at t
+            d[p - 2]
+        }
+
+        /// Compute the curvature of the NURBS curve at parameter t
+        pub fn curvature(&self, t: f64) -> f64 {
+            let first_derivative = self.derivative(t);
+            let second_derivative = self.second_derivative(t);
+
+            let num = (first_derivative.X * second_derivative.Y
+                - first_derivative.Y * second_derivative.X)
+                .abs();
+            let denom = (first_derivative.X * first_derivative.X
+                + first_derivative.Y * first_derivative.Y)
+                .powf(1.5);
+
+            if denom != 0.0 {
+                num / denom
+            } else {
+                0.0
+            }
+        }
+
+        /// Compute the osculating circle at parameter t
+        pub fn osculating_circle(&self, t: f64) -> (Point3d, f64) {
+            let point = self.evaluate(t);
+            let tangent = self.tangent(t);
+            let curvature = self.curvature(t);
+
+            if curvature == 0.0 {
+                return (point, std::f64::INFINITY);
+            }
+
+            let radius = 1.0 / curvature;
+
+            let normal = Point3d {
+                X: -tangent.Y, // Rotate tangent by 90 degrees
+                Y: tangent.X,
+                Z: 0.0,
+            };
+
+            let center = Point3d {
+                X: point.X + normal.X * radius,
+                Y: point.Y + normal.Y * radius,
+                Z: point.Z + normal.Z * radius,
+            };
+
+            (center, radius)
+        }
     }
 }
 
