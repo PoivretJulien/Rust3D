@@ -488,7 +488,20 @@ pub mod geometry {
                 weights,
             }
         }
+        /// Compute the curvature of the NURBS curve at parameter t
+        pub fn curvature(&self, t: f64) -> f64 {
+            let first_derivative = self.numerical_first_derivative(t, 1e-6);
+            let second_derivative = self.numerical_second_derivative(t, 1e-6);
+            let cross_product = first_derivative.cross(&second_derivative);
+            let cross_product_magnitude = cross_product.magnitude();
+            let first_derivative_magnitude = first_derivative.magnitude();
 
+            if first_derivative_magnitude == 0.0 {
+                0.0
+            } else {
+                cross_product_magnitude / first_derivative_magnitude.powi(3)
+            }
+        }
         /// Evaluate a NURBS curve at parameter t using the De Boor algorithm
         pub fn evaluate(&self, t: f64) -> Point3d {
             let p = self.degree;
@@ -567,356 +580,29 @@ pub mod geometry {
             }
             curve_points
         }
+        pub fn numerical_first_derivative(&self, t: f64, h: f64) -> Point3d {
+            let pt_plus_h = self.evaluate(t + h);
+            let pt_minus_h = self.evaluate(t - h);
+            Point3d::new(
+                (pt_plus_h.X - pt_minus_h.X) / (2.0 * h),
+                (pt_plus_h.Y - pt_minus_h.Y) / (2.0 * h),
+                (pt_plus_h.Z - pt_minus_h.Z) / (2.0 * h),
+            )
+        }
+        pub fn numerical_second_derivative(&self, t: f64, h: f64) -> Point3d {
+            let pt_plus_h = self.evaluate(t + h);
+            let pt = self.evaluate(t);
+            let pt_minus_h = self.evaluate(t - h);
+            Point3d::new(
+                (pt_plus_h.X - 2.0 * pt.X + pt_minus_h.X) / (h * h),
+                (pt_plus_h.Y - 2.0 * pt.Y + pt_minus_h.Y) / (h * h),
+                (pt_plus_h.Z - 2.0 * pt.Z + pt_minus_h.Z) / (h * h),
+            )
+        }
     }
     // Other existing methods...
 }
 
-// prototype. (inaccurate result)
-pub mod nurbs_v2 {
-    use super::geometry::*;
-    pub struct NurbsCurve {
-        pub control_points: Vec<Point3d>,
-        pub degree: usize,
-        pub knots: Vec<f64>,
-        pub weights: Vec<f64>,
-    }
-
-    impl NurbsCurve {
-        /// Constructor for a NURBS curve
-        pub fn new(control_points: Vec<Point3d>, degree: usize) -> Self {
-            let n = control_points.len(); // Number of control points
-            let num_knots = n + degree + 1; // Number of knots
-
-            // Generate a clamped knot vector
-            let mut knots = vec![0.0; num_knots];
-            let interior_knots = n - degree; // Number of non-clamped (interior) knots
-
-            // Fill the clamped start and end
-            for i in 0..=degree {
-                knots[i] = 0.0; // Clamped at the start
-                knots[num_knots - 1 - i] = 1.0; // Clamped at the end
-            }
-
-            // Fill the interior knots with uniform spacing
-            for i in 1..interior_knots {
-                knots[degree + i] = i as f64 / interior_knots as f64;
-            }
-
-            // Default weights (all 1.0)
-            let weights = vec![1.0; n];
-
-            // Construct the NurbsCurve
-            NurbsCurve {
-                control_points,
-                degree,
-                knots,
-                weights,
-            }
-        }
-
-        /// Evaluate a NURBS curve at parameter t using the De Boor algorithm
-        pub fn evaluate(&self, t: f64) -> Point3d {
-            let p = self.degree;
-
-            // Find the knot span
-            let k = self.find_span(t);
-
-            // Allocate the working points array
-            let mut d = vec![Point3d::new(0.0, 0.0, 0.0); p + 1];
-
-            // Initialize the points for the De Boor recursion
-            for j in 0..=p {
-                let cp = &self.control_points[k - p + j];
-                let w = self.weights[k - p + j];
-                d[j] = Point3d::new(cp.X * w, cp.Y * w, cp.Z * w);
-            }
-
-            // Perform the De Boor recursion
-            for r in 1..=p {
-                for j in (r..=p).rev() {
-                    let alpha = (t - self.knots[k + j - p])
-                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p]);
-
-                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
-                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
-                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
-                }
-            }
-
-            // Normalize by the weight
-            let weight = self.weights[k];
-            Point3d::new(d[p].X / weight, d[p].Y / weight, d[p].Z / weight)
-        }
-
-        pub fn find_span(&self, t: f64) -> usize {
-            let n = self.control_points.len() - 1;
-            if t >= self.knots[n + 1] {
-                return n;
-            }
-            if t <= self.knots[self.degree] {
-                return self.degree;
-            }
-            for i in self.degree..=n {
-                if t >= self.knots[i] && t < self.knots[i + 1] {
-                    return i;
-                }
-            }
-            n // Default case
-        }
-
-        pub fn derivative(&self, t: f64) -> Point3d {
-            let p = self.degree;
-            let k = self.find_span(t);
-
-            let mut d = vec![Point3d::new(0.0, 0.0, 0.0); p];
-
-            for j in 0..p {
-                let cp1 = &self.control_points[k - p + j];
-                let cp2 = &self.control_points[k - p + j + 1];
-                let w1 = self.weights[k - p + j];
-                let w2 = self.weights[k - p + j + 1];
-                let denom = self.knots[k + j + 1] - self.knots[k + j - p + 1];
-
-                if denom.abs() < std::f64::EPSILON {
-                    return Point3d::new(0.0, 0.0, 0.0);
-                }
-
-                d[j] = Point3d::new(
-                    p as f64 * (cp2.X * w2 - cp1.X * w1) / denom,
-                    p as f64 * (cp2.Y * w2 - cp1.Y * w1) / denom,
-                    p as f64 * (cp2.Z * w2 - cp1.Z * w1) / denom,
-                );
-            }
-
-            for r in 1..p {
-                for j in (r..p).rev() {
-                    let knot_diff = self.knots[k + j - p + 1] - self.knots[k + j - p];
-                    if knot_diff.abs() < std::f64::EPSILON {
-                        continue;
-                    }
-                    let alpha = (t - self.knots[k + j - p]) / knot_diff;
-                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
-                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
-                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
-                }
-            }
-            d[p - 1]
-        }
-
-        pub fn second_derivative(&self, t: f64) -> Point3d {
-            let p = self.degree;
-            let k = self.find_span(t);
-
-            let mut d = vec![Point3d::new(0.0, 0.0, 0.0); p - 1];
-
-            for j in 0..(p - 1) {
-                let cp1 = &self.control_points[k - p + j];
-                let cp2 = &self.control_points[k - p + j + 1];
-                let cp3 = &self.control_points[k - p + j + 2];
-                let w1 = self.weights[k - p + j];
-                let w2 = self.weights[k - p + j + 1];
-                let w3 = self.weights[k - p + j + 2];
-                let denom1 = self.knots[k + j + 1] - self.knots[k + j - p + 1];
-                let denom2 = self.knots[k + j + 2] - self.knots[k + j - p + 2];
-
-                if denom1 == 0.0 || denom2 == 0.0 {
-                    continue;
-                }
-
-                d[j] = Point3d::new(
-                    p as f64
-                        * (p as f64 - 1.0)
-                        * ((cp3.X * w3 - 2.0 * cp2.X * w2 + cp1.X * w1) / (denom1 * denom2)),
-                    p as f64
-                        * (p as f64 - 1.0)
-                        * ((cp3.Y * w3 - 2.0 * cp2.Y * w2 + cp1.Y * w1) / (denom1 * denom2)),
-                    p as f64
-                        * (p as f64 - 1.0)
-                        * ((cp3.Z * w3 - 2.0 * cp2.Z * w2 + cp1.Z * w1) / (denom1 * denom2)),
-                );
-            }
-
-            for r in 1..(p - 1) {
-                for j in (r..(p - 1)).rev() {
-                    let knot_diff = self.knots[k + j - p + 2] - self.knots[k + j - p];
-                    if knot_diff.abs() < std::f64::EPSILON {
-                        continue;
-                    }
-                    let alpha = (t - self.knots[k + j - p]) / knot_diff;
-                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
-                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
-                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
-                }
-            }
-
-            d[p - 2]
-        }
-
-        /// Compute the curvature of the NURBS curve at parameter t
-        pub fn curvature(&self, t: f64) -> f64 {
-            let first_derivative = self.derivative(t);
-            let second_derivative = self.second_derivative(t);
-            let cross_product = first_derivative.cross(&second_derivative);
-            let cross_product_magnitude = cross_product.magnitude();
-            let first_derivative_magnitude = first_derivative.magnitude();
-            if first_derivative_magnitude == 0.0 {
-                0.0
-            } else {
-                cross_product_magnitude / first_derivative_magnitude.powi(3)
-            }
-        }
-        /// Compute the radius of curvature (osculating circle radius) of the NURBS curve at parameter t
-        pub fn radius_of_curvature(&self, t: f64) -> f64 {
-            let curvature = self.curvature(t);
-            if curvature == 0.0 {
-                f64::INFINITY // Infinite radius for zero curvature (straight line)
-            } else {
-                1.0 / curvature
-            }
-        }
-        /*
-            /// Compute the derivatives of the basis functions up to a given order
-            pub fn basis_function_derivatives(
-                &self,
-                span: usize,
-                t: f64,
-                order: usize,
-            ) -> Vec<Vec<f64>> {
-                let p = self.degree;
-                let n = p + 1;
-
-                // Storage for the basis function derivatives
-                let mut ders = vec![vec![0.0; n]; order + 1];
-                let mut ndu = vec![vec![0.0; n]; n];
-                let mut left = vec![0.0; n];
-                let mut right = vec![0.0; n];
-
-                ndu[0][0] = 1.0;
-
-                for j in 1..n {
-                    left[j] = t - self.knots[span + 1 - j];
-                    right[j] = self.knots[span + j] - t;
-
-                    let mut saved = 0.0;
-                    for r in 0..j {
-                        let temp = ndu[j - 1][r] / (right[r + 1] + left[j - r]);
-                        ndu[j][r] = saved + right[r + 1] * temp;
-                        saved = left[j - r] * temp;
-                    }
-                    ndu[j][j] = saved;
-                }
-
-                for j in 0..n {
-                    ders[0][j] = ndu[j][p];
-                }
-
-                let mut a = vec![vec![0.0; n], vec![0.0; n]];
-                for r in 0..n {
-                    let mut s1 = 0;
-                    let mut s2 = 1;
-                    a[0][0] = 1.0;
-
-                    for k in 1..=order {
-                        let mut d = 0.0;
-                        let rk = r as isize - k as isize;
-                        let pk = p as isize - k as isize;
-
-                        if r >= k {
-                            a[s2][0] = a[s1][0] / (right[k] + left[1]);
-                            d = a[s2][0] * ndu[pk as usize][rk as usize];
-                        }
-
-                        let j1 = if rk >= -1 { 1 } else { -rk as usize };
-                        let j2 = if r <= pk as usize {
-                            k - 1
-                        } else {
-                            (p - r + 1) as usize
-                        };
-
-                        for j in j1..=j2 {
-                            a[s2][j] = (a[s1][j] - a[s1][j - 1]) / (right[k - j] + left[j + 1]);
-                            d += a[s2][j] * ndu[pk as usize][(rk + j as isize) as usize];
-                        }
-
-                        if r <= pk as usize {
-                            a[s2][k] = -a[s1][k - 1] / (right[k - 1] + left[1]);
-                            d += a[s2][k] * ndu[pk as usize][(rk + k as isize) as usize];
-                        }
-
-                        ders[k][r] = d;
-                        std::mem::swap(&mut s1, &mut s2);
-                    }
-                }
-
-                let mut fact = p as f64;
-                for k in 1..=order {
-                    for j in 0..n {
-                        ders[k][j] *= fact;
-                    }
-                    fact *= (p as f64 - k as f64);
-                }
-
-                ders
-            }
-
-            /// Compute the curvature radius at parameter t
-            pub fn curvature_radius(&self, t: f64) -> f64 {
-                let derivatives = self.derivatives(t, 2);
-                let first_derivative = &derivatives[1];
-                let second_derivative = &derivatives[2];
-
-                let cross_product = Point3d {
-                    X: first_derivative.Y * second_derivative.Z
-                        - first_derivative.Z * second_derivative.Y,
-                    Y: first_derivative.Z * second_derivative.X
-                        - first_derivative.X * second_derivative.Z,
-                    Z: first_derivative.X * second_derivative.Y
-                        - first_derivative.Y * second_derivative.X,
-                };
-
-                let cross_mag =
-                    (cross_product.X.powi(2) + cross_product.Y.powi(2) + cross_product.Z.powi(2))
-                        .sqrt();
-                let first_mag = (first_derivative.X.powi(2)
-                    + first_derivative.Y.powi(2)
-                    + first_derivative.Z.powi(2))
-                .sqrt();
-
-                let curvature = cross_mag / first_mag.powi(3);
-                if curvature.abs() > f64::EPSILON {
-                    1.0 / curvature
-                } else {
-                    f64::INFINITY
-                }
-            }
-
-            pub fn derivatives(&self, t: f64, order: usize) -> Vec<Point3d> {
-                let p = self.degree;
-                let k = self.find_span(t);
-                let mut d = vec![vec![Point3d::new(0.0, 0.0, 0.0); p + 1]; order + 1];
-
-                for j in 0..=p {
-                    let cp = &self.control_points[k - p + j];
-                    let w = self.weights[k - p + j];
-                    d[0][j] = Point3d::new(cp.X * w, cp.Y * w, cp.Z * w);
-                }
-
-                let ders = self.basis_function_derivatives(k, t, order);
-
-                let mut result = vec![Point3d::new(0.0, 0.0, 0.0); order + 1];
-                for k in 0..=order {
-                    for j in 0..=p {
-                        result[k].X += ders[k][j] * d[0][j].X;
-                        result[k].Y += ders[k][j] * d[0][j].Y;
-                        result[k].Z += ders[k][j] * d[0][j].Z;
-                    }
-                }
-
-                result
-            }
-        */
-    }
-}
 pub mod intersection {
     use super::geometry::{CPlane, Point3d, Vector3d};
     /// Compute intersection of two point projected by two vectors
