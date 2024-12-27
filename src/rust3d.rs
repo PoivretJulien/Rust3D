@@ -26,6 +26,29 @@ pub mod geometry {
             Self { X: x, Y: y, Z: z }
         }
 
+        /// Compute the magnitude of the vector
+        pub fn magnitude(&self) -> f64 {
+            (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt()
+        }
+        /// Normalize the vector
+        pub fn normalize(&self) -> Self {
+            let mag = self.magnitude();
+            if mag > std::f64::EPSILON {
+                Point3d::new(self.X / mag, self.Y / mag, self.Z / mag)
+            } else {
+                Point3d::new(0.0, 0.0, 0.0)
+            }
+        }
+
+        /// Compute the cross product of two vectors
+        pub fn cross(&self, other: &Point3d) -> Point3d {
+            Point3d {
+                X: self.Y * other.Z - self.Z * other.Y,
+                Y: self.Z * other.X - self.X * other.Z,
+                Z: self.X * other.Y - self.Y * other.X,
+            }
+        }
+
         /// Test if a point is on a plane.
         pub fn is_on_plane(&self, plane: &[Point3d; 4]) -> bool {
             let normal =
@@ -544,198 +567,11 @@ pub mod geometry {
             }
             curve_points
         }
-        /// Compute the derivatives of a NURBS curve at parameter t
-        pub fn derivatives(&self, t: f64, order: usize) -> Vec<Point3d> {
-            let p = self.degree;
-            let k = self.find_span(t);
-
-            // Initialize storage for derivatives
-            let mut d = vec![
-                vec![
-                    Point3d {
-                        X: 0.0,
-                        Y: 0.0,
-                        Z: 0.0
-                    };
-                    p + 1
-                ];
-                order + 1
-            ];
-
-            // Compute basis function derivatives
-            let basis_ders = self.basis_function_derivatives(k, t, order);
-
-            // Compute weighted control points
-            for i in 0..=p {
-                let cp = &self.control_points[k - p + i];
-                let w = self.weights[k - p + i];
-                d[0][i] = Point3d {
-                    X: cp.X * w,
-                    Y: cp.Y * w,
-                    Z: cp.Z * w,
-                };
-            }
-
-            // Compute derivatives of the curve
-            let mut curve_derivatives = vec![
-                Point3d {
-                    X: 0.0,
-                    Y: 0.0,
-                    Z: 0.0
-                };
-                order + 1
-            ];
-            for k in 0..=order {
-                for i in 0..=p {
-                    curve_derivatives[k].X += basis_ders[k][i] * d[0][i].X;
-                    curve_derivatives[k].Y += basis_ders[k][i] * d[0][i].Y;
-                    curve_derivatives[k].Z += basis_ders[k][i] * d[0][i].Z;
-                }
-            }
-
-            // Dehomogenize derivatives
-            for k in 0..=order {
-                let w_derivative = if k > 0 {
-                    basis_ders[k][p]
-                } else {
-                    self.weights[k]
-                };
-
-                curve_derivatives[k].X /= w_derivative;
-                curve_derivatives[k].Y /= w_derivative;
-                curve_derivatives[k].Z /= w_derivative;
-            }
-
-            curve_derivatives
-        }
-        /// Compute the derivatives of the basis functions up to a given order
-        pub fn basis_function_derivatives(
-            &self,
-            span: usize,
-            t: f64,
-            order: usize,
-        ) -> Vec<Vec<f64>> {
-            let p = self.degree;
-            let n = p + 1; // Number of basis functions in the span
-
-            // Storage for the basis function derivatives
-            let mut ders = vec![vec![0.0; n]; order + 1];
-
-            // Temporary arrays
-            let mut ndu = vec![vec![0.0; n]; n]; // N_(i,p)
-            let mut left = vec![0.0; n];
-            let mut right = vec![0.0; n];
-
-            // Compute zeroth-order basis functions
-            ndu[0][0] = 1.0;
-
-            for j in 1..n {
-                left[j] = t - self.knots[span + 1 - j];
-                right[j] = self.knots[span + j] - t;
-
-                let mut saved = 0.0;
-                for r in 0..j {
-                    let temp = ndu[j - 1][r] / (right[r + 1] + left[j - r]);
-                    ndu[j][r] = saved + right[r + 1] * temp;
-                    saved = left[j - r] * temp;
-                }
-                ndu[j][j] = saved;
-            }
-
-            // Load the zeroth derivatives
-            for j in 0..n {
-                ders[0][j] = ndu[j][p];
-            }
-
-            // Compute higher-order derivatives
-            let mut a = vec![vec![0.0; n], vec![0.0; n]]; // Alternating arrays
-            for r in 0..n {
-                let mut s1 = 0;
-                let mut s2 = 1; // Swap between a[0] and a[1]
-                a[0][0] = 1.0;
-
-                for k in 1..=order {
-                    let mut d = 0.0;
-                    let rk = r as isize - k as isize;
-                    let pk = p as isize - k as isize;
-
-                    if r >= k {
-                        a[s2][0] = a[s1][0] / (right[k] + left[1]);
-                        d = a[s2][0] * ndu[pk as usize][rk as usize];
-                    }
-
-                    let j1 = if rk >= -1 { 1 } else { -rk as usize };
-                    let j2 = if (r as isize - 1) <= pk {
-                        k - 1
-                    } else {
-                        (p - r + 1) as usize
-                    };
-
-                    for j in j1..=j2 {
-                        a[s2][j] = (a[s1][j] - a[s1][j - 1]) / (right[k - j] + left[j + 1]);
-                        d += a[s2][j] * ndu[pk as usize][(rk + j as isize) as usize];
-                    }
-
-                    if r <= pk as usize {
-                        a[s2][k] = -a[s1][k - 1] / (right[k - 1] + left[1]);
-                        d += a[s2][k] * ndu[pk as usize][(rk + k as isize) as usize];
-                    }
-
-                    ders[k][r] = d;
-                    std::mem::swap(&mut s1, &mut s2);
-                }
-            }
-
-            // Multiply by the correct factors
-            let mut fact = p as f64;
-            for k in 1..=order {
-                for j in 0..n {
-                    ders[k][j] *= fact;
-                }
-                fact *= (p as f64 - k as f64);
-            }
-
-            ders
-        }
-
-        /// Compute the curvature radius at parameter t
-        pub fn curvature_radius(&self, t: f64) -> f64 {
-            // Compute the first and second derivatives
-            let derivatives = self.derivatives(t, 2);
-
-            let first_derivative = &derivatives[1];
-            let second_derivative = &derivatives[2];
-
-            // Compute the cross product of first and second derivatives
-            let cross_product = Point3d {
-                X: first_derivative.Y * second_derivative.Z
-                    - first_derivative.Z * second_derivative.Y,
-                Y: first_derivative.Z * second_derivative.X
-                    - first_derivative.X * second_derivative.Z,
-                Z: first_derivative.X * second_derivative.Y
-                    - first_derivative.Y * second_derivative.X,
-            };
-
-            // Magnitudes
-            let cross_mag =
-                (cross_product.X.powi(2) + cross_product.Y.powi(2) + cross_product.Z.powi(2))
-                    .sqrt();
-            let first_mag = (first_derivative.X.powi(2)
-                + first_derivative.Y.powi(2)
-                + first_derivative.Z.powi(2))
-            .sqrt();
-
-            // Compute curvature and radius
-            let curvature = cross_mag / first_mag.powi(3);
-            if curvature.abs() > f64::EPSILON {
-                1.0 / curvature
-            } else {
-                f64::INFINITY
-            }
-        }
     }
     // Other existing methods...
 }
+
+// prototype. (inaccurate result)
 pub mod nurbs_v2 {
     use super::geometry::*;
     pub struct NurbsCurve {
@@ -827,147 +663,258 @@ pub mod nurbs_v2 {
             }
             n // Default case
         }
-        /*
-        /// Compute the derivatives of the basis functions up to a given order
-        pub fn basis_function_derivatives(
-            &self,
-            span: usize,
-            t: f64,
-            order: usize,
-        ) -> Vec<Vec<f64>> {
-            let p = self.degree;
-            let n = p + 1;
 
-            // Storage for the basis function derivatives
-            let mut ders = vec![vec![0.0; n]; order + 1];
-            let mut ndu = vec![vec![0.0; n]; n];
-            let mut left = vec![0.0; n];
-            let mut right = vec![0.0; n];
-
-            ndu[0][0] = 1.0;
-
-            for j in 1..n {
-                left[j] = t - self.knots[span + 1 - j];
-                right[j] = self.knots[span + j] - t;
-
-                let mut saved = 0.0;
-                for r in 0..j {
-                    let temp = ndu[j - 1][r] / (right[r + 1] + left[j - r]);
-                    ndu[j][r] = saved + right[r + 1] * temp;
-                    saved = left[j - r] * temp;
-                }
-                ndu[j][j] = saved;
-            }
-
-            for j in 0..n {
-                ders[0][j] = ndu[j][p];
-            }
-
-            let mut a = vec![vec![0.0; n], vec![0.0; n]];
-            for r in 0..n {
-                let mut s1 = 0;
-                let mut s2 = 1;
-                a[0][0] = 1.0;
-
-                for k in 1..=order {
-                    let mut d = 0.0;
-                    let rk = r as isize - k as isize;
-                    let pk = p as isize - k as isize;
-
-                    if r >= k {
-                        a[s2][0] = a[s1][0] / (right[k] + left[1]);
-                        d = a[s2][0] * ndu[pk as usize][rk as usize];
-                    }
-
-                    let j1 = if rk >= -1 { 1 } else { -rk as usize };
-                    let j2 = if r <= pk as usize {
-                        k - 1
-                    } else {
-                        (p - r + 1) as usize
-                    };
-
-                    for j in j1..=j2 {
-                        a[s2][j] = (a[s1][j] - a[s1][j - 1]) / (right[k - j] + left[j + 1]);
-                        d += a[s2][j] * ndu[pk as usize][(rk + j as isize) as usize];
-                    }
-
-                    if r <= pk as usize {
-                        a[s2][k] = -a[s1][k - 1] / (right[k - 1] + left[1]);
-                        d += a[s2][k] * ndu[pk as usize][(rk + k as isize) as usize];
-                    }
-
-                    ders[k][r] = d;
-                    std::mem::swap(&mut s1, &mut s2);
-                }
-            }
-
-            let mut fact = p as f64;
-            for k in 1..=order {
-                for j in 0..n {
-                    ders[k][j] *= fact;
-                }
-                fact *= (p as f64 - k as f64);
-            }
-
-            ders
-        }
-
-        /// Compute the curvature radius at parameter t
-        pub fn curvature_radius(&self, t: f64) -> f64 {
-            let derivatives = self.derivatives(t, 2);
-            let first_derivative = &derivatives[1];
-            let second_derivative = &derivatives[2];
-
-            let cross_product = Point3d {
-                X: first_derivative.Y * second_derivative.Z
-                    - first_derivative.Z * second_derivative.Y,
-                Y: first_derivative.Z * second_derivative.X
-                    - first_derivative.X * second_derivative.Z,
-                Z: first_derivative.X * second_derivative.Y
-                    - first_derivative.Y * second_derivative.X,
-            };
-
-            let cross_mag =
-                (cross_product.X.powi(2) + cross_product.Y.powi(2) + cross_product.Z.powi(2))
-                    .sqrt();
-            let first_mag = (first_derivative.X.powi(2)
-                + first_derivative.Y.powi(2)
-                + first_derivative.Z.powi(2))
-            .sqrt();
-
-            let curvature = cross_mag / first_mag.powi(3);
-            if curvature.abs() > f64::EPSILON {
-                1.0 / curvature
-            } else {
-                f64::INFINITY
-            }
-        }
-
-        pub fn derivatives(&self, t: f64, order: usize) -> Vec<Point3d> {
+        pub fn derivative(&self, t: f64) -> Point3d {
             let p = self.degree;
             let k = self.find_span(t);
-            let mut d = vec![vec![Point3d::new(0.0, 0.0, 0.0); p + 1]; order + 1];
 
-            for j in 0..=p {
-                let cp = &self.control_points[k - p + j];
-                let w = self.weights[k - p + j];
-                d[0][j] = Point3d::new(cp.X * w, cp.Y * w, cp.Z * w);
+            let mut d = vec![Point3d::new(0.0, 0.0, 0.0); p];
+
+            for j in 0..p {
+                let cp1 = &self.control_points[k - p + j];
+                let cp2 = &self.control_points[k - p + j + 1];
+                let w1 = self.weights[k - p + j];
+                let w2 = self.weights[k - p + j + 1];
+                let denom = self.knots[k + j + 1] - self.knots[k + j - p + 1];
+
+                if denom.abs() < std::f64::EPSILON {
+                    return Point3d::new(0.0, 0.0, 0.0);
+                }
+
+                d[j] = Point3d::new(
+                    p as f64 * (cp2.X * w2 - cp1.X * w1) / denom,
+                    p as f64 * (cp2.Y * w2 - cp1.Y * w1) / denom,
+                    p as f64 * (cp2.Z * w2 - cp1.Z * w1) / denom,
+                );
             }
 
-            let ders = self.basis_function_derivatives(k, t, order);
+            for r in 1..p {
+                for j in (r..p).rev() {
+                    let knot_diff = self.knots[k + j - p + 1] - self.knots[k + j - p];
+                    if knot_diff.abs() < std::f64::EPSILON {
+                        continue;
+                    }
+                    let alpha = (t - self.knots[k + j - p]) / knot_diff;
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
+                }
+            }
+            d[p - 1]
+        }
 
-            let mut result = vec![Point3d::new(0.0, 0.0, 0.0); order + 1];
-            for k in 0..=order {
-                for j in 0..=p {
-                    result[k].X += ders[k][j] * d[0][j].X;
-                    result[k].Y += ders[k][j] * d[0][j].Y;
-                    result[k].Z += ders[k][j] * d[0][j].Z;
+        pub fn second_derivative(&self, t: f64) -> Point3d {
+            let p = self.degree;
+            let k = self.find_span(t);
+
+            let mut d = vec![Point3d::new(0.0, 0.0, 0.0); p - 1];
+
+            for j in 0..(p - 1) {
+                let cp1 = &self.control_points[k - p + j];
+                let cp2 = &self.control_points[k - p + j + 1];
+                let cp3 = &self.control_points[k - p + j + 2];
+                let w1 = self.weights[k - p + j];
+                let w2 = self.weights[k - p + j + 1];
+                let w3 = self.weights[k - p + j + 2];
+                let denom1 = self.knots[k + j + 1] - self.knots[k + j - p + 1];
+                let denom2 = self.knots[k + j + 2] - self.knots[k + j - p + 2];
+
+                if denom1 == 0.0 || denom2 == 0.0 {
+                    continue;
+                }
+
+                d[j] = Point3d::new(
+                    p as f64
+                        * (p as f64 - 1.0)
+                        * ((cp3.X * w3 - 2.0 * cp2.X * w2 + cp1.X * w1) / (denom1 * denom2)),
+                    p as f64
+                        * (p as f64 - 1.0)
+                        * ((cp3.Y * w3 - 2.0 * cp2.Y * w2 + cp1.Y * w1) / (denom1 * denom2)),
+                    p as f64
+                        * (p as f64 - 1.0)
+                        * ((cp3.Z * w3 - 2.0 * cp2.Z * w2 + cp1.Z * w1) / (denom1 * denom2)),
+                );
+            }
+
+            for r in 1..(p - 1) {
+                for j in (r..(p - 1)).rev() {
+                    let knot_diff = self.knots[k + j - p + 2] - self.knots[k + j - p];
+                    if knot_diff.abs() < std::f64::EPSILON {
+                        continue;
+                    }
+                    let alpha = (t - self.knots[k + j - p]) / knot_diff;
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
                 }
             }
 
-            result
+            d[p - 2]
         }
-    */
+
+        /// Compute the curvature of the NURBS curve at parameter t
+        pub fn curvature(&self, t: f64) -> f64 {
+            let first_derivative = self.derivative(t);
+            let second_derivative = self.second_derivative(t);
+            let cross_product = first_derivative.cross(&second_derivative);
+            let cross_product_magnitude = cross_product.magnitude();
+            let first_derivative_magnitude = first_derivative.magnitude();
+            if first_derivative_magnitude == 0.0 {
+                0.0
+            } else {
+                cross_product_magnitude / first_derivative_magnitude.powi(3)
+            }
+        }
+        /// Compute the radius of curvature (osculating circle radius) of the NURBS curve at parameter t
+        pub fn radius_of_curvature(&self, t: f64) -> f64 {
+            let curvature = self.curvature(t);
+            if curvature == 0.0 {
+                f64::INFINITY // Infinite radius for zero curvature (straight line)
+            } else {
+                1.0 / curvature
+            }
+        }
+        /*
+            /// Compute the derivatives of the basis functions up to a given order
+            pub fn basis_function_derivatives(
+                &self,
+                span: usize,
+                t: f64,
+                order: usize,
+            ) -> Vec<Vec<f64>> {
+                let p = self.degree;
+                let n = p + 1;
+
+                // Storage for the basis function derivatives
+                let mut ders = vec![vec![0.0; n]; order + 1];
+                let mut ndu = vec![vec![0.0; n]; n];
+                let mut left = vec![0.0; n];
+                let mut right = vec![0.0; n];
+
+                ndu[0][0] = 1.0;
+
+                for j in 1..n {
+                    left[j] = t - self.knots[span + 1 - j];
+                    right[j] = self.knots[span + j] - t;
+
+                    let mut saved = 0.0;
+                    for r in 0..j {
+                        let temp = ndu[j - 1][r] / (right[r + 1] + left[j - r]);
+                        ndu[j][r] = saved + right[r + 1] * temp;
+                        saved = left[j - r] * temp;
+                    }
+                    ndu[j][j] = saved;
+                }
+
+                for j in 0..n {
+                    ders[0][j] = ndu[j][p];
+                }
+
+                let mut a = vec![vec![0.0; n], vec![0.0; n]];
+                for r in 0..n {
+                    let mut s1 = 0;
+                    let mut s2 = 1;
+                    a[0][0] = 1.0;
+
+                    for k in 1..=order {
+                        let mut d = 0.0;
+                        let rk = r as isize - k as isize;
+                        let pk = p as isize - k as isize;
+
+                        if r >= k {
+                            a[s2][0] = a[s1][0] / (right[k] + left[1]);
+                            d = a[s2][0] * ndu[pk as usize][rk as usize];
+                        }
+
+                        let j1 = if rk >= -1 { 1 } else { -rk as usize };
+                        let j2 = if r <= pk as usize {
+                            k - 1
+                        } else {
+                            (p - r + 1) as usize
+                        };
+
+                        for j in j1..=j2 {
+                            a[s2][j] = (a[s1][j] - a[s1][j - 1]) / (right[k - j] + left[j + 1]);
+                            d += a[s2][j] * ndu[pk as usize][(rk + j as isize) as usize];
+                        }
+
+                        if r <= pk as usize {
+                            a[s2][k] = -a[s1][k - 1] / (right[k - 1] + left[1]);
+                            d += a[s2][k] * ndu[pk as usize][(rk + k as isize) as usize];
+                        }
+
+                        ders[k][r] = d;
+                        std::mem::swap(&mut s1, &mut s2);
+                    }
+                }
+
+                let mut fact = p as f64;
+                for k in 1..=order {
+                    for j in 0..n {
+                        ders[k][j] *= fact;
+                    }
+                    fact *= (p as f64 - k as f64);
+                }
+
+                ders
+            }
+
+            /// Compute the curvature radius at parameter t
+            pub fn curvature_radius(&self, t: f64) -> f64 {
+                let derivatives = self.derivatives(t, 2);
+                let first_derivative = &derivatives[1];
+                let second_derivative = &derivatives[2];
+
+                let cross_product = Point3d {
+                    X: first_derivative.Y * second_derivative.Z
+                        - first_derivative.Z * second_derivative.Y,
+                    Y: first_derivative.Z * second_derivative.X
+                        - first_derivative.X * second_derivative.Z,
+                    Z: first_derivative.X * second_derivative.Y
+                        - first_derivative.Y * second_derivative.X,
+                };
+
+                let cross_mag =
+                    (cross_product.X.powi(2) + cross_product.Y.powi(2) + cross_product.Z.powi(2))
+                        .sqrt();
+                let first_mag = (first_derivative.X.powi(2)
+                    + first_derivative.Y.powi(2)
+                    + first_derivative.Z.powi(2))
+                .sqrt();
+
+                let curvature = cross_mag / first_mag.powi(3);
+                if curvature.abs() > f64::EPSILON {
+                    1.0 / curvature
+                } else {
+                    f64::INFINITY
+                }
+            }
+
+            pub fn derivatives(&self, t: f64, order: usize) -> Vec<Point3d> {
+                let p = self.degree;
+                let k = self.find_span(t);
+                let mut d = vec![vec![Point3d::new(0.0, 0.0, 0.0); p + 1]; order + 1];
+
+                for j in 0..=p {
+                    let cp = &self.control_points[k - p + j];
+                    let w = self.weights[k - p + j];
+                    d[0][j] = Point3d::new(cp.X * w, cp.Y * w, cp.Z * w);
+                }
+
+                let ders = self.basis_function_derivatives(k, t, order);
+
+                let mut result = vec![Point3d::new(0.0, 0.0, 0.0); order + 1];
+                for k in 0..=order {
+                    for j in 0..=p {
+                        result[k].X += ders[k][j] * d[0][j].X;
+                        result[k].Y += ders[k][j] * d[0][j].Y;
+                        result[k].Z += ders[k][j] * d[0][j].Z;
+                    }
+                }
+
+                result
+            }
+        */
     }
 }
 pub mod intersection {
