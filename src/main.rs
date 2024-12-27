@@ -22,7 +22,7 @@ fn main() {
         and security.
     - it's high level features language with low a level focus and optimization.
     */
-
+    println!("\x1b[2J");// Clear console.
     const WIDTH: usize = 1470 / 3; // screen pixel width.
     const HEIGHT: usize = 956 / 3; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.

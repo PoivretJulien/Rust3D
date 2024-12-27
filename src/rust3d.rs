@@ -490,8 +490,8 @@ pub mod geometry {
         }
         /// Compute the curvature of the NURBS curve at parameter t
         pub fn curvature(&self, t: f64) -> f64 {
-            let first_derivative = self.numerical_first_derivative(t, 1e-6);
-            let second_derivative = self.numerical_second_derivative(t, 1e-6);
+            let first_derivative = self.numerical_first_derivative(t, 1e-5);
+            let second_derivative = self.numerical_second_derivative(t, 1e-5);
             let cross_product = first_derivative.cross(&second_derivative);
             let cross_product_magnitude = cross_product.magnitude();
             let first_derivative_magnitude = first_derivative.magnitude();
@@ -500,6 +500,14 @@ pub mod geometry {
                 0.0
             } else {
                 cross_product_magnitude / first_derivative_magnitude.powi(3)
+            }
+        }
+        pub fn radius_of_curvature(&self, t: f64) -> f64 {
+            let curvature = self.curvature(t);
+            if curvature == 0.0 {
+                f64::INFINITY // Infinite radius for zero curvature (straight line)
+            } else {
+                1.0 / curvature
             }
         }
         /// Evaluate a NURBS curve at parameter t using the De Boor algorithm
@@ -598,6 +606,39 @@ pub mod geometry {
                 (pt_plus_h.Y - 2.0 * pt.Y + pt_minus_h.Y) / (h * h),
                 (pt_plus_h.Z - 2.0 * pt.Z + pt_minus_h.Z) / (h * h),
             )
+        }
+        pub fn new_rh(control_points: Vec<Point3d>, degree: usize) -> Self {
+            let n = control_points.len(); // Number of control points
+            let num_knots = n + degree + 1; // Number of knots = control points + degree + 1
+
+            // Generate a clamped knot vector
+            let mut knots = vec![0.0; num_knots];
+
+            // First and last degree + 1 knots are clamped to 0.0 and 1.0
+            for i in 0..=degree {
+                knots[i] = 0.0; // Clamped at the start
+                knots[num_knots - 1 - i] = 1.0; // Clamped at the end
+            }
+
+            // Interior knots - number of interior knots is n - degree
+            let interior_knots = n - degree;
+
+            // Compute the interior knots
+            for i in 1..interior_knots {
+                let value = i as f64 / interior_knots as f64;
+                knots[degree + i] = value;
+            }
+
+            // Default weights (all 1.0)
+            let weights = vec![1.0; n];
+
+            // Construct the NurbsCurve
+            NurbsCurve {
+                control_points,
+                degree,
+                knots,
+                weights,
+            }
         }
     }
     // Other existing methods...
@@ -3166,21 +3207,23 @@ mod test {
             assert!(false);
         }
     }
-    /*
     #[test]
     fn test_nurbs_curve_b() {
         let cv = vec![
-            Point3d::new(-10.0, -28.0, 0.0),
-            Point3d::new(6.398962, -11.121475, -8.173946),
-            Point3d::new(-11.391772, -25.791021, 25.109328),
-            Point3d::new(-29.933739, 10.153879, -2.320389),
-            Point3d::new(-3.0, 1.0, 0.0),
+            Point3d::new(-42.000, -13.000, 0.000),
+            Point3d::new(-27.300, -26.172, 22.000),
+            Point3d::new(-23.034, 15.562, 0.000),
+            Point3d::new(7.561, -14.082, -21.000),
+            Point3d::new(8.000, -19.000, 0.000),
         ];
         let crv = NurbsCurve::new(cv, 4);
-        assert_eq!(14.0, crv.curvature_basis(0.5));
+        let t = 0.3;
+        if (21.995 - crv.radius_of_curvature(t)).abs()<1e-3{
+             assert!(true);
+        }else{
+            assert!(false);
+        }
     }
-    */
-
     use super::visualization::redering_object::{Triangle, Vertex};
     #[test]
     fn test_triangle_area() {
