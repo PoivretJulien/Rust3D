@@ -23,15 +23,14 @@ fn main() {
     - it's high level features language with low a level focus and optimization.
     */
 
-    const WIDTH: usize = 1470 / 1; // screen pixel width.
-    const HEIGHT: usize = 956 / 1; // screen pixel height.
+    const WIDTH: usize = 1470 / 3; // screen pixel width.
+    const HEIGHT: usize = 956 / 3; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
     const DISPLAY_CIRCLE: bool = true;
 
     let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
-    println!("\x1b[2J");
     let mut import_obj = Vec::new();
 
     /////////IMPORT MESH (.obj file)////////////////////////////////////////////
