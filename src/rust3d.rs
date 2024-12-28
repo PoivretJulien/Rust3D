@@ -227,8 +227,13 @@ pub mod geometry {
         }
 
         pub fn unitize_b(&self) -> Vector3d {
-            if self.Length > std::f64::EPSILON {// set very tinny vector to zero.
-                Vector3d::new(self.X / self.Length, self.Y / self.Length, self.Z / self.Length)
+            if self.Length > std::f64::EPSILON {
+                // set very tinny vector to zero.
+                Vector3d::new(
+                    self.X / self.Length,
+                    self.Y / self.Length,
+                    self.Z / self.Length,
+                )
             } else {
                 Vector3d::new(0.0, 0.0, 0.0)
             }
@@ -417,7 +422,7 @@ pub mod geometry {
         }
 
         /// Construct a Plane from specific x direction vector.
-        /// # Returns 
+        /// # Returns
         /// return always a plane at 90 deg from normal but aligned on x axis.
         pub fn new_x_aligned(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
             // normalize the normal.
@@ -2858,10 +2863,93 @@ pub mod draw {
         }
         circle_pts
     }
+
+    // A 2D point with (x, y)
+    #[derive(Debug, Clone, Copy)]
+    pub struct Point2D {
+        pub x: f64,
+        pub y: f64,
+    }
+
+    pub fn draw_triangle_2d_v2(
+        buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        p0: &Point2D,
+        p1: &Point2D,
+        p2: &Point2D,
+        color: u32,
+    ) {
+        // Sort vertices by y-coordinate
+        let mut points = [p0, p1, p2];
+        points.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+        let (p0, p1, p2) = (points[0], points[1], points[2]);
+
+        // Initialize a scanline table to store x-coordinates for each y
+        let mut scanline_x: Vec<Vec<usize>> = vec![Vec::new(); height];
+
+        // Rasterize triangle edges
+        rasterize_edge(p0, p1, &mut scanline_x);
+        rasterize_edge(p1, p2, &mut scanline_x);
+        rasterize_edge(p0, p2, &mut scanline_x);
+
+        // Fill the triangle by drawing horizontal spans
+        for (y, x_coords) in scanline_x.iter().enumerate() {
+            if x_coords.is_empty() || y >= height {
+                continue;
+            }
+
+            // Sort the x-coordinates and fill between the leftmost and rightmost points
+            let mut x_coords = x_coords.clone();
+            x_coords.sort_unstable();
+            let x_start = x_coords[0];
+            let x_end = x_coords[x_coords.len() - 1];
+
+            for x in x_start..=x_end {
+                if x < width {
+                    buffer[y * width + x] = color;
+                }
+            }
+        }
+    }
+    pub fn rasterize_edge(
+        edge_start: &Point2D,
+        edge_end: &Point2D,
+        scanline_x: &mut Vec<Vec<usize>>,
+    ) {
+        let mut x0 = edge_start.x as isize;
+        let mut y0 = edge_start.y as isize;
+        let x1 = edge_end.x as isize;
+        let y1 = edge_end.y as isize;
+
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = dx - dy;
+
+        while x0 != x1 || y0 != y1 {
+            // Store x for the current y
+            if (y0 as usize) < scanline_x.len() {
+                scanline_x[y0 as usize].push(x0 as usize);
+            }
+
+            let e2 = err * 2;
+            if e2 > -dy {
+                err -= dy;
+                x0 += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y0 += sy;
+            }
+        }
+    }
 }
 
 pub mod utillity {
     use core::f64;
+    //Rust have already builtin function.
     pub fn degree_to_radians(input_angle_in_degre: &f64) -> f64 {
         (*input_angle_in_degre) * (f64::consts::PI * 2.0) / 360.0
     }
@@ -3230,7 +3318,7 @@ mod test {
             assert!(false);
         }
     }
-    
+
     use super::visualization::redering_object::{Triangle, Vertex};
     #[test]
     fn test_triangle_area() {
