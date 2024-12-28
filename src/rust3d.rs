@@ -348,7 +348,7 @@ pub mod geometry {
                 X: -self.X,
                 Y: -self.Y,
                 Z: -self.Z,
-                Length:Vector3d::compute_length(-self.X, -self.Y, -self.Z),
+                Length:self.Length,
             }
         }
 
