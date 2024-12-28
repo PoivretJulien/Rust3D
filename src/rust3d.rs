@@ -6,7 +6,7 @@ pub mod geometry {
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
-    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
+    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Point3d {
@@ -340,7 +340,19 @@ pub mod geometry {
             }
         }
     }
+    impl Neg for Vector3d
+    {
+        type Output = Self;
+        fn neg(self) -> Self::Output {
+            Self{
+                X: -self.X,
+                Y: -self.Y,
+                Z: -self.Z,
+                Length:Vector3d::compute_length(-self.X, -self.Y, -self.Z),
+            }
+        }
 
+    }
     impl Mul for Vector3d {
         type Output = f64;
         fn mul(self, vector: Vector3d) -> f64 {
@@ -420,17 +432,18 @@ pub mod geometry {
                 v,
             }
         }
-
-        /// Construct a Plane from specific x direction vector.
+        /// # Arguments 
+        /// Construct a Plane from origin point (Point3d),a x direction Vector3d, and a normal vector Vector3d.
         /// # Returns
-        /// return always a plane at 90 deg from normal but aligned on x axis.
+        /// return always a plane aligned at 90 deg from normal
+        /// but locked x_axis direction vector projection. 
         pub fn new_x_aligned(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
             // normalize the normal.
             let normalized_normal = normal.unitize_b();
             // Define local Y 'v' from normal at 90 deg (orthogonalization).
             let v = Vector3d::cross_product(&normalized_normal, &x_axis).unitize_b();
             // Define local X 'u' always relative to 90deg from (y,z) plane.
-            let u = Vector3d::cross_product(&v, &normalized_normal).unitize_b();
+            let u = -Vector3d::cross_product(&v, &normalized_normal).unitize_b();
             Self {
                 origin: *origin,
                 normal: normalized_normal,
@@ -3082,6 +3095,12 @@ mod test {
         );
     }
     #[test]
+    fn test_vector3d_negation(){
+        let v_totest = Vector3d::new(0.0,-0.35,8.0);
+        let v_tocompare = Vector3d::new(0.0,0.35,-8.0);
+        assert_eq!(v_totest,-v_tocompare);
+    }
+    #[test]
     fn test_vector3d_length() {
         assert_eq!(f64::sqrt(2.0), Vector3d::new(1.0, 1.0, 0.0).Length());
     }
@@ -3337,7 +3356,6 @@ mod test {
         let blue: u8 = 20;
         assert_eq!(0x141314, Color::convert_rgb_color(red, green, blue));
     }
-    use super::visualization::redering_object::*;
     #[test]
     fn test_import_export_obj_size_ligh() {
         let vertices = vec![
