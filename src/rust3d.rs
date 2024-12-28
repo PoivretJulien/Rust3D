@@ -145,7 +145,9 @@ pub mod geometry {
                 X: x,
                 Y: y,
                 Z: z,
-                Length: Vector3d::compute_length_byref(&x, &y, &z),
+                // making a copy of an f64 is faster than
+                // moving and dereferencing a pointer on a f64...
+                Length: Vector3d::compute_length(x, y, z),
             }
         }
         pub fn set_X(&mut self, new_x_value: f64) {
@@ -225,11 +227,11 @@ pub mod geometry {
         }
 
         pub fn unitize_b(&self) -> Vector3d {
-            Vector3d::new(
-                self.X / self.Length,
-                self.Y / self.Length,
-                self.Z / self.Length,
-            )
+            if self.Length > std::f64::EPSILON {// set very tinny vector to zero.
+                Vector3d::new(self.X / self.Length, self.Y / self.Length, self.Z / self.Length)
+            } else {
+                Vector3d::new(0.0, 0.0, 0.0)
+            }
         }
 
         /// Test if a vector point to the direction of an other vector.
@@ -414,13 +416,16 @@ pub mod geometry {
             }
         }
 
-        /// Construct a Plane with specific a specific x axis vector.
-        pub fn new_with_x(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
+        /// Construct a Plane from specific x direction vector.
+        /// # Returns 
+        /// return always a plane at 90 deg from normal but aligned on x axis.
+        pub fn new_x_aligned(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
+            // normalize the normal.
             let normalized_normal = normal.unitize_b();
-            // Define local X 'u'
-            let u = x_axis.unitize_b();
-            // Define local V 'v'
-            let v = Vector3d::cross_product(&u, &normalized_normal).unitize_b();
+            // Define local Y 'v' from normal at 90 deg (orthogonalization).
+            let v = Vector3d::cross_product(&normalized_normal, &x_axis).unitize_b();
+            // Define local X 'u' always relative to 90deg from (y,z) plane.
+            let u = Vector3d::cross_product(&v, &normalized_normal).unitize_b();
             Self {
                 origin: *origin,
                 normal: normalized_normal,
@@ -607,6 +612,7 @@ pub mod geometry {
                 (pt_plus_h.Z - 2.0 * pt.Z + pt_minus_h.Z) / (h * h),
             )
         }
+
         pub fn new_rh(control_points: Vec<Point3d>, degree: usize) -> Self {
             let n = control_points.len(); // Number of control points
             let num_knots = n + degree + 1; // Number of knots = control points + degree + 1
@@ -3218,12 +3224,13 @@ mod test {
         ];
         let crv = NurbsCurve::new(cv, 4);
         let t = 0.3;
-        if (21.995 - crv.radius_of_curvature(t)).abs()<1e-3{
-             assert!(true);
-        }else{
+        if (21.995 - crv.radius_of_curvature(t)).abs() < 1e-3 {
+            assert!(true);
+        } else {
             assert!(false);
         }
     }
+    
     use super::visualization::redering_object::{Triangle, Vertex};
     #[test]
     fn test_triangle_area() {
