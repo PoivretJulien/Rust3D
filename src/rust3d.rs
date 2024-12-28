@@ -2945,6 +2945,100 @@ pub mod draw {
             }
         }
     }
+
+
+#[derive(Copy,Clone)]
+    pub struct Edge {
+    pub y_min: usize,
+    pub y_max: usize,
+    pub x: f64,
+    pub dx: f64, // Increment in x per scanline
+}
+
+fn build_edges(p0: &Point2D, p1: &Point2D) -> Option<Edge> {
+    let (top, bottom) = if p0.y < p1.y { (p0, p1) } else { (p1, p0) };
+
+    let dy = bottom.y - top.y;
+    if dy == 0.0 {
+        return None; // Horizontal line, skip
+    }
+
+    let dx = (bottom.x - top.x) / dy; // Slope (dx/dy)
+
+    Some(Edge {
+        y_min: top.y as usize,
+        y_max: bottom.y as usize,
+        x: top.x,
+        dx,
+    })
+}
+pub fn draw_triangle_optimized(
+    buffer: &mut Vec<u32>,
+    width: usize,
+    height: usize,
+    p0: &Point2D,
+    p1: &Point2D,
+    p2: &Point2D,
+    color: u32,
+) {
+    // Sort vertices by y-coordinate
+    let mut points = [p0, p1, p2];
+    points.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+    let (p0, p1, p2) = (points[0], points[1], points[2]);
+
+    // Build edges
+    let mut edges = vec![];
+    if let Some(edge) = build_edges(p0, p1) {
+        edges.push(edge);
+    }
+    if let Some(edge) = build_edges(p1, p2) {
+        edges.push(edge);
+    }
+    if let Some(edge) = build_edges(p0, p2) {
+        edges.push(edge);
+    }
+
+    // Sort edges by y_min
+    edges.sort_by(|a, b| a.y_min.cmp(&b.y_min));
+
+    // Active edge list (AEL)
+    let mut active_edges: Vec<Edge> = vec![];
+
+    // Scanline processing
+    for y in 0..height {
+        // Add edges to the active list
+        for i in 0..edges.len() {
+            if edges[i].y_min == y {
+                active_edges.push(edges[i]);
+            }
+        }
+
+        // Remove edges that go out of scope
+        active_edges.retain(|e| e.y_max > y);
+
+        // Sort active edges by `x` coordinate
+        active_edges.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
+
+        // Fill spans between edge pairs
+        for pair in active_edges.chunks(2) {
+            if let [left, right] = pair {
+                let x_start = left.x as usize;
+                let x_end = right.x as usize;
+
+                for x in x_start..=x_end {
+                    if x < width {
+                        buffer[y * width + x] = color;
+                    }
+                }
+            }
+        }
+
+        // Update x-coordinates for active edges
+        for edge in active_edges.iter_mut() {
+            edge.x += edge.dx;
+        }
+    }
+}
 }
 
 pub mod utillity {
