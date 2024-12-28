@@ -10,19 +10,18 @@ use rust3d::visualization::redering_object::Mesh;
 use rust3d::visualization_v2::Camera;
 
 fn main() {
-
     /*
     Log 12/26/24:
          - V2 bring CPU parallelization & Camera movement via Matrix Transformation
            making a more convenient Api.
     - notes:
-        Rust feel like the perfect low level language for operating machine with 
-        the safe spirit of ada designed for embeded system or real time operating 
-        machines (like medical x-ray), requiring a high level of reliability 
+        Rust feel like the perfect low level language for operating machine with
+        the safe spirit of ada designed for embeded system or real time operating
+        machines (like medical x-ray), requiring a high level of reliability
         and security.
     - it's high level features language with low a level focus and optimization.
     */
-    println!("\x1b[2J");// Clear console.
+    println!("\x1b[2J"); // Clear console.
     const WIDTH: usize = 1470 / 3; // screen pixel width.
     const HEIGHT: usize = 956 / 3; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
@@ -32,6 +31,13 @@ fn main() {
 
     let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
     let mut import_obj = Vec::new();
+    ///////////Triangle test/////////////////
+    let mut tri = vec![
+        (Point3d::new(0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
+        (Point3d::new(-0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
+        (Point3d::new(0.0, 0.0, 0.12) + z_offset) * DISPLAY_RATIO,
+    ];
+    ////////////////////////////////////////
 
     /////////IMPORT MESH (.obj file)////////////////////////////////////////////
     if let Some(mesh) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj").ok() {
@@ -44,8 +50,8 @@ fn main() {
             println!("Volume:({0})cubic/unit(s)", mesh.compute_volume());
         }
         /*
-            for now switch the mesh vertices to the CAD Point3d format CAD of 
-            the api instead of Vertex (designed for the 3d display engine) 
+            for now switch the mesh vertices to the CAD Point3d format CAD of
+            the api instead of Vertex (designed for the 3d display engine)
             (this is going to change very soon).
         */
         for vertex in mesh.vertices {
@@ -74,14 +80,17 @@ fn main() {
     if DISPLAY_CIRCLE {
         circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
         for i in 0..circle.len() {
-            circle[i] = plane.point_on_plane_uv( &(circle[i].X*DISPLAY_RATIO),&(circle[i].Y*DISPLAY_RATIO));
-           // unsafe {
-           //     // Evaluate as safe in that context (no concurrent access).
-           //     let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
-           //     *ptr = plane
-           //         .point_on_plane_uv(&((*ptr).X * DISPLAY_RATIO), &((*ptr).Y * DISPLAY_RATIO));
-           // }
-        }   
+            circle[i] = plane.point_on_plane_uv(
+                &(circle[i].X * DISPLAY_RATIO),
+                &(circle[i].Y * DISPLAY_RATIO),
+            );
+            // unsafe {
+            //     // Evaluate as safe in that context (no concurrent access).
+            //     let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
+            //     *ptr = plane
+            //         .point_on_plane_uv(&((*ptr).X * DISPLAY_RATIO), &((*ptr).Y * DISPLAY_RATIO));
+            // }
+        }
     }
     ////////////////////////////////////////////////////////////////////////////
     // A simple allocated array of u32 initialized at 0
@@ -115,11 +124,15 @@ fn main() {
             }
         }
         ///// Compute Vertex Rotation ./////////////////////////////////////////
-        index = 0; //reset indexer.
+        index = 0; // reset indexer.
         while index < import_obj.len() {
             import_obj[index] = rotate_z(import_obj[index], step);
             index += 1;
         }
+        //  rotate triangle.
+        tri[0] = rotate_z(tri[0], step);
+        tri[1] = rotate_z(tri[1], step);
+        tri[2] = rotate_z(tri[2], step);
         /////////////////////////////////////////////////////////////////////////
         /*
          *    notes:
@@ -135,6 +148,7 @@ fn main() {
         const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
+        let mut result_tri = Vec::new();
 
         if TEST_MOVE_SIMULATION {
             // Camera Movement and Rotation Parameters.
@@ -147,12 +161,14 @@ fn main() {
             let transformation_matrix =
                 camera.get_transformation_matrix(forward_amount, yaw_angle, pitch_angle);
             let transformation_matrix_pan = camera.pan_point_matrix(0.0, 0.35);
-            let final_matrix = Camera::combine_matrices(vec![transformation_matrix,transformation_matrix_pan]);
+            let final_matrix =
+                Camera::combine_matrices(vec![transformation_matrix, transformation_matrix_pan]);
             ///////////////////////////////////////////////////////////
 
             // Transform the points via transformation matrix.
             let t1 = camera.transform_points(&import_obj, final_matrix);
             let t2 = camera.transform_points(&circle, final_matrix);
+            let t3 = camera.transform_points(&tri, final_matrix);
 
             // Raytrace //////////
             //-------------------
@@ -160,19 +176,46 @@ fn main() {
             // Compute projection case A.
             result = camera.project_points(&t1);
             result_circle = camera.project_points(&t2);
+            result_tri = camera.project_points(&t3);
         } else {
             // Compute projection case B.
             result = camera.project_points(&import_obj);
             result_circle = camera.project_points(&circle);
+            result_tri = camera.project_points(&tri);
         }
         // Then Rasterization of circle and geometry.
         for data in result_circle.iter() {
             buffer[data.1 * WIDTH + data.0] =
-                    Color::convert_rgba_color(0, 123, 244, 1.0, BACK_GROUND_COLOR);    
+                Color::convert_rgba_color(0, 123, 244, 1.0, BACK_GROUND_COLOR);
         }
         for data in result.iter() {
             buffer[data.1 * WIDTH + data.0] =
                 Color::convert_rgba_color(255, 0, 255, 1.0, BACK_GROUND_COLOR);
+        }
+        // Rasterize triangle (test).
+        if result_tri.len() == 3 {
+            use rust3d::draw::Point2D;
+            let p0 = Point2D {
+                x: result_tri[0].0 as f64,
+                y: result_tri[0].1 as f64,
+            };
+            let p1 = Point2D {
+                x: result_tri[1].0 as f64,
+                y: result_tri[1].1 as f64,
+            };
+            let p2 = Point2D {
+                x: result_tri[2].0 as f64,
+                y: result_tri[2].1 as f64,
+            };
+            draw_triangle_optimized(
+                &mut buffer,
+                WIDTH,
+                HEIGHT,
+                &p0,
+                &p1,
+                &p2,
+                Color::convert_rgba_color(255, 0, 0, 0.7, BACK_GROUND_COLOR),
+            );
         }
         // Write infos feedback Text.
         let (x, y) = (1, 1);

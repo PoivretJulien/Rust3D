@@ -3067,12 +3067,6 @@ pub mod utillity {
     y
 }
 
-fn main() {
-    let value = 4.0;
-    let inv_sqrt = fast_inverse_square_root(value);
-    println!("Fast inverse square root of {}: {}", value, inv_sqrt);
-}
-
 }
 
 #[cfg(test)]
