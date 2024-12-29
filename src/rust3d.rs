@@ -430,18 +430,22 @@ pub mod geometry {
                 v,
             }
         }
-        /// Construct a CPlane from origin point and a normal vector 
+        /// Construct a CPlane from origin point and a normal vector
         /// oriented on x_axis direction.
         /// # Arguments
         /// - a &Point3d origin,
         /// - a &Vector3d x_axis direction,
         /// - a &Vector3d normal of the plane.
         /// # Returns
-        /// return always a plane oriented with the x_axis input Vector3d but locked 
+        /// return always a plane oriented with the x_axis input Vector3d but locked
         /// at 90 deg from the plane normal Vector3d (Plane orthogonalization process).
         /// (the normal vector is the reference input for orthogonalization)
         /// normal vector influence light so might be considered first.
-        pub fn new_normal_x_oriented(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
+        pub fn new_normal_x_oriented(
+            origin: &Point3d,
+            x_axis: &Vector3d,
+            normal: &Vector3d,
+        ) -> Self {
             // normalize the normal.
             let normalized_normal = normal.unitize_b();
             // Define local Y 'v' from normal at 90 deg (orthogonalization).
@@ -463,19 +467,23 @@ pub mod geometry {
         /// - &Point3d pt_y oriented on the y_axis direction.
         /// # Returns
         /// return a CPlane with the normal orthogonalized from the three points.
-        pub fn new_origin_x_aligned_y_oriented(origin: &Point3d,pt_x: &Point3d, pt_y:&Point3d) -> Self {
+        pub fn new_origin_x_aligned_y_oriented(
+            origin: &Point3d,
+            pt_x: &Point3d,
+            pt_y: &Point3d,
+        ) -> Self {
             // Define (u,v) Vector3d(s).
             let x_axis = ((*pt_x) - (*origin)).unitize_b();
             let mut y_axis = ((*pt_y) - (*origin)).unitize_b();
             // compute the normal.
-            let normal = Vector3d::cross_product(&x_axis,&y_axis).unitize_b();
+            let normal = Vector3d::cross_product(&x_axis, &y_axis).unitize_b();
             // make sure that v is orthogonal to u.
             y_axis = Vector3d::cross_product(&x_axis, &normal).unitize_b();
             Self {
                 origin: *origin,
                 normal,
-                u:x_axis,
-                v:y_axis,
+                u: x_axis,
+                v: y_axis,
             }
         }
 
@@ -711,6 +719,87 @@ pub mod geometry {
         }
     }
     // Other existing methods...
+    use std::fmt;
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct Vector2d {
+        pub x: f64,
+        pub y: f64,
+    }
+    impl Vector2d {
+        pub fn new(x: f64, y: f64) -> Self {
+            Self { x, y }
+        }
+        pub fn magnetude(self) -> f64 {
+            (self.x * self.x + self.y * self.y).sqrt()
+        }
+        pub fn normalize(self) -> Self {
+            let m = self.magnetude();
+            if m > std::f64::EPSILON {
+                Self {
+                    x: self.x / m,
+                    y: self.y / m,
+                }
+            } else {
+                Self { x: 0.0, y: 0.0 }
+            }
+        }
+        pub fn crossProduct(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
+            ((*first_vector).x * (*second_vector).y) - ((*first_vector).y * (*second_vector).x)
+        }
+
+        pub fn angle(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
+            f64::acos(
+                ((*first_vector) * (*second_vector))
+                    / ((*first_vector).magnetude() * (*second_vector).magnetude()),
+            )
+        }
+    }
+    impl fmt::Display for Vector2d {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "Vector2d{{x:{0},y:{1}}}", self.x, self.y)
+        }
+    }
+    impl Sub for Vector2d {
+        type Output = Self;
+        fn sub(self, other: Vector2d) -> Self::Output {
+            Self {
+                x: self.x - other.x,
+                y: self.y - other.y,
+            }
+        }
+    }
+
+    impl Add for Vector2d {
+        type Output = Self;
+        fn add(self, other: Vector2d) -> Self::Output {
+            Self {
+                x: self.x + other.x,
+                y: self.y + other.y,
+            }
+        }
+    }
+    impl Mul<f64> for Vector2d {
+        type Output = Self;
+        fn mul(self, scalar: f64) -> Self::Output {
+            Self {
+                x: self.x * scalar,
+                y: self.y * scalar,
+            }
+        }
+    }
+    impl Mul for Vector2d {
+        type Output = f64;
+        fn mul(self, other: Vector2d) -> f64 {
+            self.x * other.x + self.y * other.y
+        }
+    }
+
+    impl MulAssign<f64> for Vector2d {
+        fn mul_assign(&mut self, scalar: f64) {
+            self.x *= scalar;
+            self.y *= scalar;
+        }
+    }
 }
 
 pub mod intersection {
