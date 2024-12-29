@@ -793,7 +793,15 @@ pub mod geometry {
             self.x * other.x + self.y * other.y
         }
     }
-
+    impl Div for Vector2d {
+        type Output = Self;
+        fn div(self, other: Vector2d) -> Self::Output {
+            Self {
+                x: self.x / other.x,
+                y: self.y / other.y,
+            }
+        }
+    }
     impl MulAssign<f64> for Vector2d {
         fn mul_assign(&mut self, scalar: f64) {
             self.x *= scalar;
@@ -2778,7 +2786,7 @@ pub mod visualization_v2 {
         }
 
         // 4x3 matrix version of the code, the absance of the Homogeneous Normalization
-        // modify the sensitivity of the system. 
+        // modify the sensitivity of the system.
         // but provide a boost in computation performance
         // (from the drop of the last row of the 4x4 matrix)
         // use regular 4x4 version if you preferes more precision in motion.
@@ -3432,6 +3440,39 @@ pub mod utillity {
     }
     fn map_range(from_range: (f64, f64), to_range: (f64, f64), s: f64) -> f64 {
         to_range.0 + (s - from_range.0) * (to_range.1 - to_range.0) / (from_range.1 - from_range.0)
+    }
+
+    use std::ops::{Div, Sub};
+    /// inverse linear interpolation... Normalize a range...
+    /// used to find the relative position (between 0 and 1)
+    /// of a value within a given range. This is useful for normalizing values.
+    /// # Returns
+    /// an Option<T> a normalized (t) parametes value from 0 to 1
+    /// describing the interval from v_start to v_end.
+    /// input is not clamped so the range will exceed interval linearly.
+    /// T gneric can be f64 usize i64 or what ever implementing Sub and Div and Copy. 
+    pub fn ilerp<T: std::cmp::PartialEq>(v_start: T, v_end: T, value: T) -> Option<T>
+    where
+        T: Copy + Sub<Output = T> + Div<Output = T>,
+    {
+        if v_start == v_end {
+            None
+        } else {
+            Some((value - v_start) / (v_end - v_start))
+        }
+    }
+
+    /// # Returns
+    /// return the linears interpolation between two values
+    /// from a t normalized f64 parameters from 0.0 to 1.0
+    pub fn lerp<T>(a: T, b: T, t: f64) -> T
+    where
+        T: Copy
+            + std::ops::Add<Output = T>
+            + std::ops::Sub<Output = T>
+            + std::ops::Mul<f64, Output = T>,
+    {
+        a + (b - a) * t
     }
 }
 
