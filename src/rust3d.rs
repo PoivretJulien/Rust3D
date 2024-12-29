@@ -441,7 +441,7 @@ pub mod geometry {
         /// at 90 deg from the plane normal Vector3d (Plane orthogonalization process).
         /// (the normal vector is the reference input for orthogonalization)
         /// normal vector influence light so might be considered first.
-        pub fn new_normal_x_aligned(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
+        pub fn new_normal_x_oriented(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
             // normalize the normal.
             let normalized_normal = normal.unitize_b();
             // Define local Y 'v' from normal at 90 deg (orthogonalization).
