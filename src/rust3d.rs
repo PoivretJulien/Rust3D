@@ -3450,7 +3450,7 @@ pub mod utillity {
     /// an Option<T> a normalized (t) parametes value from 0 to 1
     /// describing the interval from v_start to v_end.
     /// input is not clamped so the range will exceed interval linearly.
-    /// T gneric can be f64 usize i64 or what ever implementing Sub and Div and Copy. 
+    /// T gneric can be f64 usize i64 or what ever implementing Sub and Div and Copy traits. 
     pub fn ilerp<T: std::cmp::PartialEq>(v_start: T, v_end: T, value: T) -> Option<T>
     where
         T: Copy + Sub<Output = T> + Div<Output = T>,
