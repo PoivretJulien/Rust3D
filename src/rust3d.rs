@@ -430,12 +430,18 @@ pub mod geometry {
                 v,
             }
         }
+        /// Construct a CPlane from origin point and a normal vector 
+        /// oriented on x_axis direction.
         /// # Arguments
-        /// Construct a Plane from origin point (Point3d),a x direction Vector3d, and a normal vector Vector3d.
+        /// - a &Point3d origin,
+        /// - a &Vector3d x_axis direction,
+        /// - a &Vector3d normal of the plane.
         /// # Returns
-        /// return always a plane aligned at 90 deg from normal
-        /// but locked x_axis direction vector projection.
-        pub fn new_x_aligned(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
+        /// return always a plane aligned with the x_axis input Vector3d but lock 
+        /// at 90 deg from the plane normal Vector3d (Plane orthogonalization process).
+        /// (the normal vector is the reference input for orthogonalization)
+        /// normal vector influence light so might be considered first.
+        pub fn new_normal_x_aligned(origin: &Point3d, x_axis: &Vector3d, normal: &Vector3d) -> Self {
             // normalize the normal.
             let normalized_normal = normal.unitize_b();
             // Define local Y 'v' from normal at 90 deg (orthogonalization).
@@ -450,8 +456,49 @@ pub mod geometry {
             }
         }
 
+        /// Construct a CPlane from 3 points.
+        /// # Arguments
+        /// - &Point3d origin of the plane.
+        /// - &Point3d pt_x aligned x_axis direction.
+        /// - &Point3d pt_y aligned y_axis direction.
+        /// # Returns
+        /// return a CPlane with the normal orthogonalized from the three points.
+        pub fn new_origin_x_y_alignedl(origin: &Point3d,pt_x: &Point3d, pt_y:&Point3d) -> Self {
+            // Define (u,v) Vector3d(s).
+            let x_axis = ((*pt_x) - (*origin)).unitize_b();
+            let mut y_axis = ((*pt_y) - (*origin)).unitize_b();
+            // compute the normal.
+            let normal = Vector3d::cross_product(&x_axis,&y_axis).unitize_b();
+            // make sure that v is orthogonal to u.
+            y_axis = Vector3d::cross_product(&x_axis, &normal).unitize_b();
+            Self {
+                origin: *origin,
+                normal,
+                u:x_axis,
+                v:y_axis,
+            }
+        }
+
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
-        pub fn point_on_plane_uv(&self, u: &f64, v: &f64) -> Point3d {
+        pub fn point_on_plane_uv(&self, u: f64, v: f64) -> Point3d {
+            Point3d {
+                X: self.origin.X + self.u.X * u + self.v.X * v,
+                Y: self.origin.Y + self.u.Y * u + self.v.Y * v,
+                Z: self.origin.Z + self.u.Z * u + self.v.Z * v,
+            }
+        }
+
+        /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
+        /// Also offsets the point along the plane's normal by z value.
+        pub fn point_on_plane(&self, x: f64, y: f64, z: f64) -> Point3d {
+            Point3d {
+                X: self.origin.X + self.u.X * x + self.v.X * y + self.normal.X * z,
+                Y: self.origin.Y + self.u.Y * x + self.v.Y * y + self.normal.Y * z,
+                Z: self.origin.Z + self.u.Z * x + self.v.Z * y + self.normal.Z * z,
+            }
+        }
+        /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
+        pub fn point_on_plane_uv_ref(&self, u: &f64, v: &f64) -> Point3d {
             Point3d {
                 X: self.origin.X + self.u.X * (*u) + self.v.X * (*v),
                 Y: self.origin.Y + self.u.Y * (*u) + self.v.Y * (*v),
@@ -461,7 +508,7 @@ pub mod geometry {
 
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
         /// Also offsets the point along the plane's normal by z value.
-        pub fn point_on_plane(&self, x: &f64, y: &f64, z: &f64) -> Point3d {
+        pub fn point_on_plane_ref(&self, x: &f64, y: &f64, z: &f64) -> Point3d {
             Point3d {
                 X: self.origin.X + self.u.X * (*x) + self.v.X * (*y) + self.normal.X * (*z),
                 Y: self.origin.Y + self.u.Y * (*x) + self.v.Y * (*y) + self.normal.Y * (*z),
@@ -2849,7 +2896,7 @@ pub mod draw {
         let mut y = 0.0;
         while x <= *x_max {
             while y <= *y_max {
-                grid_points.push((*plane).point_on_plane_uv(&x, &y));
+                grid_points.push((*plane).point_on_plane_uv(x, y));
                 y += grid_unit;
             }
             if y >= *y_max {
@@ -3258,7 +3305,7 @@ mod test {
         let point = Point3d::new(5.0, 5.0, 5.0);
         let expected_result = Point3d::new(2.5, 5.0, -22.330127);
         let cp = CPlane::new(&plane_origin_pt, &plane_normal);
-        let result = cp.point_on_plane(&(point.X), &(point.Y), &(point.Z));
+        let result = cp.point_on_plane(point.X, point.Y, point.Z);
         // assert_eq!(expected_result,result);
         if (expected_result - result).Length().abs() <= 1e-5 {
             assert!(true);

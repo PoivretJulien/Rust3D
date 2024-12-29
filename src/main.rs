@@ -81,8 +81,8 @@ fn main() {
         circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
         for i in 0..circle.len() {
             circle[i] = plane.point_on_plane_uv(
-                &(circle[i].X * DISPLAY_RATIO),
-                &(circle[i].Y * DISPLAY_RATIO),
+                circle[i].X * DISPLAY_RATIO,
+                circle[i].Y * DISPLAY_RATIO,
             );
             // unsafe {
             //     // Evaluate as safe in that context (no concurrent access).
