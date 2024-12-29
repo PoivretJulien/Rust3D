@@ -209,6 +209,19 @@ pub mod geometry {
             delta_position * (1.0 / delta_time)
         }
 
+        /// Compute acceleration vector given 
+        /// by two velocity vectors and a time interval.
+        pub fn compute_acceleration(
+            initial_velocity: &Vector3d,
+            final_velocity: &Vector3d,
+            initial_time: f64,
+            final_time: f64,
+        ) -> Vector3d {
+            let delta_velocity = (*final_velocity) - (*initial_velocity);
+            let delta_time = final_time - initial_time;
+            delta_velocity * (1.0 / delta_time)
+        }
+
         // Vector3d Cross Product.
         pub fn cross_product(vector_a: &Vector3d, vector_b: &Vector3d) -> Self {
             Vector3d::new(
@@ -3451,7 +3464,7 @@ pub mod utillity {
     /// an Option<T> a normalized (t) parametes value from 0 to 1
     /// describing the interval from v_start to v_end.
     /// input is not clamped so the range will exceed interval linearly.
-    /// T gneric can be f64 usize i64 or what ever implementing Sub and Div and Copy traits. 
+    /// T gneric can be f64 usize i64 or what ever implementing Sub and Div and Copy traits.
     pub fn ilerp<T: std::cmp::PartialEq>(v_start: T, v_end: T, value: T) -> Option<T>
     where
         T: Copy + Sub<Output = T> + Div<Output = T>,
