@@ -3424,7 +3424,7 @@ pub mod utillity {
     }
 
     ///The famous Quake3 Arena algorithm.
-    fn fast_inverse_square_root(x: f32) -> f32 {
+    pub fn fast_inverse_square_root(x: f32) -> f32 {
         let threehalfs: f32 = 1.5;
 
         let x2: f32 = x * 0.5;
@@ -3438,7 +3438,8 @@ pub mod utillity {
 
         y
     }
-    fn map_range(from_range: (f64, f64), to_range: (f64, f64), s: f64) -> f64 {
+    /// Remap range 1 to range 2 from s value at the scale of range 1.
+    pub fn remap(from_range: (f64, f64), to_range: (f64, f64), s: f64) -> f64 {
         to_range.0 + (s - from_range.0) * (to_range.1 - to_range.0) / (from_range.1 - from_range.0)
     }
 
