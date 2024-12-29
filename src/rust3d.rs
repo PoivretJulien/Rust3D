@@ -2776,7 +2776,13 @@ pub mod visualization_v2 {
             }
             result
         }
-        // 4x3 matrix version of the code.
+
+        // 4x3 matrix version of the code, the absance of the Homogeneous Normalization
+        // modify the sensitivity of the system. 
+        // but provide a boost in computation performance
+        // (from the drop of the last row of the 4x4 matrix)
+        // use regular 4x4 version if you preferes more precision in motion.
+        // - all 4x3 operations are explicitly named with _4x3 sufix.
         /// Generate a transformation matrix for the camera's movement and rotation
         pub fn get_transformation_matrix_4x3(
             &self,

@@ -154,7 +154,7 @@ fn main() {
 
         if TEST_MOVE_SIMULATION {
             // Camera Movement and Rotation Parameters.
-            let forward_amount = 0.4; // Move forward (may be negative.)
+            let forward_amount = 0.5; // Move forward (may be negative.)
             let yaw_angle = 0.0; // Rotate (in degrees around the Y-axis)
             let pitch_angle = 25.0; // Rotate (in degrees around the X-axis)
 
@@ -162,7 +162,7 @@ fn main() {
             // Generate the transformation matrix /////////////////////
             let transformation_matrix =
                 camera.get_transformation_matrix_4x3(forward_amount, yaw_angle, pitch_angle);
-            let transformation_matrix_pan = camera.get_pan_matrix_4x3(0.0, 0.35);
+            let transformation_matrix_pan = camera.get_pan_matrix_4x3(0.0, 0.135);
             let final_matrix = Camera::combine_matrices_4x3(vec![
                 transformation_matrix,
                 transformation_matrix_pan,
