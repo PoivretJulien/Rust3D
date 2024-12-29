@@ -2776,6 +2776,218 @@ pub mod visualization_v2 {
             }
             result
         }
+        // 4x3 matrix version of the code.
+        /// Generate a transformation matrix for the camera's movement and rotation
+        pub fn get_transformation_matrix_4x3(
+            &self,
+            forward_amount: f64,
+            yaw_angle: f64,
+            pitch_angle: f64,
+        ) -> [[f64; 3]; 4] {
+            // Step 1: Compute the forward direction vector
+            let forward = Vector3d::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .unitize_b();
+
+            // Step 2: Compute the translation vector for the camera movement
+            let translation = forward * (-forward_amount);
+
+            // Step 3: Compute rotation matrices
+            // Yaw (rotation around the Y-axis)
+            let yaw_cos = yaw_angle.to_radians().cos();
+            let yaw_sin = yaw_angle.to_radians().sin();
+            let yaw_matrix = [
+                [yaw_cos, 0.0, yaw_sin],
+                [0.0, 1.0, 0.0],
+                [-yaw_sin, 0.0, yaw_cos],
+            ];
+
+            // Pitch (rotation around the X-axis)
+            let pitch_cos = pitch_angle.to_radians().cos();
+            let pitch_sin = pitch_angle.to_radians().sin();
+            let pitch_matrix = [
+                [1.0, 0.0, 0.0],
+                [0.0, pitch_cos, -pitch_sin],
+                [0.0, pitch_sin, pitch_cos],
+            ];
+
+            // Step 4: Combine yaw and pitch into a single rotation matrix
+            let rotation_matrix = self.multiply_matrices_3x3(yaw_matrix, pitch_matrix);
+
+            // Step 5: Combine the rotation matrix and translation into a single 4x3 transformation matrix
+            [
+                [
+                    rotation_matrix[0][0],
+                    rotation_matrix[0][1],
+                    rotation_matrix[0][2],
+                ],
+                [
+                    rotation_matrix[1][0],
+                    rotation_matrix[1][1],
+                    rotation_matrix[1][2],
+                ],
+                [
+                    rotation_matrix[2][0],
+                    rotation_matrix[2][1],
+                    rotation_matrix[2][2],
+                ],
+                [
+                    translation.get_X(),
+                    translation.get_Y(),
+                    translation.get_Z(),
+                ],
+            ]
+        }
+
+        /// Apply a transformation matrix to a Vec<Point3d> and return the transformed points
+        pub fn transform_points_4x3(
+            &self,
+            points: &Vec<Point3d>,
+            transformation_matrix: [[f64; 3]; 4],
+        ) -> Vec<Point3d> {
+            points
+                .iter()
+                .map(|point| self.multiply_matrix_vector_4x3(transformation_matrix, *point))
+                .collect()
+        }
+
+        /// Apply a transformation matrix to a mutable Vec<Point3d>
+        pub fn transform_points_mut_4x3(
+            &self,
+            points: &mut Vec<Point3d>,
+            transformation_matrix: [[f64; 3]; 4],
+        ) {
+            points.iter_mut().for_each(|point| {
+                *point = self.multiply_matrix_vector_4x3(transformation_matrix, *point);
+            });
+        }
+
+        /// Utility function: Multiply two 3x3 matrices
+        fn multiply_matrices_3x3(&self, a: [[f64; 3]; 3], b: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
+            let mut result = [[0.0; 3]; 3];
+            for i in 0..3 {
+                for j in 0..3 {
+                    result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+                }
+            }
+            result
+        }
+
+        /// Helper function: Multiply a 4x3 matrix with a Point3d
+        fn multiply_matrix_vector_4x3(&self, matrix: [[f64; 3]; 4], point: Point3d) -> Point3d {
+            Point3d::new(
+                matrix[0][0] * point.X
+                    + matrix[0][1] * point.Y
+                    + matrix[0][2] * point.Z
+                    + matrix[3][0],
+                matrix[1][0] * point.X
+                    + matrix[1][1] * point.Y
+                    + matrix[1][2] * point.Z
+                    + matrix[3][1],
+                matrix[2][0] * point.X
+                    + matrix[2][1] * point.Y
+                    + matrix[2][2] * point.Z
+                    + matrix[3][2],
+            )
+        }
+
+        /// Generate a panning transformation matrix
+        pub fn get_pan_matrix_4x3(&self, right_amount: f64, up_amount: f64) -> [[f64; 3]; 4] {
+            // Step 1: Compute the forward direction vector
+            let forward = Vector3d::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .unitize_b();
+
+            // Step 2: Compute the right direction vector (cross product of forward and up)
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+
+            // Step 3: Compute the true up direction (orthogonalized)
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+
+            // Step 4: Compute the translation
+            let pan_translation = right * (-right_amount) + (up * up_amount);
+
+            // Step 5: Construct the 4x3 pan matrix
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [
+                    pan_translation.get_X(),
+                    pan_translation.get_Y(),
+                    pan_translation.get_Z(),
+                ],
+            ]
+        }
+
+        /// Apply panning to a set of 3D points
+        pub fn pan_points_4x3(
+            &self,
+            points: &Vec<Point3d>,
+            right_amount: f64,
+            up_amount: f64,
+        ) -> Vec<Point3d> {
+            let pan_matrix = self.get_pan_matrix_4x3(right_amount, up_amount);
+            points
+                .iter()
+                .map(|point| self.multiply_matrix_vector_4x3(pan_matrix, *point))
+                .collect()
+        }
+
+        /// Apply panning to a set of mutable 3D points
+        pub fn pan_points_mut_4x3(
+            &self,
+            points: &mut Vec<Point3d>,
+            right_amount: f64,
+            up_amount: f64,
+        ) {
+            let pan_matrix = self.get_pan_matrix_4x3(right_amount, up_amount);
+            points.iter_mut().for_each(|point| {
+                *point = self.multiply_matrix_vector_4x3(pan_matrix, *point);
+            });
+        }
+        /// Combine multiple transformation matrices into one
+        /// They have to be called from a stack vector using the macro `vec!` for that.
+        pub fn combine_matrices_4x3(matrices: Vec<[[f64; 3]; 4]>) -> [[f64; 3]; 4] {
+            // Start with the identity matrix
+            let mut result = [
+                [1.0, 0.0, 0.0], // First row
+                [0.0, 1.0, 0.0], // Second row
+                [0.0, 0.0, 1.0], // Third row
+                [0.0, 0.0, 0.0], // Translation row
+            ];
+
+            // Multiply all matrices together in sequence
+            for matrix in matrices {
+                result = Self::multiply_matrices_4x3(result, matrix);
+            }
+
+            result
+        }
+        /// Helper function to multiply two 4x3 matrices
+        pub fn multiply_matrices_4x3(a: [[f64; 3]; 4], b: [[f64; 3]; 4]) -> [[f64; 3]; 4] {
+            let mut result = [[0.0; 3]; 4];
+
+            // Multiply the rotation part (top 3x3 part of the matrices)
+            for i in 0..3 {
+                for j in 0..3 {
+                    result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+                }
+            }
+
+            // Multiply the translation part
+            for i in 0..3 {
+                result[3][i] = a[3][0] * b[0][i] + a[3][1] * b[1][i] + a[3][2] * b[2][i] + b[3][i];
+            }
+
+            result
+        }
     }
 }
 /*
