@@ -459,11 +459,11 @@ pub mod geometry {
         /// Construct a CPlane from 3 points.
         /// # Arguments
         /// - &Point3d origin of the plane.
-        /// - &Point3d pt_x aligned x_axis direction.
-        /// - &Point3d pt_y aligned y_axis direction.
+        /// - &Point3d pt_x aligned on the x_axis direction.
+        /// - &Point3d pt_y oriented on the y_axis direction.
         /// # Returns
         /// return a CPlane with the normal orthogonalized from the three points.
-        pub fn new_origin_x_y_aligned(origin: &Point3d,pt_x: &Point3d, pt_y:&Point3d) -> Self {
+        pub fn new_origin_x_aligned_y_oriented(origin: &Point3d,pt_x: &Point3d, pt_y:&Point3d) -> Self {
             // Define (u,v) Vector3d(s).
             let x_axis = ((*pt_x) - (*origin)).unitize_b();
             let mut y_axis = ((*pt_y) - (*origin)).unitize_b();
