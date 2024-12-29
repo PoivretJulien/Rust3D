@@ -437,7 +437,7 @@ pub mod geometry {
         /// - a &Vector3d x_axis direction,
         /// - a &Vector3d normal of the plane.
         /// # Returns
-        /// return always a plane oriented from the x_axis input Vector3d but locked 
+        /// return always a plane oriented with the x_axis input Vector3d but locked 
         /// at 90 deg from the plane normal Vector3d (Plane orthogonalization process).
         /// (the normal vector is the reference input for orthogonalization)
         /// normal vector influence light so might be considered first.

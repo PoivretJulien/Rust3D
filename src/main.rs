@@ -8,6 +8,7 @@ use rust3d::utillity::degree_to_radians;
 use rust3d::visualization::coloring::Color;
 use rust3d::visualization::redering_object::Mesh;
 use rust3d::visualization_v2::Camera;
+use std::time::Duration;
 
 fn main() {
     /*
@@ -22,13 +23,13 @@ fn main() {
     - it's high level features language with low a level focus and optimization.
     */
     println!("\x1b[2J"); // Clear console.
-    const WIDTH: usize = 1470 / 3; // screen pixel width.
-    const HEIGHT: usize = 956 / 3; // screen pixel height.
+    const WIDTH: usize = 1470 / 1; // screen pixel width.
+    const HEIGHT: usize = 956 / 1; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
     const DISPLAY_CIRCLE: bool = true;
-
+    let mut pause: bool = false;
     let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
     let mut import_obj = Vec::new();
     ///////////Triangle test/////////////////
@@ -80,10 +81,8 @@ fn main() {
     if DISPLAY_CIRCLE {
         circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
         for i in 0..circle.len() {
-            circle[i] = plane.point_on_plane_uv(
-                circle[i].X * DISPLAY_RATIO,
-                circle[i].Y * DISPLAY_RATIO,
-            );
+            circle[i] =
+                plane.point_on_plane_uv(circle[i].X * DISPLAY_RATIO, circle[i].Y * DISPLAY_RATIO);
             // unsafe {
             //     // Evaluate as safe in that context (no concurrent access).
             //     let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
@@ -109,7 +108,10 @@ fn main() {
         100.0, // Far clip plane
     );
     let step = degree_to_radians(&ANGLE_STEP);
+    let target_frame_time = Duration::from_millis(1000/60); //limit 60 fps (for laptop
+                                                                      //battery).
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        let now = std::time::Instant::now(); // record time  at t.
         // First format the screen background (0x0 = Black).
         for pixel in buffer.iter_mut() {
             *pixel = BACK_GROUND_COLOR; // set a dark gray color as background.
@@ -145,7 +147,7 @@ fn main() {
          *    local space.
          */
         /////////////////////////////////////////////////////////////////////////
-        const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
+        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
         let mut result_tri = Vec::new();
@@ -235,7 +237,23 @@ fn main() {
             &text_height,
             &color,
         );
-        // Update buffer.
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); // update the buffer
+        if window.is_key_down(Key::P) {
+            pause = true;
+        }
+        if pause {
+            //window.update();
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); 
+            std::thread::sleep(Duration::from_secs(3)); // pause for 3 secs 
+            pause = false;
+        } else {
+            let elapsed = now.duration_since(now);
+            // limit at 60 fps.
+            // if computation is less than 16ms then sleep for: (1000ms/60) - elapsed.
+            if elapsed < target_frame_time{
+                std::thread::sleep(target_frame_time -elapsed);
+            }
+            // Update buffer.
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap(); 
+        }
     }
 }
