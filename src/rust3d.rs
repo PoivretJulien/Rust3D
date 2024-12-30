@@ -1397,6 +1397,31 @@ pub mod visualization {
                 Self { v0, v1, v2, normal }
             }
 
+            /// Update triangle normals
+            /// - when Mesh is scaled in a non uniform way.
+            /// - when Mesh is ratated.
+            pub fn recompute_triangle_normal(&mut self){
+                // Represent edge 1 by a vector.
+                let edge1 = Vertex {
+                    x: self.v1.x - self.v0.x,
+                    y: self.v1.y - self.v0.y,
+                    z: self.v1.z - self.v0.z,
+                };
+                
+                // Make Vector of edge 2.
+                let edge2 = Vertex {
+                    x: self.v2.x - self.v0.x,
+                    y: self.v2.y - self.v0.y,
+                    z: self.v2.z - self.v0.z,
+                };
+
+                self.normal = Vertex::new(
+                    edge1.y * edge2.z - edge1.z * edge2.y,
+                    edge1.z * edge2.x - edge1.x * edge2.z,
+                    edge1.x * edge2.y - edge1.y * edge2.x,
+                );
+             }
+
             // Constructor with precomputed normal
             pub fn with_normal(v0: Vertex, v1: Vertex, v2: Vertex, normal: Vertex) -> Self {
                 Self { v0, v1, v2, normal }
@@ -1519,6 +1544,14 @@ pub mod visualization {
                     vertices,
                     triangles,
                 }
+            }
+            /// Update the whole mesh triangles normals.
+            /// - when scaled in a non uniform way.
+            /// - when rotated.
+            /// - this is multitreaded.
+            pub fn update_mesh_normals(&mut self){
+            self.triangles.par_iter_mut()
+                .for_each(|tri| tri.recompute_triangle_normal());
             }
 
             /// Test if a mesh is closed (watertight).
