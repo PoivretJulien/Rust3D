@@ -1629,6 +1629,50 @@ pub mod visualization_v3 {
                 *point = self.multiply_matrix_vector_4x3(transformation_matrix, *point);
             });
         }
+        pub fn rotation_matrix_from_angles_4x3(
+            &self,
+            x_angle: f64,
+            y_angle: f64,
+            z_angle: f64,
+        ) -> [[f64; 3]; 4] {
+            // Convert angles from degrees to radians
+            let x_rad = x_angle.to_radians();
+            let y_rad = y_angle.to_radians();
+            let z_rad = z_angle.to_radians();
+
+            // Rotation matrix around the X-axis
+            let rotation_x = [
+                [1.0, 0.0, 0.0],
+                [0.0, x_rad.cos(), -x_rad.sin()],
+                [0.0, x_rad.sin(), x_rad.cos()],
+            ];
+
+            // Rotation matrix around the Y-axis
+            let rotation_y = [
+                [y_rad.cos(), 0.0, y_rad.sin()],
+                [0.0, 1.0, 0.0],
+                [-y_rad.sin(), 0.0, y_rad.cos()],
+            ];
+
+            // Rotation matrix around the Z-axis
+            let rotation_z = [
+                [z_rad.cos(), -z_rad.sin(), 0.0],
+                [z_rad.sin(), z_rad.cos(), 0.0],
+                [0.0, 0.0, 1.0],
+            ];
+
+            // Combine the rotation matrices: R = Rz * Ry * Rx
+            let rotation_xy = self.multiply_matrices_3x3(rotation_y, rotation_x);
+            let rotation_xyz = self.multiply_matrices_3x3(rotation_z, rotation_xy);
+
+            // Embed the 3x3 matrix into a 4x3 matrix
+            [
+                [rotation_xyz[0][0], rotation_xyz[0][1], rotation_xyz[0][2]],
+                [rotation_xyz[1][0], rotation_xyz[1][1], rotation_xyz[1][2]],
+                [rotation_xyz[2][0], rotation_xyz[2][1], rotation_xyz[2][2]],
+                [0.0, 0.0, 0.0], // Fourth row is zero for a 4x3 matrix
+            ]
+        }
 
         /// Utility function: Multiply two 3x3 matrices
         fn multiply_matrices_3x3(&self, a: [[f64; 3]; 3], b: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
@@ -1749,6 +1793,304 @@ pub mod visualization_v3 {
             }
 
             result
+        }
+    }
+    pub mod coloring {
+        /*
+         * Color struct hold the RGB values in 3, 8 bit values and the total
+         * absolute color value in a single u32 bit value
+         * Most of the time expressed in Hexadecimal OxFFFFFFFF (4x8bit)
+         * by other API.
+         * - the absolute value and back ground value are optionals
+         *   and can be cached for accelerated process.
+         * - alpha is set to 1.0 (opaque) if not needed.
+         * - every components are automatically cached and updated if
+         *   they are claimed by runtime.
+         * - everything is always kept Updated since structure is private
+         *   and use only getter and setter as unique way to update
+         *   the color description.
+         * - alpha can be removed and RGB values are restored to the original
+         *   opaque colors.
+         * - draw back: it's a low level implementation and so alpha is always
+         *   relative to a defined back ground color on function call.
+         * */
+        #[derive(Debug, Clone, Copy)]
+        pub struct Color {
+            red: u8,
+            green: u8,
+            blue: u8,
+            alpha: f32,
+            value: Option<u32>,
+            bg_color: Option<u32>,
+            original_value: Option<u32>,
+        }
+        impl Color {
+            // Constructor A (initially without caching).
+            pub fn new_rgb_fast(red: u8, green: u8, blue: u8) -> Self {
+                Self {
+                    red,
+                    green,
+                    blue,
+                    alpha: 1.0,
+                    value: None,
+                    bg_color: None,
+                    original_value: None,
+                }
+            }
+            // Constructor B with cached absolute value.
+            pub fn new_rgb(self, red: u8, green: u8, blue: u8) -> Self {
+                let absolute_color = self.rgb_color(&red, &green, &blue);
+                Self {
+                    red,
+                    green,
+                    blue,
+                    alpha: 1.0,
+                    value: Some(absolute_color),
+                    bg_color: None,
+                    original_value: None,
+                }
+            }
+            // Constructor C (with alpha).
+            pub fn new_rgb_a(
+                self,
+                red: u8,
+                green: u8,
+                blue: u8,
+                mut alpha: f32,
+                background_color: u32,
+            ) -> Self {
+                if alpha < 1.0 {
+                    let absolute_color =
+                        self.rgba_color(&red, &green, &blue, &mut alpha, &background_color);
+                    Self {
+                        red: ((absolute_color >> 16) & 0xFF) as u8,
+                        green: ((absolute_color >> 8) & 0xFF) as u8,
+                        blue: (absolute_color & 0xFF) as u8,
+                        alpha,
+                        value: Some(absolute_color),
+                        bg_color: Some(background_color),
+                        original_value: Some(
+                            (red as u32) << 16 | ((green as u32) << 8) | (blue as u32),
+                        ),
+                    }
+                } else {
+                    Self {
+                        red,
+                        green,
+                        blue,
+                        alpha,
+                        value: Some((red as u32) << 16 | ((green as u32) << 8) | (blue as u32)),
+                        bg_color: None,
+                        original_value: None,
+                    }
+                }
+            }
+
+            /// Get absolute the absolute color value in u32.
+            /// - compute & update alpha channel if nothing is cached..
+            pub fn get_value(&mut self) -> u32 {
+                if let Some(value) = self.value {
+                    value // return value if cached.
+                } else {
+                    if self.alpha < 1.0 {
+                        // Update and computed absolute color value from non opaque alpha
+                        self.value = Some(self.rgba_color(
+                            &self.red,
+                            &self.green,
+                            &self.blue,
+                            &mut self.alpha,
+                            &self.bg_color.unwrap(),
+                        ));
+                        // Backup original value.
+                        self.original_value = Some(
+                            (self.red as u32) << 16
+                                | ((self.green as u32) << 8)
+                                | (self.blue as u32),
+                        );
+                        // Update RGB description components from updated absolute value.
+                        self.red = ((self.value.unwrap() >> 16) & 0xFF) as u8;
+                        self.green = ((self.value.unwrap() >> 8) & 0xFF) as u8;
+                        self.blue = ((self.value.unwrap()) & 0xFF) as u8;
+                        self.value.unwrap() // return the computed absolute value.
+                    } else {
+                        // Update absolute value from RGB.
+                        self.value = Some(
+                            (self.red as u32) << 16
+                                | ((self.green as u32) << 8)
+                                | (self.blue as u32),
+                        );
+                        self.value.unwrap() // Return absolute 32bit value.
+                    }
+                }
+            }
+
+            /// Return Alpha Channel.
+            pub fn get_alpha(self) -> f32 {
+                self.alpha
+            }
+
+            /// Return Red component of value.
+            pub fn get_red(self) -> u8 {
+                self.red
+            }
+
+            /// Get Green.
+            pub fn get_green(self) -> u8 {
+                self.green
+            }
+
+            /// Get Blue.
+            pub fn get_blue(self) -> u8 {
+                self.blue
+            }
+
+            /// Mutate Color and Compute alpha from given background color.
+            pub fn set_from_rgb_a_bg_components(
+                &mut self,
+                red: u8,
+                green: u8,
+                blue: u8,
+                mut alpha: f32,
+                bg_color: u32,
+            ) {
+                // Compute Alpha channel
+                self.value = Some(self.rgba_color(&red, &green, &blue, &mut alpha, &bg_color));
+                // Backup Original Value.
+                self.original_value =
+                    Some((self.red as u32) >> 16 | (self.green as u32) >> 8 | (self.green as u32));
+                // Update RGBA_BG.
+                self.red = red;
+                self.green = green;
+                self.blue = blue;
+                self.alpha = alpha;
+                self.bg_color = Some(bg_color);
+            }
+
+            /// Remove alpha channel.
+            pub fn set_opaque(&mut self) {
+                if self.alpha < 1.0 {
+                    self.red = ((self.original_value.unwrap() >> 16) & 0xFF) as u8;
+                    self.green = ((self.original_value.unwrap() >> 8) & 0xFF) as u8;
+                    self.blue = ((self.original_value.unwrap()) & 0xFF) as u8;
+                    self.alpha = 1.0;
+                    self.original_value = None;
+                    self.value = Some(
+                        (self.red as u32) >> 16 | (self.green as u32) >> 8 | (self.green as u32),
+                    );
+                }
+            }
+
+            /// Mutate internals components and reset alpha state to opaque.
+            pub fn set_from_absolute_value(&mut self, value: u32) {
+                self.red = ((value >> 16) & 0xFF) as u8;
+                self.green = ((value >> 8) & 0xFF) as u8;
+                self.blue = (value & 0xFF) as u8;
+                self.alpha = 1.0;
+                self.original_value = None;
+                self.value =
+                    Some((self.red as u32) >> 16 | (self.green as u32) >> 8 | (self.green as u32));
+            }
+
+            /// Convert an rgb value to minifb 0rgb standard.
+            fn rgb_color(self, red: &u8, green: &u8, blue: &u8) -> u32 {
+                (*red as u32) << 16 | (*green as u32) << 8 | (*blue as u32)
+            }
+
+            /// Blend rgb value with alpha to back ground color.
+            /// # Arguments
+            /// - red u8
+            /// - green u8
+            /// - blue u8
+            /// - alpha f32 from 0.0 (transparent) to 1.0 (opaque)
+            /// - Background_color u32 (color to blend with)
+            /// # Returns
+            /// return an RGB color blended with the background color with the alpha from 0.0 to 1.0.
+            fn rgba_color(
+                self,
+                red: &u8,
+                green: &u8,
+                blue: &u8,
+                alpha: &mut f32,
+                bg_color: &u32,
+            ) -> u32 {
+                // Ensure alpha is clamped between 0.0 and 1.0
+                (*alpha) = (*alpha).clamp(0.0, 1.0);
+
+                //TODO: a struct for Background color may be usefull
+                // for caching in u8 form ....
+                // Extract background RGB components as f32.
+                let bg_r = ((bg_color >> 16) & 0xFF) as f32;
+                let bg_g = ((bg_color >> 8) & 0xFF) as f32;
+                let bg_b = (bg_color & 0xFF) as f32;
+
+                // Blend each channel
+                let blended_r = ((*alpha) * (*red) as f32 + (1.0 - (*alpha)) * bg_r).round() as u32;
+                let blended_g =
+                    ((*alpha) * (*green) as f32 + (1.0 - (*alpha)) * bg_g).round() as u32;
+                let blended_b =
+                    ((*alpha) * (*blue) as f32 + (1.0 - (*alpha)) * bg_b).round() as u32;
+                (blended_r << 16) | (blended_g << 8) | blended_b
+            }
+
+            /// Public and static version of the private method.  
+            /// Convert R,G,B to an absolute value u32.
+            pub fn convert_rgb_color(red: u8, green: u8, blue: u8) -> u32 {
+                (red as u32) << 16 | (green as u32) << 8 | (blue as u32)
+            }
+
+            /// Get absolute color value from RGB, alpha and Background Color chanels.
+            pub fn convert_rgba_color(
+                red: u8,
+                green: u8,
+                blue: u8,
+                mut alpha: f32,
+                bg_color: u32,
+            ) -> u32 {
+                // Ensure alpha is clamped between 0.0 and 1.0
+                alpha = alpha.clamp(0.0, 1.0);
+
+                //TODO: a struct for Background color may be usefull
+                // for caching in u8 form ....
+                // Extract background RGB components as f32.
+                let bg_r = ((bg_color >> 16) & 0xFF) as f32;
+                let bg_g = ((bg_color >> 8) & 0xFF) as f32;
+                let bg_b = (bg_color & 0xFF) as f32;
+
+                // Blend each channel
+                let blended_r = (alpha * red as f32 + (1.0 - alpha) * bg_r).round() as u32;
+                let blended_g = (alpha * green as f32 + (1.0 - alpha) * bg_g).round() as u32;
+                let blended_b = (alpha * blue as f32 + (1.0 - alpha) * bg_b).round() as u32;
+                (blended_r << 16) | (blended_g << 8) | blended_b
+            }
+
+            /// Provide a new RGB value blended in Background color from Alpha
+            /// vale 0.0 (Transparent) to 1.0 Opaque.
+            pub fn convert_rgb_with_background_and_alpha(
+                foreground: u32, // 0xRRGGBB
+                background: u32, // 0xRRGGBB
+                alpha: f32,      // Transparency: 0.0 (transparent) to 1.0 (opaque)
+            ) -> u32 {
+                // Ensure alpha is clamped between 0.0 and 1.0
+                let alpha = alpha.clamp(0.0, 1.0);
+
+                // Extract RGB components of the foreground
+                let fg_r = ((foreground >> 16) & 0xFF) as f32;
+                let fg_g = ((foreground >> 8) & 0xFF) as f32;
+                let fg_b = (foreground & 0xFF) as f32;
+
+                // Extract RGB components of the background
+                let bg_r = ((background >> 16) & 0xFF) as f32;
+                let bg_g = ((background >> 8) & 0xFF) as f32;
+                let bg_b = (background & 0xFF) as f32;
+
+                // Blend each channel
+                let blended_r = (alpha * fg_r + (1.0 - alpha) * bg_r).round() as u32;
+                let blended_g = (alpha * fg_g + (1.0 - alpha) * bg_g).round() as u32;
+                let blended_b = (alpha * fg_b + (1.0 - alpha) * bg_b).round() as u32;
+
+                // Recombine into a single u32 color
+                (blended_r << 16) | (blended_g << 8) | blended_b
+            }
         }
     }
 }

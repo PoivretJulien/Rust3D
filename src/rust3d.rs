@@ -3919,7 +3919,8 @@ mod test {
     }
     #[test]
     fn test_ray_trace_v_b() {
-        use super::visualization::redering_object::*;
+        //use super::visualization::redering_object::*;
+        use crate::display_pipe_line::redering_object::*;
 
         // Define some triangles.
         let triangles = vec![
@@ -3965,7 +3966,7 @@ mod test {
         assert!(true);
     }
 
-    use super::visualization::coloring::Color;
+    use crate::display_pipe_line::visualization_v3::coloring::Color;
     #[test]
     fn test_color() {
         let red: u8 = 20;

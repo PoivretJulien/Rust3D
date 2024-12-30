@@ -77,7 +77,6 @@ fn main() {
     let plane = CPlane::new(&plane_origin, &plane_normal);
     if DISPLAY_CIRCLE {
         preprocess_circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
-        println!("Pre Circle len : --->{}",preprocess_circle.len());
         for i in 0..preprocess_circle.len() {
             circle.push(
                 plane.point_on_plane_uv(preprocess_circle[i].X * DISPLAY_RATIO, preprocess_circle[i].Y * DISPLAY_RATIO).to_vertex());
@@ -89,7 +88,6 @@ fn main() {
             // }
         }
     }
-    println!("Circle len : --->{}",circle.len());
     ////////////////////////////////////////////////////////////////////////////
     // A simple allocated array of u32 initialized at 0
     // representing the color and the 2d position of points.
