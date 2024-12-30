@@ -352,6 +352,7 @@ pub mod redering_object {
     use std::iter::Iterator;
     use std::sync::Arc;
     use tobj;
+    use std::sync::Mutex;
 
     #[derive(Debug)]
     pub struct Mesh {
@@ -392,6 +393,30 @@ pub mod redering_object {
             }
             edge_count.values().all(|&count| count == 2)
         }
+
+        /// Test if a mesh is closed (watertight) using parallel processing.
+    pub fn is_watertight_par(&self) -> bool {
+        let edge_count = Mutex::new(HashMap::new());
+
+        // Process triangles in parallel
+        self.triangles.par_iter().for_each(|triangle| {
+            for &(start, end) in &triangle.edges() {
+                let edge = if start < end {
+                    (start, end)
+                } else {
+                    (end, start)
+                };
+
+                // Lock the mutex, update the edge count, and immediately release the lock
+                let mut map = edge_count.lock().unwrap();
+                *map.entry(edge).or_insert(0) += 1;
+            }
+        });
+
+        // Perform the final watertight check
+        let final_map = edge_count.lock().unwrap(); // Lock again to check
+        final_map.values().all(|&count| count == 2)
+    }
 
         /// Give the volume of the mesh in file system base unit.
         /// Based on divergence theorem (also known as Gauss's theorem)

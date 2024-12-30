@@ -2131,6 +2131,21 @@ mod test {
         }
     }
     #[test]
+    fn volume_mesh_water_tight_c_parrallel() {
+        let obj = Mesh::import_obj_with_normals("./geometry/non_water_tight.obj").unwrap();
+        if !obj.is_watertight_par() {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+        let obj2 = Mesh::import_obj_with_normals("./geometry/mesh_volume.obj").unwrap();
+        if obj2.is_watertight_par() {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
+    #[test]
     fn test_inside_a_mesh() {
         let obj = Mesh::import_obj_with_normals("./geometry/torus.obj").unwrap();
         let v1_to_test = Vertex::new(0.0, 0.0, 0.0); // should be outside the torus.
