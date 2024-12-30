@@ -26,8 +26,8 @@ fn main() {
     - it's high level features language with low a level focus and optimization.
     */
     println!("\x1b[2J"); // Clear console.
-    const WIDTH: usize = 1470 / 3; // screen pixel width.
-    const HEIGHT: usize = 956 / 3; // screen pixel height.
+    const WIDTH: usize = 1470 / 1; // screen pixel width.
+    const HEIGHT: usize = 956 / 1; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
@@ -142,7 +142,7 @@ fn main() {
          *    local space.
          */
         /////////////////////////////////////////////////////////////////////////
-        const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
+        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
         let mut result_tri = Vec::new();
@@ -165,9 +165,9 @@ fn main() {
             ///////////////////////////////////////////////////////////
 
             // Transform the points via transformation matrix.
-            let t1 = camera.transform_points_4x3(&import_obj, final_matrix);
-            let t2 = camera.transform_points_4x3(&circle, final_matrix);
-            let t3 = camera.transform_points_4x3(&tri, final_matrix);
+            let t1 = camera.transform_points_4x3_par(&import_obj, final_matrix);
+            let t2 = camera.transform_points_4x3_par(&circle, final_matrix);
+            let t3 = camera.transform_points_4x3_par(&tri, final_matrix);
 
             // Raytrace //////////
             //-------------------
