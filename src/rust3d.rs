@@ -7,6 +7,8 @@ pub mod geometry {
     // bound to Vector3d structure
     // for standard operator processing.
     use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
+    use crate::display_pipe_line::redering_object::Vertex; 
+
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Point3d {
@@ -24,29 +26,6 @@ pub mod geometry {
         ///  a new Point3d from x,y,z values.
         pub fn new(x: f64, y: f64, z: f64) -> Self {
             Self { X: x, Y: y, Z: z }
-        }
-
-        /// Compute the magnitude of the vector
-        pub fn magnitude(&self) -> f64 {
-            (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt()
-        }
-        /// Normalize the vector
-        pub fn normalize(&self) -> Self {
-            let mag = self.magnitude();
-            if mag > std::f64::EPSILON {
-                Point3d::new(self.X / mag, self.Y / mag, self.Z / mag)
-            } else {
-                Point3d::new(0.0, 0.0, 0.0)
-            }
-        }
-
-        /// Compute the cross product of two vectors
-        pub fn cross(&self, other: &Point3d) -> Point3d {
-            Point3d {
-                X: self.Y * other.Z - self.Z * other.Y,
-                Y: self.Z * other.X - self.X * other.Z,
-                Z: self.X * other.Y - self.Y * other.X,
-            }
         }
 
         /// Test if a point is on a plane.
@@ -118,6 +97,42 @@ pub mod geometry {
             self.Z *= scalar;
         }
     }
+    // the following implementation for POint3d is when Point3d is use as ambigius 
+    // representation of a Vector3d in order to avoid runtime penalty.
+    // - using a Vertex will full fill the same purpose in a more idiomatic way.
+    impl Point3d {
+        /// Compute the magnitude of the point vector
+        pub fn magnitude(&self) -> f64 {
+            (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt()
+        }
+
+        /// Normalize the the point as a vector
+        /// (equivalent to unitize_b for Vector3d)
+        /// this remove embiguity when point 3d is use as vector 
+        /// ( to avoid sqrt penalty on magnetide creation when using Vector3d )
+        /// - it's recomended to use Vertex for that.
+        pub fn normalize(&self) -> Self {
+            let mag = self.magnitude();
+            if mag > std::f64::EPSILON {
+                Point3d::new(self.X / mag, self.Y / mag, self.Z / mag)
+            } else {
+                Point3d::new(0.0, 0.0, 0.0)
+            }
+        }
+
+        /// Compute the cross product of two vectors
+        pub fn cross(&self, other: &Point3d) -> Point3d {
+            Point3d {
+                X: self.Y * other.Z - self.Z * other.Y,
+                Y: self.Z * other.X - self.X * other.Z,
+                Z: self.X * other.Y - self.Y * other.X,
+            }
+        }
+        /// Convert a Point3d to Vertex.
+        pub fn to_vertex(&self)->Vertex{
+            Vertex::new(self.X ,self.Y, self.Z)
+        }
+    }
 
     // Vector 3d definition.
     #[allow(non_snake_case)]
@@ -181,7 +196,10 @@ pub mod geometry {
         fn update_length(&mut self) {
             self.Length = (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt();
         }
-
+        /// Convert to a Vertex
+        pub fn to_vertex(&self)->Vertex{
+            Vertex::new(self.X,self.Y,self.Z)
+        }
         /// static way to compute vector length.
         /// # Arguments
         /// x:f 64, y:f 64, z:f 64
@@ -251,6 +269,7 @@ pub mod geometry {
                 Vector3d::new(0.0, 0.0, 0.0)
             }
         }
+
 
         /// Test if a vector point to the direction of an other vector.
         /// # Arguments
@@ -1545,6 +1564,7 @@ pub mod visualization {
                     triangles,
                 }
             }
+
             /// Update the whole mesh triangles normals.
             /// - when scaled in a non uniform way.
             /// - when rotated.

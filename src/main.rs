@@ -9,6 +9,7 @@ use rust3d::visualization::coloring::Color;
 use rust3d::visualization::redering_object::Mesh;
 use rust3d::visualization_v2::Camera;
 use std::time::Duration;
+mod display_pipe_line;
 
 fn main() {
     /*
@@ -109,10 +110,9 @@ fn main() {
     );
     let step = degree_to_radians(&ANGLE_STEP);
     let target_frame_time = Duration::from_millis(1000 / 60); //limit 60 fps (for laptop
-                                                              //battery).
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now(); // record time  at t.
-                                             // First format the screen background (0x0 = Black).
+        // First format the screen background (0x0 = Black).
         for pixel in buffer.iter_mut() {
             *pixel = BACK_GROUND_COLOR; // set a dark gray color as background.
         }
@@ -147,7 +147,7 @@ fn main() {
          *    local space.
          */
         /////////////////////////////////////////////////////////////////////////
-        const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
+        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
         let mut result_tri = Vec::new();
@@ -232,7 +232,7 @@ fn main() {
             &x,
             &y,
             format!(
-                "Visualisation system v2 :{0:?}",
+                "Visualisation system v2.3 :{0:?}",
                 std::time::Instant::now().to_owned()
             )
             .as_str(),
