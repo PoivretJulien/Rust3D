@@ -1,13 +1,16 @@
 use minifb::{Key, Window, WindowOptions};
 mod models_3d;
 mod rust3d;
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::iter::ParallelIterator;
 use rust3d::draw::*;
 use rust3d::geometry::*;
 use rust3d::transformation::rotate_z;
+use rust3d::transformation::rotate_z_vertex;
 use rust3d::utillity::degree_to_radians;
 use rust3d::visualization::coloring::Color;
-use rust3d::visualization::redering_object::Mesh;
-use rust3d::visualization_v2::Camera;
+use display_pipe_line::visualization_v3::Camera;
+use display_pipe_line::redering_object::{Mesh,Vertex};
 use std::time::Duration;
 mod display_pipe_line;
 
@@ -31,18 +34,18 @@ fn main() {
     const ANGLE_STEP: f64 = 3.0;
     const DISPLAY_CIRCLE: bool = true;
     let mut pause: bool = false;
-    let z_offset = Vector3d::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
+    let z_offset = Vertex::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
     let mut import_obj = Vec::new();
     ///////////Triangle test/////////////////
     let mut tri = vec![
-        (Point3d::new(0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
-        (Point3d::new(-0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
-        (Point3d::new(0.0, 0.0, 0.12) + z_offset) * DISPLAY_RATIO,
+        (Vertex::new(0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
+        (Vertex::new(-0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
+        (Vertex::new(0.0, 0.0, 0.12) + z_offset) * DISPLAY_RATIO,
     ];
     ////////////////////////////////////////
 
     /////////IMPORT MESH (.obj file)////////////////////////////////////////////
-    if let Some(mesh) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj").ok() {
+    if let Some(mut mesh) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj").ok() {
         println!(
             "\x1b[0;0HImported: Total:({0}) Vertex(s) and ({1}) Triangle(s).",
             mesh.vertices.len(),
@@ -51,16 +54,8 @@ fn main() {
         if mesh.is_watertight() {
             println!("Volume:({0})cubic/unit(s)", mesh.compute_volume());
         }
-        /*
-            for now switch the mesh vertices to the CAD Point3d format CAD of
-            the api instead of Vertex (designed for the 3d display engine)
-            (this is going to change very soon).
-        */
-        for vertex in mesh.vertices {
-            // Center and scale the Cloud of point.
-            import_obj
-                .push((Point3d::new(vertex.x, vertex.y, vertex.z) + z_offset) * DISPLAY_RATIO);
-        }
+        mesh.vertices.par_iter_mut().for_each(|v| *v = ((*v) + z_offset) * DISPLAY_RATIO);
+        import_obj = mesh.vertices;
     }
     ////////////////////////////////////////////////////////////////////////////
     // Init a widows 2D mini buffer class.
@@ -75,15 +70,17 @@ fn main() {
         panic!("{}", e);
     });
     //// init a Circle representation on a CPlane.//////////////////////////////
+    let mut preprocess_circle = Vec::new(); // since draw_3d_circle produce Point3d.
     let mut circle = Vec::new();
     let plane_normal = Vector3d::new(0.2, -0.2, 0.8);
     let plane_origin = Point3d::new(0.0, 0.0, 0.15 * DISPLAY_RATIO);
     let plane = CPlane::new(&plane_origin, &plane_normal);
     if DISPLAY_CIRCLE {
-        circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
-        for i in 0..circle.len() {
-            circle[i] =
-                plane.point_on_plane_uv(circle[i].X * DISPLAY_RATIO, circle[i].Y * DISPLAY_RATIO);
+        preprocess_circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
+        println!("Pre Circle len : --->{}",preprocess_circle.len());
+        for i in 0..preprocess_circle.len() {
+            circle.push(
+                plane.point_on_plane_uv(preprocess_circle[i].X * DISPLAY_RATIO, preprocess_circle[i].Y * DISPLAY_RATIO).to_vertex());
             // unsafe {
             //     // Evaluate as safe in that context (no concurrent access).
             //     let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
@@ -92,6 +89,7 @@ fn main() {
             // }
         }
     }
+    println!("Circle len : --->{}",circle.len());
     ////////////////////////////////////////////////////////////////////////////
     // A simple allocated array of u32 initialized at 0
     // representing the color and the 2d position of points.
@@ -121,20 +119,20 @@ fn main() {
         if DISPLAY_CIRCLE {
             index = 0;
             while index < circle.len() {
-                circle[index] = rotate_z(circle[index], step);
+                circle[index] = rotate_z_vertex(circle[index], step);
                 index += 1;
             }
         }
         ///// Compute Vertex Rotation ./////////////////////////////////////////
         index = 0; // reset indexer.
         while index < import_obj.len() {
-            import_obj[index] = rotate_z(import_obj[index], step);
+            import_obj[index] = rotate_z_vertex(import_obj[index], step);
             index += 1;
         }
         //  rotate triangle.
-        tri[0] = rotate_z(tri[0], step);
-        tri[1] = rotate_z(tri[1], step);
-        tri[2] = rotate_z(tri[2], step);
+        tri[0] = rotate_z_vertex(tri[0], step);
+        tri[1] = rotate_z_vertex(tri[1], step);
+        tri[2] = rotate_z_vertex(tri[2], step);
         /////////////////////////////////////////////////////////////////////////
         /*
          *    notes:
@@ -147,7 +145,7 @@ fn main() {
          *    local space.
          */
         /////////////////////////////////////////////////////////////////////////
-        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
+        const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
         let mut result_tri = Vec::new();
@@ -232,7 +230,7 @@ fn main() {
             &x,
             &y,
             format!(
-                "Visualisation system v2.3 :{0:?}",
+                "Visualisation system v3 :{0:?}",
                 std::time::Instant::now().to_owned()
             )
             .as_str(),

@@ -3205,8 +3205,8 @@ pub mod visualization_v2 {
  *  of Point3d from world axis and Angles.
  */
 pub mod transformation {
-
     use super::geometry::Point3d;
+    use crate::display_pipe_line::redering_object::Vertex;
     /// Rotate the point from Y world axis.
     /// # Arguments
     /// Point3d to transform and angle in radian (in f64)
@@ -3221,6 +3221,15 @@ pub mod transformation {
             Z: point.X * sin_theta + point.Z * cos_theta,
         }
     }
+    pub fn rotate_y_vertex(point: Vertex, angle: f64) -> Vertex {
+        let cos_theta = angle.cos();
+        let sin_theta = angle.sin();
+        Vertex {
+            x: point.x * cos_theta - point.z * sin_theta,
+            y: point.y,
+            z: point.x * sin_theta + point.z * cos_theta,
+        }
+    }
 
     pub fn rotate_x(point: Point3d, angle: f64) -> Point3d {
         let cos_theta = angle.cos();
@@ -3231,7 +3240,15 @@ pub mod transformation {
             Z: point.Y * sin_theta + point.Z * cos_theta,
         }
     }
-
+    pub fn rotate_x_vertex(point: Vertex, angle: f64) -> Vertex{
+        let cos_theta = angle.cos();
+        let sin_theta = angle.sin();
+        Vertex {
+            x: point.x,
+            y: point.y * cos_theta - point.z * sin_theta,
+            z: point.y * sin_theta + point.z * cos_theta,
+        }
+    }
     pub fn rotate_z(point: Point3d, angle: f64) -> Point3d {
         let cos_theta = angle.cos();
         let sin_theta = angle.sin();
@@ -3239,6 +3256,15 @@ pub mod transformation {
             X: point.X * cos_theta - point.Y * sin_theta,
             Y: point.X * sin_theta + point.Y * cos_theta,
             Z: point.Z,
+        }
+    }
+    pub fn rotate_z_vertex(point: Vertex, angle: f64) -> Vertex {
+        let cos_theta = angle.cos();
+        let sin_theta = angle.sin();
+        Vertex {
+            x: point.x * cos_theta - point.y * sin_theta,
+            y: point.x * sin_theta + point.y * cos_theta,
+            z: point.z,
         }
     }
 
