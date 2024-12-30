@@ -1399,7 +1399,7 @@ pub mod visualization {
 
             /// Update triangle normals
             /// - when Mesh is scaled in a non uniform way.
-            /// - when Mesh is ratated.
+            /// - when Mesh is rotated.
             pub fn recompute_triangle_normal(&mut self){
                 // Represent edge 1 by a vector.
                 let edge1 = Vertex {
