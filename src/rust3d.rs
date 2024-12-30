@@ -341,6 +341,7 @@ pub mod geometry {
         }
 
         /// Rotate a vector around an axis using Rodrigues' rotation formula.
+        /// input angle is in radians.
         pub fn rotate_around_axis(self, axis: &Vector3d, angle: f64) -> Vector3d {
             let unit_axis = (*axis).unitize_b();
             let cos_theta = angle.cos();
