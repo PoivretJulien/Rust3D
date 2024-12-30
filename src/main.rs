@@ -1,18 +1,17 @@
 use minifb::{Key, Window, WindowOptions};
 mod models_3d;
 mod rust3d;
+mod display_pipe_line;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rust3d::draw::*;
 use rust3d::geometry::*;
-use rust3d::transformation::rotate_z;
 use rust3d::transformation::rotate_z_vertex;
 use rust3d::utillity::degree_to_radians;
-use rust3d::visualization::coloring::Color;
+use display_pipe_line::visualization_v3::coloring::Color;
 use display_pipe_line::visualization_v3::Camera;
 use display_pipe_line::redering_object::{Mesh,Vertex};
 use std::time::Duration;
-mod display_pipe_line;
 
 fn main() {
     /*

@@ -1036,7 +1036,7 @@ pub mod intersection {
  *  on simple 2D screen via projection matrix honestly for now it's kind of
  *  a magic black box for me but let's refine the analysis.
  */
-pub mod visualization {
+pub mod visualization_disabled {
 
     use super::geometry::{Point3d, Vector3d};
 
@@ -2573,7 +2573,7 @@ pub mod visualization {
 
 // Visualization v2.0 which take care of the depth for Z buffer
 // parralelisation for performances and some caching optimizations.
-pub mod visualization_v2 {
+pub mod visualization_v2_disabled {
     use super::geometry::{Point3d, Vector3d};
 
     pub struct Camera {
@@ -4066,7 +4066,7 @@ mod test {
         }
     }
 
-    use super::visualization::redering_object::{Triangle, Vertex};
+    use crate::display_pipe_line::redering_object::{Triangle, Vertex,Mesh};
     #[test]
     fn test_triangle_area() {
         // The following Triangle is flat in XY plane.
@@ -4113,7 +4113,6 @@ mod test {
             assert!(false);
         }
     }
-    use super::visualization::redering_object::Mesh;
     #[test]
     fn test_inside_a_mesh() {
         let obj = Mesh::import_obj_with_normals("./geometry/torus.obj").unwrap();
