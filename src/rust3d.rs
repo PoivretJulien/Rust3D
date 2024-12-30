@@ -3,6 +3,8 @@
 // *************************************************************************
 #[allow(dead_code)]
 pub mod geometry {
+    use core::f64;
+    use std::f64::EPSILON;
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
@@ -97,7 +99,7 @@ pub mod geometry {
             self.Z *= scalar;
         }
     }
-    // the following implementation for POint3d is when Point3d is use as ambigius 
+    // the following implementation for Point3d is when Point3d is use as ambigius 
     // representation of a Vector3d in order to avoid runtime penalty.
     // - using a Vertex will full fill the same purpose in a more idiomatic way.
     impl Point3d {
@@ -328,10 +330,10 @@ pub mod geometry {
                 false
             }
         }
-
+        
         /// Test if two vectors are perpendicular.
         pub fn are_perpandicular(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
-            if (*vector_a) * (*vector_b) == 0.0 {
+            if ((*vector_a) * (*vector_b)).abs() <= EPSILON {
                 true
             } else {
                 false
@@ -1840,6 +1842,14 @@ mod test {
         } else {
             assert!(false);
         }
+    }
+    
+    #[test]
+    fn test_vector3d_are_perpendicular(){
+        let vec_a = Vector3d::new(1.3,1.55,2.4);
+        let vec_b = Vector3d::new(0.9,1.25,1.11);
+        let vec_c =  Vector3d::cross_product(&vec_a, &vec_b).unitize_b();
+        assert!(Vector3d::are_perpandicular(&vec_a, &vec_c));
     }
 
     use super::transformation::project_3d_point_on_plane;
