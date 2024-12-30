@@ -823,11 +823,11 @@ pub mod geometry {
     }
 
     #[derive(Debug, Copy, Clone)]
-    struct Quaternion {
-        w: f64,
-        x: f64,
-        y: f64,
-        z: f64,
+    pub struct Quaternion {
+        pub w: f64,
+        pub x: f64,
+        pub y: f64,
+        pub z: f64,
     }
 
     impl Quaternion {
@@ -876,7 +876,7 @@ pub mod geometry {
             Point3d::new(rotated_q.x, rotated_q.y, rotated_q.z)
         }
 
-        fn rotate_point_around_axis(point: &Point3d, axis: &Point3d, angle_rad: f64) -> Point3d {
+        pub fn rotate_point_around_axis(point: &Point3d, axis: &Point3d, angle_rad: f64) -> Point3d {
             // Normalize the axis vector
             let axis_length = (axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z).sqrt();
             let axis_normalized = Point3d::new(
