@@ -209,7 +209,7 @@ pub mod geometry {
             delta_position * (1.0 / delta_time)
         }
 
-        /// Compute acceleration vector given 
+        /// Compute acceleration vector given
         /// by two velocity vectors and a time interval.
         pub fn compute_acceleration(
             initial_velocity: &Vector3d,
@@ -819,6 +819,136 @@ pub mod geometry {
         fn mul_assign(&mut self, scalar: f64) {
             self.x *= scalar;
             self.y *= scalar;
+        }
+    }
+
+    #[derive(Debug, Copy, Clone)]
+    struct Quaternion {
+        w: f64,
+        x: f64,
+        y: f64,
+        z: f64,
+    }
+
+    impl Quaternion {
+        pub fn new(w: f64, x: f64, y: f64, z: f64) -> Self {
+            Self { w, x, y, z }
+        }
+
+        // Normalize the quaternion
+        pub fn normalize(&self) -> Self {
+            let mag =
+                (self.w * self.w + self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
+            Self {
+                w: self.w / mag,
+                x: self.x / mag,
+                y: self.y / mag,
+                z: self.z / mag,
+            }
+        }
+
+        // Quaternion multiplication
+        pub fn multiply(&self, other: &Self) -> Self {
+            Self {
+                w: self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
+                x: self.w * other.x + self.x * other.w + self.y * other.z - self.z * other.y,
+                y: self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x,
+                z: self.w * other.z + self.x * other.y - self.y * other.x + self.z * other.w,
+            }
+        }
+
+        // Quaternion conjugate
+        pub fn conjugate(&self) -> Self {
+            Self {
+                w: self.w,
+                x: -self.x,
+                y: -self.y,
+                z: -self.z,
+            }
+        }
+
+        // Rotate a point using the quaternion
+        pub fn rotate_point(&self, point: &Point3d) -> Point3d {
+            let q_point = Quaternion::new(0.0, point.X, point.Y, point.Z);
+            let q_conjugate = self.conjugate();
+            let rotated_q = self.multiply(&q_point).multiply(&q_conjugate);
+
+            Point3d::new(rotated_q.x, rotated_q.y, rotated_q.z)
+        }
+
+        fn rotate_point_around_axis(point: &Point3d, axis: &Point3d, angle_rad: f64) -> Point3d {
+            // Normalize the axis vector
+            let axis_length = (axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z).sqrt();
+            let axis_normalized = Point3d::new(
+                axis.X / axis_length,
+                axis.Y / axis_length,
+                axis.Z / axis_length,
+            );
+
+            // Create the quaternion for the rotation
+            let half_angle = angle_rad / 2.0;
+            let sin_half_angle = half_angle.sin();
+            let rotation_quat = Quaternion::new(
+                half_angle.cos(),
+                axis_normalized.X * sin_half_angle,
+                axis_normalized.Y * sin_half_angle,
+                axis_normalized.Z * sin_half_angle,
+            )
+            .normalize();
+
+            // Rotate the point using the quaternion
+            rotation_quat.rotate_point(point)
+        }
+
+        /// Convert the quaternion to a 4x4 transformation matrix
+        pub fn to_4x4_matrix(&self) -> [[f64; 4]; 4] {
+            let (w, x, y, z) = (self.w, self.x, self.y, self.z);
+
+            [
+                [
+                    1.0 - 2.0 * (y * y + z * z),
+                    2.0 * (x * y - w * z),
+                    2.0 * (x * z + w * y),
+                    0.0,
+                ],
+                [
+                    2.0 * (x * y + w * z),
+                    1.0 - 2.0 * (x * x + z * z),
+                    2.0 * (y * z - w * x),
+                    0.0,
+                ],
+                [
+                    2.0 * (x * z - w * y),
+                    2.0 * (y * z + w * x),
+                    1.0 - 2.0 * (x * x + y * y),
+                    0.0,
+                ],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        }
+
+        /// Convert the quaternion to a 4x3 transformation matrix
+        pub fn to_4x3_matrix(&self) -> [[f64; 3]; 4] {
+            let (w, x, y, z) = (self.w, self.x, self.y, self.z);
+
+            [
+                [
+                    1.0 - 2.0 * (y * y + z * z),
+                    2.0 * (x * y - w * z),
+                    2.0 * (x * z + w * y),
+                ],
+                [
+                    2.0 * (x * y + w * z),
+                    1.0 - 2.0 * (x * x + z * z),
+                    2.0 * (y * z - w * x),
+                ],
+                [
+                    2.0 * (x * z - w * y),
+                    2.0 * (y * z + w * x),
+                    1.0 - 2.0 * (x * x + y * y),
+                ],
+                [0.0, 0.0, 0.0], // This row represents translation or is left blank for rotation-only matrices.
+            ]
         }
     }
 }
@@ -3913,3 +4043,14 @@ mod test {
         assert_eq!(true, v2_to_test.is_inside_a_mesh(&obj));
     }
 }
+/*
+ * notes:
+ *     deltaTime = now - start "time par frame" (this keep runtime granularity out of the equation as much as possible).
+ *     for realtime animation:
+ *     Vector3d velocity += (Vector3d accelleration * deltaTime) // ifluance velocity over time
+ *     Point3d position += (Vector3d Velocity * deltaTime) // this is in space unit/frame
+ *
+ *     - Accelleration with negative value can simulate gravity. (it's incrementally added to
+ *       velocity vector over time with a Z negative value which flip smoothlly the polarity of the
+ *       velocity vector.)
+ */
