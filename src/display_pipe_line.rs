@@ -384,7 +384,7 @@ pub mod redering_object {
 
         /// make hash map from triangle with id. (slower version from std lib)
         /// Mutex ensure thread safety over threads. 
-        /// use .get() on option unbowed value to retrieve triangle from id.
+        /// use .get() on option inside value to retrieve triangle from id.
         pub fn make_triangle_hash_map(&self) -> Option<HashMap<u64, &Triangle>> {
             // allocate memory for result.
             let mut tri_hash_map = Mutex::new(HashMap::new());
@@ -398,7 +398,7 @@ pub mod redering_object {
         }
 
         /// make a dhashmap (external dependency) from triangle with id. (recommended lib from IA)
-        /// use .get() on option unbowed value to retrieve triangle from id.
+        /// use .get() on option inside value to retrieve triangle from id.
         pub fn make_triangle_dhash_map(&self) -> Option<HashMap<u64, &Triangle>> {
             // Use DashMap for thread-safe concurrent updates
             let tri_hash_map = DashMap::new();
