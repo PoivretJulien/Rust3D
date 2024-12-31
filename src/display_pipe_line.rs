@@ -192,7 +192,7 @@ pub mod redering_object {
         pub v1: Vertex,
         pub v2: Vertex,
         pub normal: Vertex, // Precomputed normal vector
-        pub id: u64,
+        pub id: Option<u64>,
     }
 
     impl Triangle {
@@ -221,7 +221,7 @@ pub mod redering_object {
                 v1,
                 v2,
                 normal,
-                id: 0u64,
+                id: None,
             }
         }
 
@@ -257,7 +257,7 @@ pub mod redering_object {
                 v1,
                 v2,
                 normal,
-                id: 0,
+                id: None,
             }
         }
 
