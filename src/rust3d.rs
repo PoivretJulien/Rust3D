@@ -2241,7 +2241,7 @@ mod test {
       my sens we can call computing... either with a calculator a computer...
       so if you are programer it's just the leverage that you may give at your tools 
       to amplify your computing capability.
-      it's the core of pation for "computing computers" 
-      it up to you cheat with that or not.
+      it's at the core of pation for "computing computers" it up to you 
+      to cheat with that or not.
  *
  */
