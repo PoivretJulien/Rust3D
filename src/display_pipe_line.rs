@@ -216,7 +216,13 @@ pub mod redering_object {
                 edge1.x * edge2.y - edge1.y * edge2.x,
             );
             //.unitize();
-            Self { v0, v1, v2, normal,id:0u64}
+            Self {
+                v0,
+                v1,
+                v2,
+                normal,
+                id: 0u64,
+            }
         }
 
         /// Update triangle normals
@@ -246,7 +252,13 @@ pub mod redering_object {
 
         // Constructor with precomputed normal
         pub fn with_normal(v0: Vertex, v1: Vertex, v2: Vertex, normal: Vertex) -> Self {
-            Self { v0, v1, v2, normal ,id:0}
+            Self {
+                v0,
+                v1,
+                v2,
+                normal,
+                id: 0,
+            }
         }
 
         /// Compute the area of the triangle.
