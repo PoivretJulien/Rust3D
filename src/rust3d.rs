@@ -2201,5 +2201,20 @@ mod test {
                 [0.0, 0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ];
+            // Rotation matrix around the X-axis
+            let rotation_x = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, x_rad.cos(), -x_rad.sin(), 0.0],
+                [0.0, x_rad.sin(), x_rad.cos(), 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Rotation matrix around the Y-axis
+            let rotation_y = [
+                [y_rad.cos(), 0.0, y_rad.sin(), 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
  *
  */
