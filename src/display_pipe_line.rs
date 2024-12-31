@@ -11,6 +11,8 @@ pub mod redering_object {
         pub z: f64,
     }
     use crate::rust3d::geometry::{Point3d, Vector3d};
+    use dashmap::DashMap;
+    use std::collections::HashMap;
     use std::hash::{Hash, Hasher};
     use std::ops::{Add, AddAssign, Mul, MulAssign, Sub};
     impl Sub for Vertex {
@@ -359,7 +361,6 @@ pub mod redering_object {
     }
 
     use rayon::prelude::*;
-    use std::collections::HashMap;
     use std::fs::File;
     use std::io::{self, BufRead, BufReader, BufWriter, Write};
     use std::iter::Iterator;
@@ -381,6 +382,38 @@ pub mod redering_object {
             }
         }
 
+        /// make hash map from triangle with id. (slower version from std lib)
+        /// Mutex ensure thread safety over threads. 
+        /// use .get() on option unbowed value to retrieve triangle from id.
+        pub fn make_triangle_hash_map(&self) -> Option<HashMap<u64, &Triangle>> {
+            // allocate memory for result.
+            let mut tri_hash_map = Mutex::new(HashMap::new());
+            self.triangles.par_iter().for_each(|triangle| {
+                if let Some(id) = triangle.id {
+                    let mut hash = tri_hash_map.lock().unwrap();
+                    hash.insert(id, triangle);
+                }
+            });
+            tri_hash_map.lock().ok().map(|hash| hash.clone())
+        }
+
+        /// make a dhashmap (external dependency) from triangle with id. (recommended lib from IA)
+        /// use .get() on option unbowed value to retrieve triangle from id.
+        pub fn make_triangle_dhash_map(&self) -> Option<HashMap<u64, &Triangle>> {
+            // Use DashMap for thread-safe concurrent updates
+            let tri_hash_map = DashMap::new();
+
+            // Use par_iter for parallel iteration
+            self.triangles.par_iter().for_each(|triangle| {
+                if let Some(id) = triangle.id {
+                    tri_hash_map.insert(id, triangle);
+                }
+            });
+
+            // Convert DashMap to HashMap
+            let result: HashMap<u64, &Triangle> = tri_hash_map.into_iter().collect();
+            Some(result)
+        }
         /// Update the whole mesh triangles normals.
         /// - when scaled in a non uniform way.
         /// - when rotated.
