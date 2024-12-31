@@ -192,6 +192,7 @@ pub mod redering_object {
         pub v1: Vertex,
         pub v2: Vertex,
         pub normal: Vertex, // Precomputed normal vector
+        pub id: u64,
     }
 
     impl Triangle {
@@ -215,7 +216,7 @@ pub mod redering_object {
                 edge1.x * edge2.y - edge1.y * edge2.x,
             );
             //.unitize();
-            Self { v0, v1, v2, normal }
+            Self { v0, v1, v2, normal,id:0u64}
         }
 
         /// Update triangle normals
@@ -245,7 +246,7 @@ pub mod redering_object {
 
         // Constructor with precomputed normal
         pub fn with_normal(v0: Vertex, v1: Vertex, v2: Vertex, normal: Vertex) -> Self {
-            Self { v0, v1, v2, normal }
+            Self { v0, v1, v2, normal ,id:0}
         }
 
         /// Compute the area of the triangle.
@@ -351,8 +352,8 @@ pub mod redering_object {
     use std::io::{self, BufRead, BufReader, BufWriter, Write};
     use std::iter::Iterator;
     use std::sync::Arc;
-    use tobj;
     use std::sync::Mutex;
+    use tobj;
 
     #[derive(Debug)]
     pub struct Mesh {
@@ -367,6 +368,7 @@ pub mod redering_object {
                 triangles,
             }
         }
+
         /// Update the whole mesh triangles normals.
         /// - when scaled in a non uniform way.
         /// - when rotated.
@@ -395,28 +397,28 @@ pub mod redering_object {
         }
 
         /// Test if a mesh is closed (watertight) using parallel processing.
-    pub fn is_watertight_par(&self) -> bool {
-        let edge_count = Mutex::new(HashMap::new());
+        pub fn is_watertight_par(&self) -> bool {
+            let edge_count = Mutex::new(HashMap::new());
 
-        // Process triangles in parallel
-        self.triangles.par_iter().for_each(|triangle| {
-            for &(start, end) in &triangle.edges() {
-                let edge = if start < end {
-                    (start, end)
-                } else {
-                    (end, start)
-                };
+            // Process triangles in parallel
+            self.triangles.par_iter().for_each(|triangle| {
+                for &(start, end) in &triangle.edges() {
+                    let edge = if start < end {
+                        (start, end)
+                    } else {
+                        (end, start)
+                    };
 
-                // Lock the mutex, update the edge count, and immediately release the lock
-                let mut map = edge_count.lock().unwrap();
-                *map.entry(edge).or_insert(0) += 1;
-            }
-        });
+                    // Lock the mutex, update the edge count, and immediately release the lock
+                    let mut map = edge_count.lock().unwrap();
+                    *map.entry(edge).or_insert(0) += 1;
+                }
+            });
 
-        // Perform the final watertight check
-        let final_map = edge_count.lock().unwrap(); // Lock again to check
-        final_map.values().all(|&count| count == 2)
-    }
+            // Perform the final watertight check
+            let final_map = edge_count.lock().unwrap(); // Lock again to check
+            final_map.values().all(|&count| count == 2)
+        }
 
         /// Give the volume of the mesh in file system base unit.
         /// Based on divergence theorem (also known as Gauss's theorem)
