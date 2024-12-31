@@ -2164,4 +2164,42 @@ mod test {
  *     - Accelleration with negative value can simulate gravity. (it's incrementally added to
  *       velocity vector over time with a Z negative value which flip smoothlly the polarity of the
  *       velocity vector.)
+ *  
+ *
+ * notes: Fundemental for understanding basic of matrix rotation.
+ *        -------------------------------------------------------
+ *        - it would be crazy to study further without 
+ *          a very basic understanding of fundementals.
+ *        - it's important to have a 'solid definition' of your understanding 
+ *          in face of such amazing and fundemental complex system.
+ *          so describing formula with verbose is the only way to constraint my 
+ *          mind on the basis.
+ *        -------------------------------------------------------
+ *     - Trigger Action matrix Entity:
+ *          x' = x cos(theta) - y sin(theta), y' = x sin(theta) + y cos(theta),
+ *
+ *  Description:
+ *      x' = x component of a rotated vector2d(x,y) from basis vectors system.
+ *      x cos(theta) = component x on basis system * (time) cos(theta) -> equal to 1 if cos(0.0deg) 
+ *      y sin(theta) = component y on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg)
+ *      x cos(theta) - y sin(theta) = (1 * 1) - (0 * 0) if theta = 0.0 deg  
+ *      --------------------------------------------------------------------
+ *      y' = y component of a rotated vector2d(x,y) from basis vectors system.
+ *      x sin(theta) =  component x on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg) 
+ *      y cos(theta) =  component y on basis system * (time) cos(theta) -> equal to 0 if cos(0.0deg)
+ *      x sin(theta) + y cos(theta) = (1 * 0) - (0 * 1) if theta = 0.0 deg  
+ * 
+ *  this describe mathematically the rotation of an unit vector on a orthogonal basis sytem.
+ *  - core mechanisum cos(theta) and sin(theta) will serve to divide unit basis axis length 
+ *  by multiply the basix length of reference (x or y) by a number from 0.0 to 1.0 giving 
+ *  a division of (x,y) component of the rotated vector.
+ *
+ *  This produce: the 4x4 matrix rotation. 
+ *  let rotation_z = [
+                [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
+                [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+ *
  */
