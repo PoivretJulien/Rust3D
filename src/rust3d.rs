@@ -2188,19 +2188,31 @@ mod test {
  *      x sin(theta) =  component x on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg) 
  *      y cos(theta) =  component y on basis system * (time) cos(theta) -> equal to 0 if cos(0.0deg)
  *      x sin(theta) + y cos(theta) = (1 * 0) - (0 * 1) if theta = 0.0 deg  
- * 
+ *      
+ *      
  *  this describe mathematically the rotation of an unit vector on a orthogonal basis sytem.
  *  - core mechanisum cos(theta) and sin(theta) will serve to divide unit basis axis length 
  *  by multiply the basix length of reference (x or y) by a number from 0.0 to 1.0 giving 
  *  a division of (x,y) component of the rotated vector.
  *
- *  This produce: the 4x4 matrix rotation. 
+ *  -   we can also simplify this concept to the fact that a dot product of a unit vector by
+ *      the cos(theta) or sin(theta) produce it's projection on the base vector system
+ *      when vector start to rotate one part of the projection length for x ar y axis or 
+ *      (their remider) is added or substracted on the oposit vector component 
+ *      based on which axis we are operating on this discribe the rotation of the vector.
+ *
+ *  This produce: the 4x4 matrix rotation. where you distribute a Vector3d
+ *  disposed in colown to each menber of the row matrix  and add hem up 
+ *  to produce the new rotated Vector3d.
+ *
+ *  the rotation identity:
  *  let rotation_z = [
                 [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
                 [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
                 [0.0, 0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ];
+
             // Rotation matrix around the X-axis
             let rotation_x = [
                 [1.0, 0.0, 0.0, 0.0],
@@ -2216,5 +2228,20 @@ mod test {
                 [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ];
+
+    if someone one day read my study about transformation matrix:
+
+    - it's dificult to warp your mind around without a step by step
+      process but it's worth it to understand how this logic work
+      at this end it's not so complex it's just that the step by step 
+      process lie throuhg a non negligable opaque abstraction if you don't
+      involve yourself on the basis for a moment. 
+    - many are passioned by this., if you don't i guess you are on wrong place.
+      so you may leave that topic with in mind that's the base of what at
+      my sens we can call computing... either with a calculator a computer...
+      so if you are programer it's just the leverage that you may give at your tools 
+      to amplify your computing capability.
+      it's the core of pation for "computing computers" 
+      it up to you cheat with that or not.
  *
  */
