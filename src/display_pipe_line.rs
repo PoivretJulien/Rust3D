@@ -262,7 +262,14 @@ pub mod redering_object {
                 id: None,
             }
         }
-
+        /// Set a triangle Id
+        pub fn set_id(&mut self, id: u64) {
+            self.id = Some(id);
+        }
+        /// provide a copy of the triangle id. 
+        pub fn get_id(&self)->Option<u64>{
+            self.id
+        }
         /// Compute the area of the triangle.
         pub fn get_triangle_area(&self) -> f64 {
             let va = self.v1.sub(self.v0);
@@ -383,7 +390,7 @@ pub mod redering_object {
         }
 
         /// make hash map from triangle with id. (slower version from std lib)
-        /// Mutex ensure thread safety over threads. 
+        /// Mutex ensure thread safety over threads.
         /// use .get() on option inside value to retrieve triangle from id.
         pub fn make_triangle_hash_map(&self) -> Option<HashMap<u64, &Triangle>> {
             // allocate memory for result.
