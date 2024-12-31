@@ -8,8 +8,8 @@ pub mod geometry {
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
+    use crate::display_pipe_line::redering_object::Vertex;
     use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
-    use crate::display_pipe_line::redering_object::Vertex; 
 
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -99,7 +99,7 @@ pub mod geometry {
             self.Z *= scalar;
         }
     }
-    // the following implementation for Point3d is when Point3d is use as ambigius 
+    // the following implementation for Point3d is when Point3d is use as ambigius
     // representation of a Vector3d in order to avoid runtime penalty.
     // - using a Vertex will full fill the same purpose in a more idiomatic way.
     impl Point3d {
@@ -110,7 +110,7 @@ pub mod geometry {
 
         /// Normalize the the point as a vector
         /// (equivalent to unitize_b for Vector3d)
-        /// this remove embiguity when point 3d is use as vector 
+        /// this remove embiguity when point 3d is use as vector
         /// ( to avoid sqrt penalty on magnetide creation when using Vector3d )
         /// - it's recomended to use Vertex for that.
         pub fn normalize(&self) -> Self {
@@ -131,8 +131,8 @@ pub mod geometry {
             }
         }
         /// Convert a Point3d to Vertex.
-        pub fn to_vertex(&self)->Vertex{
-            Vertex::new(self.X ,self.Y, self.Z)
+        pub fn to_vertex(&self) -> Vertex {
+            Vertex::new(self.X, self.Y, self.Z)
         }
     }
 
@@ -199,8 +199,8 @@ pub mod geometry {
             self.Length = (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt();
         }
         /// Convert to a Vertex
-        pub fn to_vertex(&self)->Vertex{
-            Vertex::new(self.X,self.Y,self.Z)
+        pub fn to_vertex(&self) -> Vertex {
+            Vertex::new(self.X, self.Y, self.Z)
         }
         /// static way to compute vector length.
         /// # Arguments
@@ -272,7 +272,6 @@ pub mod geometry {
             }
         }
 
-
         /// Test if a vector point to the direction of an other vector.
         /// # Arguments
         /// - ref &self,
@@ -330,7 +329,7 @@ pub mod geometry {
                 false
             }
         }
-        
+
         /// Test if two vectors are perpendicular.
         pub fn are_perpandicular(vector_a: &Vector3d, vector_b: &Vector3d) -> bool {
             if ((*vector_a) * (*vector_b)).abs() <= EPSILON {
@@ -888,6 +887,58 @@ pub mod geometry {
                 z: -self.z,
             }
         }
+        /// Computes the dot product of two quaternions
+        fn dot(self, other: Quaternion) -> f64 {
+            self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z
+        }
+
+        /// Performs SLERP (Spherical Linear Interpolation) between two quaternions
+        fn slerp(start: Quaternion, end: Quaternion, t: f64) -> Quaternion {
+            // Normalize the quaternions
+            let start = start.normalize();
+            let mut end = end.normalize();
+
+            // Compute the dot product
+            let mut dot = start.dot(end);
+
+            // If the dot product is negative, invert one quaternion to take the shortest path
+            if dot < 0.0 {
+                end = Quaternion::new(-end.w, -end.x, -end.y, -end.z);
+                dot = -dot;
+            }
+
+            // If the quaternions are very close, use linear interpolation (LERP) as a fallback
+            if dot > 0.9995 {
+                return Quaternion::new(
+                    start.w + t * (end.w - start.w),
+                    start.x + t * (end.x - start.x),
+                    start.y + t * (end.y - start.y),
+                    start.z + t * (end.z - start.z),
+                )
+                .normalize();
+            }
+
+            // Compute the angle theta between the quaternions
+            let theta_0 = dot.acos(); // Original angle
+            let theta = theta_0 * t; // Interpolated angle
+
+            // Compute sin values
+            let sin_theta = theta.sin();
+            let sin_theta_0 = theta_0.sin();
+
+            // Interpolation factors
+            let s1 = (1.0 - t) * sin_theta / sin_theta_0;
+            let s2 = t * sin_theta / sin_theta_0;
+
+            // Perform SLERP
+            Quaternion::new(
+                s1 * start.w + s2 * end.w,
+                s1 * start.x + s2 * end.x,
+                s1 * start.y + s2 * end.y,
+                s1 * start.z + s2 * end.z,
+            )
+            .normalize()
+        }
 
         // Rotate a point using the quaternion
         pub fn rotate_point(&self, point: &Point3d) -> Point3d {
@@ -898,7 +949,11 @@ pub mod geometry {
             Point3d::new(rotated_q.x, rotated_q.y, rotated_q.z)
         }
 
-        pub fn rotate_point_around_axis(point: &Point3d, axis: &Point3d, angle_rad: f64) -> Point3d {
+        pub fn rotate_point_around_axis(
+            point: &Point3d,
+            axis: &Point3d,
+            angle_rad: f64,
+        ) -> Point3d {
             // Normalize the axis vector
             let axis_length = (axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z).sqrt();
             let axis_normalized = Point3d::new(
@@ -1249,7 +1304,7 @@ pub mod transformation {
             Z: point.Y * sin_theta + point.Z * cos_theta,
         }
     }
-    pub fn rotate_x_vertex(point: Vertex, angle: f64) -> Vertex{
+    pub fn rotate_x_vertex(point: Vertex, angle: f64) -> Vertex {
         let cos_theta = angle.cos();
         let sin_theta = angle.sin();
         Vertex {
@@ -1844,12 +1899,12 @@ mod test {
             assert!(false);
         }
     }
-    
+
     #[test]
-    fn test_vector3d_are_perpendicular(){
-        let vec_a = Vector3d::new(1.3,1.55,2.4);
-        let vec_b = Vector3d::new(0.9,1.25,1.11);
-        let vec_c =  Vector3d::cross_product(&vec_a, &vec_b).unitize_b();
+    fn test_vector3d_are_perpendicular() {
+        let vec_a = Vector3d::new(1.3, 1.55, 2.4);
+        let vec_b = Vector3d::new(0.9, 1.25, 1.11);
+        let vec_c = Vector3d::cross_product(&vec_a, &vec_b).unitize_b();
         assert!(Vector3d::are_perpandicular(&vec_a, &vec_c));
     }
 
@@ -2083,7 +2138,7 @@ mod test {
         }
     }
 
-    use crate::display_pipe_line::redering_object::{Triangle, Vertex,Mesh};
+    use crate::display_pipe_line::redering_object::{Mesh, Triangle, Vertex};
     #[test]
     fn test_triangle_area() {
         // The following Triangle is flat in XY plane.
@@ -2155,93 +2210,93 @@ mod test {
     }
 }
 /*
- * notes:
- *     deltaTime = now - start "time par frame" (this keep runtime granularity out of the equation as much as possible).
- *     for realtime animation:
- *     Vector3d velocity += (Vector3d accelleration * deltaTime) // ifluance velocity over time
- *     Point3d position += (Vector3d Velocity * deltaTime) // this is in space unit/frame
- *
- *     - Accelleration with negative value can simulate gravity. (it's incrementally added to
- *       velocity vector over time with a Z negative value which flip smoothlly the polarity of the
- *       velocity vector.)
- *  
- *
- * notes: Fundemental for understanding basic of matrix rotation.
- *        -------------------------------------------------------
- *        - it would be crazy to study further without 
- *          a very basic understanding of fundementals.
- *        - it's important to have a 'solid definition' of your understanding 
- *          in face of such amazing and fundemental complex system.
- *          so describing formula with verbose is the only way to constraint my 
- *          mind on the basis.
- *        -------------------------------------------------------
- *     - Trigger Action matrix Entity:
- *          x' = x cos(theta) - y sin(theta), y' = x sin(theta) + y cos(theta),
- *
- *  Description:
- *      x' = x component of a rotated vector2d(x,y) from basis vectors system.
- *      x cos(theta) = component x on basis system * (time) cos(theta) -> equal to 1 if cos(0.0deg) 
- *      y sin(theta) = component y on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg)
- *      x cos(theta) - y sin(theta) = (1 * 1) - (0 * 0) if theta = 0.0 deg  
- *      --------------------------------------------------------------------
- *      y' = y component of a rotated vector2d(x,y) from basis vectors system.
- *      x sin(theta) =  component x on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg) 
- *      y cos(theta) =  component y on basis system * (time) cos(theta) -> equal to 0 if cos(0.0deg)
- *      x sin(theta) + y cos(theta) = (1 * 0) - (0 * 1) if theta = 0.0 deg  
- *      
- *      
- *  this describe mathematically the rotation of an unit vector on a orthogonal basis sytem.
- *  - core mechanisum cos(theta) and sin(theta) will serve to divide unit basis axis length 
- *  by multiply the basix length of reference (x or y) by a number from 0.0 to 1.0 giving 
- *  a division of (x,y) component of the rotated vector.
- *
- *  -   we can also simplify this concept to the fact that a dot product of a unit vector by
- *      the cos(theta) or sin(theta) produce it's projection on the base vector system
- *      when vector start to rotate one part of the projection length for x ar y axis or 
- *      (their remider) is added or substracted on the oposit vector component 
- *      based on which axis we are operating on this discribe the rotation of the vector.
- *
- *  This produce: the 4x4 matrix rotation. where you distribute a Vector3d
- *  disposed in colown to each menber of the row matrix  and add hem up 
- *  to produce the new rotated Vector3d.
- *
- *  the rotation identity:
- *  let rotation_z = [
-                [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
-                [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
+* notes:
+*     deltaTime = now - start "time par frame" (this keep runtime granularity out of the equation as much as possible).
+*     for realtime animation:
+*     Vector3d velocity += (Vector3d accelleration * deltaTime) // ifluance velocity over time
+*     Point3d position += (Vector3d Velocity * deltaTime) // this is in space unit/frame
+*
+*     - Accelleration with negative value can simulate gravity. (it's incrementally added to
+*       velocity vector over time with a Z negative value which flip smoothlly the polarity of the
+*       velocity vector.)
+*
+*
+* notes: Fundemental for understanding basic of matrix rotation.
+*        -------------------------------------------------------
+*        - it would be crazy to study further without
+*          a very basic understanding of fundementals.
+*        - it's important to have a 'solid definition' of your understanding
+*          in face of such amazing and fundemental complex system.
+*          so describing formula with verbose is the only way to constraint my
+*          mind on the basis.
+*        -------------------------------------------------------
+*     - Trigger Action matrix Entity:
+*          x' = x cos(theta) - y sin(theta), y' = x sin(theta) + y cos(theta),
+*
+*  Description:
+*      x' = x component of a rotated vector2d(x,y) from basis vectors system.
+*      x cos(theta) = component x on basis system * (time) cos(theta) -> equal to 1 if cos(0.0deg)
+*      y sin(theta) = component y on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg)
+*      x cos(theta) - y sin(theta) = (1 * 1) - (0 * 0) if theta = 0.0 deg
+*      --------------------------------------------------------------------
+*      y' = y component of a rotated vector2d(x,y) from basis vectors system.
+*      x sin(theta) =  component x on basis system * (time) sin(theta) -> equal to 0 if sin(0.0deg)
+*      y cos(theta) =  component y on basis system * (time) cos(theta) -> equal to 0 if cos(0.0deg)
+*      x sin(theta) + y cos(theta) = (1 * 0) - (0 * 1) if theta = 0.0 deg
+*
+*
+*  this describe mathematically the rotation of an unit vector on a orthogonal basis sytem.
+*  - core mechanisum cos(theta) and sin(theta) will serve to divide unit basis axis length
+*  by multiply the basix length of reference (x or y) by a number from 0.0 to 1.0 giving
+*  a division of (x,y) component of the rotated vector.
+*
+*  -   we can also simplify this concept to the fact that a dot product of a unit vector by
+*      the cos(theta) or sin(theta) produce it's projection on the base vector system
+*      when vector start to rotate one part of the projection length for x ar y axis or
+*      (their remider) is added or substracted on the oposit vector component
+*      based on which axis we are operating on this discribe the rotation of the vector.
+*
+*  This produce: the 4x4 matrix rotation. where you distribute a Vector3d
+*  disposed in colown to each menber of the row matrix  and add hem up
+*  to produce the new rotated Vector3d.
+*
+*  the rotation identity:
+*  let rotation_z = [
+               [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
+               [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
+               [0.0, 0.0, 1.0, 0.0],
+               [0.0, 0.0, 0.0, 1.0],
+           ];
 
-            // Rotation matrix around the X-axis
-            let rotation_x = [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, x_rad.cos(), -x_rad.sin(), 0.0],
-                [0.0, x_rad.sin(), x_rad.cos(), 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
+           // Rotation matrix around the X-axis
+           let rotation_x = [
+               [1.0, 0.0, 0.0, 0.0],
+               [0.0, x_rad.cos(), -x_rad.sin(), 0.0],
+               [0.0, x_rad.sin(), x_rad.cos(), 0.0],
+               [0.0, 0.0, 0.0, 1.0],
+           ];
 
-            // Rotation matrix around the Y-axis
-            let rotation_y = [
-                [y_rad.cos(), 0.0, y_rad.sin(), 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
+           // Rotation matrix around the Y-axis
+           let rotation_y = [
+               [y_rad.cos(), 0.0, y_rad.sin(), 0.0],
+               [0.0, 1.0, 0.0, 0.0],
+               [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
+               [0.0, 0.0, 0.0, 1.0],
+           ];
 
-    if someone one day read my study about transformation matrix:
+   if someone one day read my study about transformation matrix:
 
-    - it's dificult to warp your mind around without a step by step
-      process but it's worth it to understand how this logic work
-      at this end it's not so complex it's just that the step by step 
-      process lie throuhg a non negligable opaque abstraction if you don't
-      involve yourself on the basis for a moment. 
-    - many are passioned by this., if you don't i guess you are on wrong place.
-      so you may leave that topic with in mind that's the base of what at
-      my sens we can call computing... either with a calculator a computer...
-      so if you are programer it's just the leverage that you may give at your tools 
-      to amplify your computing capability.
-      it's at the core of pation for "computing computers" it up to you 
-      to cheat with that or not.
- *
- */
+   - it's dificult to warp your mind around without a step by step
+     process but it's worth it to understand how this logic work
+     at this end it's not so complex it's just that the step by step
+     process lie throuhg a non negligable opaque abstraction if you don't
+     involve yourself on the basis for a moment.
+   - many are passioned by this., if you don't i guess you are on wrong place.
+     so you may leave that topic with in mind that's the base of what at
+     my sens we can call computing... either with a calculator a computer...
+     so if you are programer it's just the leverage that you may give at your tools
+     to amplify your computing capability.
+     it's at the core of pation for "computing computers" it up to you
+     to cheat with that or not.
+*
+*/
