@@ -42,6 +42,46 @@ pub mod geometry {
                 false
             }
         }
+
+        /// Determines if a series of points lies on a straight line
+        pub fn are_points_collinear(points: &[Point3d], tolerance: f64) -> bool {
+            if points.len() < 3 {
+                // Less than 3 points are always collinear
+                return true;
+            }
+            // Calculate the reference vector from the first two points
+            let reference_vector = points[1] - points[0];
+            for i in 2..points.len() {
+                // Get the vector from the first point to the current point
+                let current_vector = points[i] - points[0];
+                // Compute the cross product of the reference vector and the current vector
+                let cross_product = Vector3d::cross_product(&reference_vector, &current_vector);
+                // If the cross product is not zero, points are not collinear
+                if !cross_product.is_zero(tolerance) {
+                    return false;
+                }
+            }
+            true
+        }
+        /// find the first collinear index of an array of points.
+        pub fn find_first_collinear_points(
+            array_input: &[Point3d],
+            tolerance: f64,
+        ) -> Option<(usize, usize)> {
+            // find the 3 first segments where the points array describe a straight line.
+            if array_input.len() > 3 {
+                let mut result = (0, 0);
+                for i in 0..array_input.len() - 4 {
+                    if Point3d::are_points_collinear(&array_input[i..i + 4], tolerance) {
+                        result = (i, i + 3);
+                        break;
+                    }
+                }
+                Some(result)
+            } else {
+                None
+            }
+        }
     }
 
     // Implementation of + and - operator for Point3d.
@@ -353,6 +393,10 @@ pub mod geometry {
             let v_rotated_perpendicular = Vector3d::cross_product(&self, &unit_axis) * sin_theta;
 
             (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
+        }
+        /// Checks if a vector is (approximately) zero
+        pub fn is_zero(&self, tolerance: f64) -> bool {
+            self.Length < tolerance
         }
 
         /// Project a vector on an infinite plane.
@@ -888,12 +932,12 @@ pub mod geometry {
             }
         }
         /// Computes the dot product of two quaternions
-        fn dot(self, other: Quaternion) -> f64 {
+        pub fn dot(self, other: Quaternion) -> f64 {
             self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z
         }
 
         /// Performs SLERP (Spherical Linear Interpolation) between two quaternions
-        fn slerp(start: Quaternion, end: Quaternion, t: f64) -> Quaternion {
+        pub fn slerp(start: Quaternion, end: Quaternion, t: f64) -> Quaternion {
             // Normalize the quaternions
             let start = start.normalize();
             let mut end = end.normalize();
@@ -2208,6 +2252,68 @@ mod test {
         assert_eq!(false, v1_to_test.is_inside_a_mesh(&obj));
         assert_eq!(true, v2_to_test.is_inside_a_mesh(&obj));
     }
+    #[test]
+    fn test_points_are_colinear() {
+        // point 8 to 17 are a line (zero based).
+        let p_tarray = vec![
+            Point3d::new(1.575, 2.077, 1.777),
+            Point3d::new(1.672, 2.240, 1.732),
+            Point3d::new(1.765, 2.398, 1.663),
+            Point3d::new(1.854, 2.549, 1.576),
+            Point3d::new(1.940, 2.692, 1.474),
+            Point3d::new(2.023, 2.828, 1.360),
+            Point3d::new(2.104, 2.956, 1.236),
+            Point3d::new(2.184, 3.077, 1.105),
+            Point3d::new(2.276, 3.166, 0.961),
+            Point3d::new(2.367, 3.255, 0.818),
+            Point3d::new(2.459, 3.344, 0.675),
+            Point3d::new(2.551, 3.433, 0.531),
+            Point3d::new(2.643, 3.522, 0.388),
+            Point3d::new(2.734, 3.611, 0.245),
+            Point3d::new(2.826, 3.700, 0.102),
+            Point3d::new(2.918, 3.789, -0.042),
+            Point3d::new(3.010, 3.878, -0.185),
+            Point3d::new(3.101, 3.967, -0.328),
+            Point3d::new(3.193, 4.056, -0.472),
+            Point3d::new(3.321, 4.120, -0.608),
+            Point3d::new(3.459, 4.179, -0.738),
+            Point3d::new(3.607, 4.232, -0.857),
+            Point3d::new(3.767, 4.280, -0.964),
+            Point3d::new(3.938, 4.321, -1.056),
+            Point3d::new(4.118, 4.355, -1.128),
+            Point3d::new(4.307, 4.383, -1.180),
+            Point3d::new(4.502, 4.405, -1.208),
+            Point3d::new(4.699, 4.422, -1.213),
+            Point3d::new(4.896, 4.435, -1.194),
+            Point3d::new(5.089, 4.446, -1.154),
+            Point3d::new(5.277, 4.457, -1.094),
+            Point3d::new(5.459, 4.468, -1.015),
+            Point3d::new(5.632, 4.483, -0.921),
+            Point3d::new(5.796, 4.501, -0.812),
+            Point3d::new(5.951, 4.524, -0.691),
+            Point3d::new(6.095, 4.553, -0.559),
+            Point3d::new(6.228, 4.589, -0.417),
+            Point3d::new(6.350, 4.633, -0.266),
+            Point3d::new(6.458, 4.684, -0.109),
+            Point3d::new(6.554, 4.743, 0.054),
+        ];
+        if Point3d::are_points_collinear(&p_tarray[8..19], 1e-3) {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+        if !Point3d::are_points_collinear(&p_tarray[16..35], 1e-3) {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+        // find the 3 first segments where the points array describe a straight line.
+        if let Some(result) = Point3d::find_first_collinear_points(&p_tarray[0..],1e-3){
+            assert_eq!((7, 10), result);
+        }
+    }
+    
+
 }
 /*
 * notes:
