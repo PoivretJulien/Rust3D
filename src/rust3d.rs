@@ -1646,11 +1646,11 @@ pub mod visualization_disabled_alpha {
 
 /*  
  *  Most of the time for CAD applications rotating a CPlane
- *  is more than enough for operating geometry creation 
- *  but for animation,simulation or robotic automation 
+ *  is more than enough for operating geometry or CAD design. 
+ *  but for animation,simulation or robotic automation...
  *  where several transformations must occur one after the others, 
  *  matrix transformation offer the possibility to be combined into only one 
- *  before be fore being factorized over and array of points  
+ *  and then being factorized over and array of points in a single shot
  *  reducing significantly the computation cost of the final transformation. 
  */
 pub mod transformation {
