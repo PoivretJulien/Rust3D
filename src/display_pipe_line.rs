@@ -2095,8 +2095,6 @@ pub mod visualization_v3 {
                 // Ensure alpha is clamped between 0.0 and 1.0
                 (*alpha) = (*alpha).clamp(0.0, 1.0);
 
-                //TODO: a struct for Background color may be usefull
-                // for caching in u8 form ....
                 // Extract background RGB components as f32.
                 let bg_r = ((bg_color >> 16) & 0xFF) as f32;
                 let bg_g = ((bg_color >> 8) & 0xFF) as f32;

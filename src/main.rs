@@ -6,7 +6,8 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rust3d::draw::*;
 use rust3d::geometry::*;
-use rust3d::transformation::rotate_z_vertex;
+use rust3d::transformation::rotate_z;
+use rust3d::transformation::rotate_z_from_vertex;
 use rust3d::utillity::degree_to_radians;
 use display_pipe_line::visualization_v3::coloring::Color;
 use display_pipe_line::visualization_v3::Camera;
@@ -26,8 +27,10 @@ fn main() {
     - it's high level features language with low a level focus and optimization.
     */
     println!("\x1b[2J"); // Clear console.
-    const WIDTH: usize = 1470 / 3; // screen pixel width.
-    const HEIGHT: usize = 956 / 3; // screen pixel height.
+                         // 3840x2160
+                         // 1470x956
+    const WIDTH: usize = 3840 / 5; // screen pixel width.
+    const HEIGHT: usize = 2160 / 5; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
@@ -35,13 +38,13 @@ fn main() {
     let mut pause: bool = false;
     let z_offset = Vertex::new(0.0, 0.0, -0.48); //-0.48 //translation vector.
     let mut import_obj = Vec::new();
-    ///////////Triangle test/////////////////
+    ///////////Triangle test////////////////////////////////////////////////////
     let mut tri = vec![
         (Vertex::new(0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
         (Vertex::new(-0.05, 0.0, 0.0) + z_offset) * DISPLAY_RATIO,
         (Vertex::new(0.0, 0.0, 0.12) + z_offset) * DISPLAY_RATIO,
     ];
-    ////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
     /////////IMPORT MESH (.obj file)////////////////////////////////////////////
     if let Some(mut mesh) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj").ok() {
@@ -116,20 +119,20 @@ fn main() {
         if DISPLAY_CIRCLE {
             index = 0;
             while index < circle.len() {
-                circle[index] = rotate_z_vertex(circle[index], step);
+                circle[index] = rotate_z(circle[index], step);
                 index += 1;
             }
         }
         ///// Compute Vertex Rotation ./////////////////////////////////////////
         index = 0; // reset indexer.
         while index < import_obj.len() {
-            import_obj[index] = rotate_z_vertex(import_obj[index], step);
+            import_obj[index] = rotate_z(import_obj[index], step);
             index += 1;
         }
         //  rotate triangle.
-        tri[0] = rotate_z_vertex(tri[0], step);
-        tri[1] = rotate_z_vertex(tri[1], step);
-        tri[2] = rotate_z_vertex(tri[2], step);
+        tri[0] = rotate_z(tri[0], step);
+        tri[1] = rotate_z(tri[1], step);
+        tri[2] = rotate_z(tri[2], step);
         /////////////////////////////////////////////////////////////////////////
         /*
          *    notes:
@@ -227,7 +230,7 @@ fn main() {
             &x,
             &y,
             format!(
-                "Visualisation system v3 :{0:?}",
+                "Visualisation system v3:{0:?}",
                 std::time::Instant::now().to_owned()
             )
             .as_str(),

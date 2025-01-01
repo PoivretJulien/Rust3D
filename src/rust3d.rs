@@ -5,6 +5,7 @@
 pub mod geometry {
     use core::f64;
     use std::f64::EPSILON;
+
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
@@ -139,6 +140,7 @@ pub mod geometry {
             self.Z *= scalar;
         }
     }
+
     // the following implementation for Point3d is when Point3d is use as ambigius
     // representation of a Vector3d in order to avoid runtime penalty.
     // - using a Vertex will full fill the same purpose in a more idiomatic way.
@@ -238,10 +240,7 @@ pub mod geometry {
         fn update_length(&mut self) {
             self.Length = (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt();
         }
-        /// Convert to a Vertex
-        pub fn to_vertex(&self) -> Vertex {
-            Vertex::new(self.X, self.Y, self.Z)
-        }
+
         /// static way to compute vector length.
         /// # Arguments
         /// x:f 64, y:f 64, z:f 64
@@ -417,6 +416,14 @@ pub mod geometry {
                 None
             }
         }
+        /// Return a standardized output.
+        pub fn to_vertex(self) -> Vertex {
+            Vertex::new(self.X, self.Y, self.Z)
+        }
+        /// Return a standardized output.
+        pub fn to_tuple(self) -> (f64, f64, f64) {
+            (self.X, self.Y, self.Z)
+        }
     }
     impl Neg for Vector3d {
         type Output = Self;
@@ -479,6 +486,74 @@ pub mod geometry {
         }
     }
 
+    // Point3d, Vector3d, Vertex are bound to Coordinate3d.
+    pub trait Coordinate3d {
+        type Output;
+        fn new(x: f64, y: f64, z: f64) -> Self::Output;
+        fn get_x(&self)->f64;
+        fn get_y(&self)->f64;
+        fn get_z(&self)->f64;
+        fn to_tuple(&self) -> (f64, f64, f64);
+    }
+    impl Coordinate3d for Point3d {
+        type Output = Point3d;
+        fn new(x: f64, y: f64, z: f64) -> Self {
+            Point3d::new(x, y, z)
+        }
+        fn get_x(&self) -> f64 {
+            self.X
+        }
+        fn get_y(&self) -> f64 {
+            self.Y
+        }
+        fn get_z(&self) -> f64 {
+            self.Z
+        }
+        fn to_tuple(&self) -> (f64, f64, f64) {
+            (self.X, self.Y, self.Z)
+        }
+    }
+    impl Coordinate3d for Vector3d {
+        type Output = Vector3d;
+        fn new(x: f64, y: f64, z: f64) -> Self {
+            Vector3d {
+                X: x,
+                Y: y,
+                Z: z,
+                Length: (x * x + y * y + z * z).sqrt(),
+            }
+        }
+        fn get_x(&self) -> f64 {
+            self.X
+        }
+        fn get_y(&self) -> f64 {
+            self.Y
+        }
+        fn get_z(&self) -> f64 {
+            self.Z
+        }
+        fn to_tuple(&self) -> (f64, f64, f64) {
+            (self.X, self.Y, self.Z)
+        }
+    }
+    impl Coordinate3d for Vertex {
+        type Output = Vertex;
+        fn new(x: f64, y: f64, z: f64) -> Self {
+            Vertex::new(x, y, z)
+        }
+        fn get_x(&self) -> f64 {
+            self.x
+        }
+        fn get_y(&self) -> f64 {
+            self.y
+        }
+        fn get_z(&self) -> f64 {
+            self.z
+        }
+        fn to_tuple(&self) -> (f64, f64, f64) {
+            (self.x, self.y, self.z)
+        }
+    }
     pub struct CPlane {
         pub origin: Point3d,
         pub normal: Vector3d,
@@ -729,6 +804,265 @@ pub mod geometry {
             n // Default case
         }
 
+        ///!!!!!! not working yet !!!!!!!!!!!!!!
+        /// Evaluate a NURBS curve at parameter `t` and return both the point and tangent vector
+        fn evaluate_with_tangent(&self, t: f64) -> Option<(Point3d, Vector3d)> {
+            let p = self.degree;
+
+            // Ensure `t` is within the valid range
+            if t < 0.0 || t > 1.0 {
+                return None; // Invalid parameter
+            }
+
+            // Find the knot span
+            let k = self.find_span(t);
+
+            // Allocate arrays for de Boor points and weights
+            let mut d = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0
+                };
+                p + 1
+            ];
+            let mut w = vec![0.0; p + 1];
+
+            // Initialize the de Boor points and weights
+            for j in 0..=p {
+                let cp = &self.control_points[k - p + j];
+                let weight = self.weights[k - p + j];
+                d[j] = Point3d {
+                    X: cp.X * weight,
+                    Y: cp.Y * weight,
+                    Z: cp.Z * weight,
+                };
+                w[j] = weight;
+            }
+
+            // Perform the de Boor recursion for position
+            for r in 1..=p {
+                for j in (r..=p).rev() {
+                    let alpha = (t - self.knots[k + j - p])
+                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p]);
+
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
+
+                    w[j] = (1.0 - alpha) * w[j - 1] + alpha * w[j];
+                }
+            }
+
+            // Compute the position (normalize by weight)
+            let point = Point3d {
+                X: d[p].X / w[p],
+                Y: d[p].Y / w[p],
+                Z: d[p].Z / w[p],
+            };
+
+            // Tangent computation using first derivative of de Boor
+            let mut d_tangent = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0
+                };
+                p
+            ];
+            let mut w_tangent = vec![0.0; p];
+
+            for j in 0..p {
+                let weight_diff = self.weights[k - p + j + 1] - self.weights[k - p + j];
+                d_tangent[j].X = (d[j + 1].X - d[j].X)
+                    / (self.knots[k + j + 1] - self.knots[k + j])
+                    + weight_diff * d[j].X;
+                d_tangent[j].Y = (d[j + 1].Y - d[j].Y)
+                    / (self.knots[k + j + 1] - self.knots[k + j])
+                    + weight_diff * d[j].Y;
+                d_tangent[j].Z = (d[j + 1].Z - d[j].Z)
+                    / (self.knots[k + j + 1] - self.knots[k + j])
+                    + weight_diff * d[j].Z;
+
+                w_tangent[j] = (w[j + 1] - w[j]) / (self.knots[k + j + 1] - self.knots[k + j]);
+            }
+
+            // Perform the de Boor recursion for tangent
+            for r in 1..p {
+                for j in (r..p).rev() {
+                    let alpha = (t - self.knots[k + j - p + 1])
+                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p + 1]);
+
+                    d_tangent[j].X = (1.0 - alpha) * d_tangent[j - 1].X + alpha * d_tangent[j].X;
+                    d_tangent[j].Y = (1.0 - alpha) * d_tangent[j - 1].Y + alpha * d_tangent[j].Y;
+                    d_tangent[j].Z = (1.0 - alpha) * d_tangent[j - 1].Z + alpha * d_tangent[j].Z;
+
+                    w_tangent[j] = (1.0 - alpha) * w_tangent[j - 1] + alpha * w_tangent[j];
+                }
+            }
+
+            // Compute the tangent vector (normalize by weight derivative)
+            let tangent = Vector3d::new(
+                d_tangent[p - 1].X / w[p - 1],
+                d_tangent[p - 1].Y / w[p - 1],
+                d_tangent[p - 1].Z / w[p - 1],
+            );
+
+            Some((point, tangent))
+        }
+        /// !!! not finished yet !!!
+        /// Evaluate a NURBS curve at parameter `t` and return:
+        /// - The evaluated point
+        /// - The tangent vector (1st derivative)
+        /// - The acceleration vector (2nd derivative)
+        fn evaluate_with_derivatives(&self, t: f64) -> Option<(Point3d, Vector3d, Vector3d)> {
+            let p = self.degree;
+
+            // Ensure `t` is within the valid range
+            if t < 0.0 || t > 1.0 {
+                return None; // Invalid parameter
+            }
+
+            // Find the knot span
+            let k = self.find_span(t);
+
+            // Allocate arrays for de Boor points and weights
+            let mut d = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0
+                };
+                p + 1
+            ];
+            let mut w = vec![0.0; p + 1];
+
+            // Initialize the de Boor points and weights
+            for j in 0..=p {
+                let cp = &self.control_points[k - p + j];
+                let weight = self.weights[k - p + j];
+                d[j] = Point3d {
+                    X: cp.X * weight,
+                    Y: cp.Y * weight,
+                    Z: cp.Z * weight,
+                };
+                w[j] = weight;
+            }
+
+            // Perform the de Boor recursion for position
+            for r in 1..=p {
+                for j in (r..=p).rev() {
+                    let alpha = (t - self.knots[k + j - p])
+                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p]);
+
+                    d[j].X = (1.0 - alpha) * d[j - 1].X + alpha * d[j].X;
+                    d[j].Y = (1.0 - alpha) * d[j - 1].Y + alpha * d[j].Y;
+                    d[j].Z = (1.0 - alpha) * d[j - 1].Z + alpha * d[j].Z;
+
+                    w[j] = (1.0 - alpha) * w[j - 1] + alpha * w[j];
+                }
+            }
+
+            // Compute the position (normalize by weight)
+            let point = Point3d {
+                X: d[p].X / w[p],
+                Y: d[p].Y / w[p],
+                Z: d[p].Z / w[p],
+            };
+
+            // Allocate arrays for 1st and 2nd derivative computations
+            let mut d_tangent = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0
+                };
+                p
+            ];
+            let mut w_tangent = vec![0.0; p];
+            let mut d_acceleration = vec![
+                Point3d {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0
+                };
+                p - 1
+            ];
+            let mut w_acceleration = vec![0.0; p - 1];
+
+            // Compute 1st derivatives (tangent vector)
+            for j in 0..p {
+                d_tangent[j].X =
+                    (d[j + 1].X - d[j].X) / (self.knots[k + j + 1] - self.knots[k + j]);
+                d_tangent[j].Y =
+                    (d[j + 1].Y - d[j].Y) / (self.knots[k + j + 1] - self.knots[k + j]);
+                d_tangent[j].Z =
+                    (d[j + 1].Z - d[j].Z) / (self.knots[k + j + 1] - self.knots[k + j]);
+
+                w_tangent[j] = (w[j + 1] - w[j]) / (self.knots[k + j + 1] - self.knots[k + j]);
+            }
+
+            // Perform de Boor recursion for 1st derivatives
+            for r in 1..p {
+                for j in (r..p).rev() {
+                    let alpha = (t - self.knots[k + j - p + 1])
+                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p + 1]);
+
+                    d_tangent[j].X = (1.0 - alpha) * d_tangent[j - 1].X + alpha * d_tangent[j].X;
+                    d_tangent[j].Y = (1.0 - alpha) * d_tangent[j - 1].Y + alpha * d_tangent[j].Y;
+                    d_tangent[j].Z = (1.0 - alpha) * d_tangent[j - 1].Z + alpha * d_tangent[j].Z;
+
+                    w_tangent[j] = (1.0 - alpha) * w_tangent[j - 1] + alpha * w_tangent[j];
+                }
+            }
+
+            // Compute 2nd derivatives (acceleration vector)
+            for j in 0..p - 1 {
+                d_acceleration[j].X = (d_tangent[j + 1].X - d_tangent[j].X)
+                    / (self.knots[k + j + 2] - self.knots[k + j + 1]);
+                d_acceleration[j].Y = (d_tangent[j + 1].Y - d_tangent[j].Y)
+                    / (self.knots[k + j + 2] - self.knots[k + j + 1]);
+                d_acceleration[j].Z = (d_tangent[j + 1].Z - d_tangent[j].Z)
+                    / (self.knots[k + j + 2] - self.knots[k + j + 1]);
+
+                w_acceleration[j] = (w_tangent[j + 1] - w_tangent[j])
+                    / (self.knots[k + j + 2] - self.knots[k + j + 1]);
+            }
+
+            // Perform de Boor recursion for 2nd derivatives
+            for r in 1..p - 1 {
+                for j in (r..p - 1).rev() {
+                    let alpha = (t - self.knots[k + j - p + 2])
+                        / (self.knots[k + 1 + j - r] - self.knots[k + j - p + 2]);
+
+                    d_acceleration[j].X =
+                        (1.0 - alpha) * d_acceleration[j - 1].X + alpha * d_acceleration[j].X;
+                    d_acceleration[j].Y =
+                        (1.0 - alpha) * d_acceleration[j - 1].Y + alpha * d_acceleration[j].Y;
+                    d_acceleration[j].Z =
+                        (1.0 - alpha) * d_acceleration[j - 1].Z + alpha * d_acceleration[j].Z;
+
+                    w_acceleration[j] =
+                        (1.0 - alpha) * w_acceleration[j - 1] + alpha * w_acceleration[j];
+                }
+            }
+
+            // Normalize tangent and acceleration by respective weights
+            let tangent = Vector3d::new(
+                d_tangent[p - 1].X / w[p - 1],
+                d_tangent[p - 1].Y / w[p - 1],
+                d_tangent[p - 1].Z / w[p - 1],
+            );
+
+            let acceleration = Vector3d::new(
+                d_acceleration[p - 2].X / w[p - 2],
+                d_acceleration[p - 2].Y / w[p - 2],
+                d_acceleration[p - 2].Z / w[p - 2],
+            );
+
+            Some((point, tangent, acceleration))
+        }
+
         /// Describe the path by a list of Point3d.
         pub fn draw(&self, step_resolution: f64) -> Vec<Point3d> {
             if step_resolution == 0.0 {
@@ -761,7 +1095,7 @@ pub mod geometry {
                 (pt_plus_h.Z - 2.0 * pt.Z + pt_minus_h.Z) / (h * h),
             )
         }
-
+        /// Constructor like with OpenNurbs
         pub fn new_rh(control_points: Vec<Point3d>, degree: usize) -> Self {
             let n = control_points.len(); // Number of control points
             let num_knots = n + degree + 1; // Number of knots = control points + degree + 1
@@ -798,51 +1132,54 @@ pub mod geometry {
     }
     // Other existing methods...
     use std::fmt;
+    #[allow(non_snake_case)]
     #[derive(Debug, Copy, Clone, PartialEq)]
     pub struct Vector2d {
-        pub x: f64,
-        pub y: f64,
+        pub X: f64,
+        pub Y: f64,
     }
     impl Vector2d {
         pub fn new(x: f64, y: f64) -> Self {
-            Self { x, y }
+            Self { X: x, Y: y }
         }
         pub fn magnetude(self) -> f64 {
-            (self.x * self.x + self.y * self.y).sqrt()
+            (self.X * self.X + self.Y * self.Y).sqrt()
         }
         pub fn normalize(self) -> Self {
             let m = self.magnetude();
             if m > std::f64::EPSILON {
                 Self {
-                    x: self.x / m,
-                    y: self.y / m,
+                    X: self.X / m,
+                    Y: self.Y / m,
                 }
             } else {
-                Self { x: 0.0, y: 0.0 }
+                Self { X: 0.0, Y: 0.0 }
             }
         }
         pub fn crossProduct(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
-            ((*first_vector).x * (*second_vector).y) - ((*first_vector).y * (*second_vector).x)
+            ((*first_vector).X * (*second_vector).Y) - ((*first_vector).Y * (*second_vector).X)
         }
-
         pub fn angle(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
             f64::acos(
                 ((*first_vector) * (*second_vector))
                     / ((*first_vector).magnetude() * (*second_vector).magnetude()),
             )
         }
+        pub fn to_tuple(&self) -> (f64, f64) {
+            (self.X, self.Y)
+        }
     }
     impl fmt::Display for Vector2d {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "Vector2d{{x:{0},y:{1}}}", self.x, self.y)
+            write!(f, "Vector2d{{x:{0},y:{1}}}", self.X, self.Y)
         }
     }
     impl Sub for Vector2d {
         type Output = Self;
         fn sub(self, other: Vector2d) -> Self::Output {
             Self {
-                x: self.x - other.x,
-                y: self.y - other.y,
+                X: self.X - other.X,
+                Y: self.Y - other.Y,
             }
         }
     }
@@ -851,8 +1188,8 @@ pub mod geometry {
         type Output = Self;
         fn add(self, other: Vector2d) -> Self::Output {
             Self {
-                x: self.x + other.x,
-                y: self.y + other.y,
+                X: self.X + other.X,
+                Y: self.Y + other.Y,
             }
         }
     }
@@ -860,30 +1197,30 @@ pub mod geometry {
         type Output = Self;
         fn mul(self, scalar: f64) -> Self::Output {
             Self {
-                x: self.x * scalar,
-                y: self.y * scalar,
+                X: self.X * scalar,
+                Y: self.Y * scalar,
             }
         }
     }
     impl Mul for Vector2d {
         type Output = f64;
         fn mul(self, other: Vector2d) -> f64 {
-            self.x * other.x + self.y * other.y
+            self.X * other.X + self.Y * other.Y
         }
     }
     impl Div for Vector2d {
         type Output = Self;
         fn div(self, other: Vector2d) -> Self::Output {
             Self {
-                x: self.x / other.x,
-                y: self.y / other.y,
+                X: self.X / other.X,
+                Y: self.Y / other.Y,
             }
         }
     }
     impl MulAssign<f64> for Vector2d {
         fn mul_assign(&mut self, scalar: f64) {
-            self.x *= scalar;
-            self.y *= scalar;
+            self.X *= scalar;
+            self.Y *= scalar;
         }
     }
 
@@ -1313,67 +1650,61 @@ pub mod visualization_disabled_alpha {
  *  of Point3d from world axis and Angles.
  */
 pub mod transformation {
+    use super::geometry::Coordinate3d;
     use super::geometry::Point3d;
-    use crate::display_pipe_line::redering_object::Vertex;
+
+    /// Rotate the point from X world axis.
+    /// # Arguments
+    /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
+    /// # Returns
+    /// return a Point3d Vector3d or a Vertex depend on input type.
+    pub fn rotate_x<T: Coordinate3d>(point: T, angle: f64) -> T
+    where
+        T: Coordinate3d<Output = T>,
+    {
+        let cos_theta = angle.cos();
+        let sin_theta = angle.sin();
+        T::new(
+            point.get_x(),
+            point.get_y() * cos_theta - point.get_z() * sin_theta,
+            point.get_y() * sin_theta + point.get_z() * cos_theta,
+        )
+    }
+   
     /// Rotate the point from Y world axis.
     /// # Arguments
-    /// Point3d to transform and angle in radian (in f64)
+    /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
     /// # Returns
-    /// return a Point3d
-    pub fn rotate_y(point: Point3d, angle: f64) -> Point3d {
+    /// return a Point3d Vector3d or a Vertex depend on input type.
+    pub fn rotate_y<T: Coordinate3d>(point: T, angle: f64) -> T
+    where
+        T: Coordinate3d<Output = T>,
+    {
         let cos_theta = angle.cos();
         let sin_theta = angle.sin();
-        Point3d {
-            X: point.X * cos_theta - point.Z * sin_theta,
-            Y: point.Y,
-            Z: point.X * sin_theta + point.Z * cos_theta,
-        }
-    }
-    pub fn rotate_y_vertex(point: Vertex, angle: f64) -> Vertex {
+        T::new(
+            point.get_x() * cos_theta - point.get_z() * sin_theta,
+            point.get_y(),
+            point.get_x() * sin_theta + point.get_z() * cos_theta,
+        )
+    } 
+    
+    /// Rotate the point from X world axis.
+    /// # Arguments
+    /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
+    /// # Returns
+    /// return a Point3d Vector3d or a Vertex depend on input type.
+    pub fn rotate_z<T: Coordinate3d>(point: T, angle: f64) -> T
+    where
+        T: Coordinate3d<Output = T>,
+    {
         let cos_theta = angle.cos();
         let sin_theta = angle.sin();
-        Vertex {
-            x: point.x * cos_theta - point.z * sin_theta,
-            y: point.y,
-            z: point.x * sin_theta + point.z * cos_theta,
-        }
-    }
-
-    pub fn rotate_x(point: Point3d, angle: f64) -> Point3d {
-        let cos_theta = angle.cos();
-        let sin_theta = angle.sin();
-        Point3d {
-            X: point.X,
-            Y: point.Y * cos_theta - point.Z * sin_theta,
-            Z: point.Y * sin_theta + point.Z * cos_theta,
-        }
-    }
-    pub fn rotate_x_vertex(point: Vertex, angle: f64) -> Vertex {
-        let cos_theta = angle.cos();
-        let sin_theta = angle.sin();
-        Vertex {
-            x: point.x,
-            y: point.y * cos_theta - point.z * sin_theta,
-            z: point.y * sin_theta + point.z * cos_theta,
-        }
-    }
-    pub fn rotate_z(point: Point3d, angle: f64) -> Point3d {
-        let cos_theta = angle.cos();
-        let sin_theta = angle.sin();
-        Point3d {
-            X: point.X * cos_theta - point.Y * sin_theta,
-            Y: point.X * sin_theta + point.Y * cos_theta,
-            Z: point.Z,
-        }
-    }
-    pub fn rotate_z_vertex(point: Vertex, angle: f64) -> Vertex {
-        let cos_theta = angle.cos();
-        let sin_theta = angle.sin();
-        Vertex {
-            x: point.x * cos_theta - point.y * sin_theta,
-            y: point.x * sin_theta + point.y * cos_theta,
-            z: point.z,
-        }
+        T::new(
+            point.get_x() * cos_theta - point.get_y() * sin_theta,
+            point.get_x() * sin_theta + point.get_y() * cos_theta,
+            point.get_z(),
+        )
     }
 
     /// Project a 3d point on a 4 points3d plane (from the plane Vector Normal)
@@ -2308,12 +2639,10 @@ mod test {
             assert!(false);
         }
         // find the 3 first segments where the points array describe a straight line.
-        if let Some(result) = Point3d::find_first_collinear_points(&p_tarray[0..],1e-3){
+        if let Some(result) = Point3d::find_first_collinear_points(&p_tarray[0..], 1e-3) {
             assert_eq!((7, 10), result);
         }
     }
-    
-
 }
 /*
 * notes:
