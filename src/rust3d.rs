@@ -141,7 +141,7 @@ pub mod geometry {
         }
     }
 
-    // the following implementation for Point3d is when Point3d is use as ambigius
+    // the following implementation for Point3d is when Point3d is use as ambiguous
     // representation of a Vector3d in order to avoid runtime penalty.
     // - using a Vertex will full fill the same purpose in a more idiomatic way.
     impl Point3d {
@@ -150,11 +150,11 @@ pub mod geometry {
             (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt()
         }
 
-        /// Normalize the the point as a vector
+        /// Normalize the point as a vector
         /// (equivalent to unitize_b for Vector3d)
-        /// this remove embiguity when point 3d is use as vector
-        /// ( to avoid sqrt penalty on magnetide creation when using Vector3d )
-        /// - it's recomended to use Vertex for that.
+        /// this remove ambiguity when point 3d is use as vector
+        /// ( to avoid sqrt penalty on magnetude creation when using Vector3d )
+        /// - it's recommended to use Vertex for that.
         pub fn normalize(&self) -> Self {
             let mag = self.magnitude();
             if mag > std::f64::EPSILON {
