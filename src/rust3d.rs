@@ -1719,7 +1719,7 @@ pub mod transformation {
         ]
     }
 
-    /// Create a rotation matrix from angles (in degrees) for X, Y, and Z axes
+    /// Create a rotation matrix from angles (in degrees) for X, Y, and Z axis
     pub fn rotation_matrix_from_angles(x_angle: f64, y_angle: f64, z_angle: f64) -> [[f64; 4]; 4] {
         // Convert angles from degrees to radians
         let x_rad = x_angle.to_radians();
