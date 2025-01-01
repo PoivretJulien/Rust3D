@@ -1875,6 +1875,54 @@ pub mod transformation {
             })
             .collect()
     }
+
+    /// Rotate a matrix from an angle and a vector axis.
+    pub fn rotation_matrix_from_axis_angle<T: Coordinate3d>(axis: T, angle: f64) -> [[f64; 4]; 4] {
+        // Normalize the axis vector
+        let x = axis.get_x();
+        let y = axis.get_y();
+        let z = axis.get_z();
+        let length = (x * x + y * y + z * z).sqrt();
+
+        if length == 0.0 {
+            panic!("Axis vector cannot be zero-length.");
+        }
+
+        let ux = x / length;
+        let uy = y / length;
+        let uz = z / length;
+
+        // Convert the angle to radians
+        let theta = angle.to_radians();
+
+        // Precompute trigonometric terms
+        let cos_theta = theta.cos();
+        let sin_theta = theta.sin();
+        let one_minus_cos = 1.0 - cos_theta;
+
+        // Compute the rotation matrix using the axis-angle formula
+        [
+            [
+                cos_theta + ux * ux * one_minus_cos,
+                ux * uy * one_minus_cos - uz * sin_theta,
+                ux * uz * one_minus_cos + uy * sin_theta,
+                0.0,
+            ],
+            [
+                uy * ux * one_minus_cos + uz * sin_theta,
+                cos_theta + uy * uy * one_minus_cos,
+                uy * uz * one_minus_cos - ux * sin_theta,
+                0.0,
+            ],
+            [
+                uz * ux * one_minus_cos - uy * sin_theta,
+                uz * uy * one_minus_cos + ux * sin_theta,
+                cos_theta + uz * uz * one_minus_cos,
+                0.0,
+            ],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    }
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
     /// the 3x3 version more efficient for rotation and scaling but cannot
