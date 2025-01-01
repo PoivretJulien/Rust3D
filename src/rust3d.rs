@@ -1652,8 +1652,7 @@ pub mod visualization_disabled_alpha {
 pub mod transformation {
     use super::geometry::Coordinate3d;
     use super::geometry::Point3d;
-
-    /// Rotate the point from X world axis.
+    /// Rotate the point from X world axis (Euler rotation).
     /// # Arguments
     /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
     /// # Returns
@@ -1671,7 +1670,7 @@ pub mod transformation {
         )
     }
    
-    /// Rotate the point from Y world axis.
+    /// Rotate the point from Y world axis (Euler rotation).
     /// # Arguments
     /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
     /// # Returns
@@ -1689,7 +1688,7 @@ pub mod transformation {
         )
     } 
     
-    /// Rotate the point from X world axis.
+    /// Rotate the point from X world axis (Euler rotation).
     /// # Arguments
     /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
     /// # Returns
