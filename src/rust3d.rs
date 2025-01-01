@@ -1791,7 +1791,7 @@ pub mod transformation {
 
     /// Apply a transformations matrix to a point 
     /// input data can be Point3d Vector3d or a Vertex
-    pub fn transform_points<T:Coordinate3d + Send + Sync>(tranform_matrix:[[f64;4];4],points_to_process:Vec<T>)->Vec<T>
+    pub fn transform_points<T:Coordinate3d + Send + Sync>(tranform_matrix:&[[f64;4];4],points_to_process:Vec<T>)->Vec<T>
         where T:Coordinate3d<Output=T>{
             points_to_process.par_iter().map(|point|{
                         T::new( 
