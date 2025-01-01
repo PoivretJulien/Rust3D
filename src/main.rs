@@ -7,7 +7,6 @@ use rayon::iter::ParallelIterator;
 use rust3d::draw::*;
 use rust3d::geometry::*;
 use rust3d::transformation::rotate_z;
-use rust3d::transformation::rotate_z_from_vertex;
 use rust3d::utillity::degree_to_radians;
 use display_pipe_line::visualization_v3::coloring::Color;
 use display_pipe_line::visualization_v3::Camera;
