@@ -804,7 +804,7 @@ pub mod geometry {
             n // Default case
         }
 
-        ///!!!!!! not working yet !!!!!!!!!!!!!!
+        ///!!!!!! not working yet !!!!!!!!!!!!!! private method
         /// Evaluate a NURBS curve at parameter `t` and return both the point and tangent vector
         fn evaluate_with_tangent(&self, t: f64) -> Option<(Point3d, Vector3d)> {
             let p = self.degree;
@@ -910,7 +910,7 @@ pub mod geometry {
 
             Some((point, tangent))
         }
-        /// !!! not finished yet !!!
+        /// !!! not finished yet !!! private method.
         /// Evaluate a NURBS curve at parameter `t` and return:
         /// - The evaluated point
         /// - The tangent vector (1st derivative)
@@ -1647,11 +1647,11 @@ pub mod visualization_disabled_alpha {
 /*  
  *  Most of the time for CAD applications rotating a CPlane
  *  is more than enough for operating geometry creation 
- *  but for animation,simulation robotic automation 
- *  where several transformations must occur one after the other, 
- *  matrix transformation offer the possibility to be combined 
- *  before operating the transformation of a point array and 
- *  so reducing the computation cost significantly to one transformation. 
+ *  but for animation,simulation or robotic automation 
+ *  where several transformations must occur one after the others, 
+ *  matrix transformation offer the possibility to be combined into only one 
+ *  before be fore being factorized over and array of points  
+ *  reducing significantly the computation cost of the final transformation. 
  */
 pub mod transformation {
     use super::geometry::Coordinate3d;
