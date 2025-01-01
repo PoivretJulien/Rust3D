@@ -1650,10 +1650,10 @@ pub mod visualization_disabled_alpha {
  *  of Point3d from world axis and Angles.
  */
 pub mod transformation {
-    use rayon::prelude::*;
-    use rayon::*;
     use super::geometry::Coordinate3d;
     use super::geometry::Point3d;
+    use rayon::prelude::*;
+    use rayon::*;
     /// Rotate the point from X world axis (Euler rotation).
     /// # Arguments
     /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
@@ -1710,12 +1710,69 @@ pub mod transformation {
 
     // 4x4 Matrix transformation part.
     /// Create a translation from a Point3d a Vector3d or a Vertex (interpreted as a vector)
-    pub fn translation_matrix_from_vector<T:Coordinate3d>(translation_vector:T)->[[f64;4];4]{
+    pub fn translation_matrix_from_vector<T: Coordinate3d>(translation_vector: T) -> [[f64; 4]; 4] {
         [
-            [1.0,0.0,0.0,translation_vector.get_x()],
-            [0.0,1.0,0.0,translation_vector.get_y()],
-            [0.0,0.0,1.0,translation_vector.get_z()],
-            [0.0,0.0,0.0,1.0],
+            [1.0, 0.0, 0.0, translation_vector.get_x()],
+            [0.0, 1.0, 0.0, translation_vector.get_y()],
+            [0.0, 0.0, 1.0, translation_vector.get_z()],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    }
+
+    /// Make a scale matrix from an arbitrary center and x y z scale ratio.  
+    pub fn scaling_matrix_from_center<T: Coordinate3d>(
+        center: T,
+        scale_x: f64,
+        scale_y: f64,
+        scale_z: f64,
+    ) -> [[f64; 4]; 4] {
+        // Extract the center coordinates
+        let cx = center.get_x();
+        let cy = center.get_y();
+        let cz = center.get_z();
+
+        // Translation to the origin
+        let translation_to_origin = [
+            [1.0, 0.0, 0.0, -cx],
+            [0.0, 1.0, 0.0, -cy],
+            [0.0, 0.0, 1.0, -cz],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+
+        // Scaling matrix
+        let scaling = [
+            [scale_x, 0.0, 0.0, 0.0],
+            [0.0, scale_y, 0.0, 0.0],
+            [0.0, 0.0, scale_z, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+
+        // Translation back to the original center
+        let translation_back = [
+            [1.0, 0.0, 0.0, cx],
+            [0.0, 1.0, 0.0, cy],
+            [0.0, 0.0, 1.0, cz],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+
+        // Combine the matrices: T_back * S * T_to_origin
+        let temp_matrix = multiply_matrices_axb(scaling, translation_to_origin);
+        let final_matrix = multiply_matrices_axb(translation_back, temp_matrix);
+
+        final_matrix
+    }
+
+    /// Make a scale matrix from world origin and x y z scale ratio.
+    pub fn scale_matrix_from_ratio_xyz(
+        scale_ratio_x: f64,
+        scale_ratio_y: f64,
+        scale_ratio_z: f64,
+    ) -> [[f64; 4]; 4] {
+        [
+            [scale_ratio_x, 0.0, 0.0, 0.0],
+            [0.0, scale_ratio_y, 0.0, 0.0],
+            [0.0, 0.0, scale_ratio_z, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
         ]
     }
 
@@ -1756,9 +1813,9 @@ pub mod transformation {
 
         rotation_xyz
     }
-   
+
     /// Combine multiple transformation matrices into one...
-    /// since transformation order is not commutative order history must be kept 
+    /// since transformation order is not commutative order history must be kept
     /// so a function call from stack queue is required use the macro vec! for that.
     pub fn combine_matrices(matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
         // Start with the identity matrix
@@ -1789,17 +1846,121 @@ pub mod transformation {
         result
     }
 
-    /// Apply a transformations matrix to a point 
+    /// Apply a transformations matrix to a point
     /// input data can be Point3d Vector3d or a Vertex
-    pub fn transform_points<T:Coordinate3d + Send + Sync>(tranform_matrix:&[[f64;4];4],points_to_process:Vec<T>)->Vec<T>
-        where T:Coordinate3d<Output=T>{
-            points_to_process.par_iter().map(|point|{
-                        T::new( 
-                               tranform_matrix[0][0] * (*point).get_x() + tranform_matrix[0][1] * (*point).get_y() + tranform_matrix[0][2] * (*point).get_z() + tranform_matrix[0][3] * 1.0,
-                               tranform_matrix[1][0] * (*point).get_x() + tranform_matrix[1][1] * (*point).get_y() + tranform_matrix[1][2] * (*point).get_z() + tranform_matrix[1][3] * 1.0,
-                               tranform_matrix[2][0] * (*point).get_x() + tranform_matrix[2][1] * (*point).get_y() + tranform_matrix[2][2] * (*point).get_z() + tranform_matrix[2][3] * 1.0,
-                              )
-            }).collect()
+    pub fn transform_points<T: Coordinate3d + Send + Sync>(
+        tranform_matrix: &[[f64; 4]; 4],
+        points_to_process: Vec<T>,
+    ) -> Vec<T>
+    where
+        T: Coordinate3d<Output = T>,
+    {
+        points_to_process
+            .par_iter()
+            .map(|point| {
+                T::new(
+                    tranform_matrix[0][0] * (*point).get_x()
+                        + tranform_matrix[0][1] * (*point).get_y()
+                        + tranform_matrix[0][2] * (*point).get_z()
+                        + tranform_matrix[0][3] * 1.0,
+                    tranform_matrix[1][0] * (*point).get_x()
+                        + tranform_matrix[1][1] * (*point).get_y()
+                        + tranform_matrix[1][2] * (*point).get_z()
+                        + tranform_matrix[1][3] * 1.0,
+                    tranform_matrix[2][0] * (*point).get_x()
+                        + tranform_matrix[2][1] * (*point).get_y()
+                        + tranform_matrix[2][2] * (*point).get_z()
+                        + tranform_matrix[2][3] * 1.0,
+                )
+            })
+            .collect()
+    }
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    /// the 3x3 version more efficient for rotation and scaling but cannot
+    /// represent translation.
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    /// Create a 3x3 rotation matrix from angles (in degrees) for X, Y, and Z axes
+    pub fn rotation_matrix_from_angles_3x3(
+        x_angle: f64,
+        y_angle: f64,
+        z_angle: f64,
+    ) -> [[f64; 3]; 3] {
+        // Convert angles from degrees to radians
+        let x_rad = x_angle.to_radians();
+        let y_rad = y_angle.to_radians();
+        let z_rad = z_angle.to_radians();
+
+        // Rotation matrix around the X-axis
+        let rotation_x = [
+            [1.0, 0.0, 0.0],
+            [0.0, x_rad.cos(), -x_rad.sin()],
+            [0.0, x_rad.sin(), x_rad.cos()],
+        ];
+
+        // Rotation matrix around the Y-axis
+        let rotation_y = [
+            [y_rad.cos(), 0.0, y_rad.sin()],
+            [0.0, 1.0, 0.0],
+            [-y_rad.sin(), 0.0, y_rad.cos()],
+        ];
+
+        // Rotation matrix around the Z-axis
+        let rotation_z = [
+            [z_rad.cos(), -z_rad.sin(), 0.0],
+            [z_rad.sin(), z_rad.cos(), 0.0],
+            [0.0, 0.0, 1.0],
+        ];
+
+        // Combine the rotation matrices: R = Rz * Ry * Rx
+        let rotation_xy = multiply_matrices_3x3(rotation_y, rotation_x);
+        let rotation_xyz = multiply_matrices_3x3(rotation_z, rotation_xy);
+
+        rotation_xyz
+    }
+    /// Helper function to multiply two 3x3 matrices
+    pub fn multiply_matrices_3x3(a: [[f64; 3]; 3], b: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
+        let mut result = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+            }
+        }
+        result
+    }
+    /// Combine multiple 3x3 transformation matrices into one
+    pub fn combine_matrices_3x3(matrices: Vec<[[f64; 3]; 3]>) -> [[f64; 3]; 3] {
+        let mut result = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+        for matrix in matrices {
+            result = multiply_matrices_3x3(result, matrix);
+        }
+        result
+    }
+    /// Apply a 3x3 transformation matrix to a vector of points
+    pub fn transform_points_3x3<T: Coordinate3d + Send + Sync>(
+        transform_matrix: &[[f64; 3]; 3],
+        points_to_process: Vec<T>,
+    ) -> Vec<T>
+    where
+        T: Coordinate3d<Output = T>,
+    {
+        points_to_process
+            .par_iter()
+            .map(|point| {
+                T::new(
+                    transform_matrix[0][0] * point.get_x()
+                        + transform_matrix[0][1] * point.get_y()
+                        + transform_matrix[0][2] * point.get_z(),
+                    transform_matrix[1][0] * point.get_x()
+                        + transform_matrix[1][1] * point.get_y()
+                        + transform_matrix[1][2] * point.get_z(),
+                    transform_matrix[2][0] * point.get_x()
+                        + transform_matrix[2][1] * point.get_y()
+                        + transform_matrix[2][2] * point.get_z(),
+                )
+            })
+            .collect()
     }
 
     /// Project a 3d point on a 4 Point3d plane (from the plane Vector Normal)
