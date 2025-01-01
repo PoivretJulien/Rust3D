@@ -1130,7 +1130,7 @@ pub mod geometry {
             }
         }
     }
-    // Other existing methods...
+
     use std::fmt;
     #[allow(non_snake_case)]
     #[derive(Debug, Copy, Clone, PartialEq)]
@@ -1156,7 +1156,7 @@ pub mod geometry {
                 Self { X: 0.0, Y: 0.0 }
             }
         }
-        pub fn crossProduct(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
+        pub fn crossproduct(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
             ((*first_vector).X * (*second_vector).Y) - ((*first_vector).Y * (*second_vector).X)
         }
         pub fn angle(first_vector: &Vector2d, second_vector: &Vector2d) -> f64 {
@@ -1388,7 +1388,6 @@ pub mod geometry {
         /// Convert the quaternion to a 4x3 transformation matrix
         pub fn to_4x3_matrix(&self) -> [[f64; 3]; 4] {
             let (w, x, y, z) = (self.w, self.x, self.y, self.z);
-
             [
                 [
                     1.0 - 2.0 * (y * y + z * z),
@@ -1645,18 +1644,23 @@ pub mod visualization_disabled_alpha {
     }
 }
 
-/*
- *  A set of early very basic transformations method
- *  of Point3d from world axis and Angles.
+/*  
+ *  Most of the time for CAD applications rotating a CPlane
+ *  is more than enough for operating geometry creation 
+ *  but for animation,simulation robotic automation 
+ *  where several transformations must occur one after the other, 
+ *  matrix transformation offer the possibility to be combined 
+ *  before operating the transformation of a point array and 
+ *  so reducing the computation cost significantly to one transformation. 
  */
 pub mod transformation {
     use super::geometry::Coordinate3d;
     use super::geometry::Point3d;
     use rayon::prelude::*;
-    use rayon::*;
+    // first basic Euler transformation.////////////////////////////////
     /// Rotate the point from X world axis (Euler rotation).
     /// # Arguments
-    /// !!! the T generic can be Point3d, Vector3d or a Vertex type as input.
+    /// input T generic can be Point3d, Vector3d or a Vertex type as input.
     /// # Returns
     /// return a Point3d Vector3d or a Vertex depend on input type.
     pub fn rotate_x<T: Coordinate3d>(point: T, angle: f64) -> T
@@ -1707,8 +1711,12 @@ pub mod transformation {
             point.get_z(),
         )
     }
-
+    ////////////////////////////////////////////////////////////////////////////
     // 4x4 Matrix transformation part.
+    // following a set of methods for generating specific transformation matrix
+    // then some tools for being combined in to one.
+    // and a method to process the transformation to a stack of Coordinate3d.
+    ////////////////////////////////////////////////////////////////////////////
     /// Create a translation from a Point3d a Vector3d or a Vertex (interpreted as a vector)
     pub fn translation_matrix_from_vector<T: Coordinate3d>(translation_vector: T) -> [[f64; 4]; 4] {
         [
@@ -1814,6 +1822,54 @@ pub mod transformation {
         rotation_xyz
     }
 
+    /// Rotate a matrix from an angle and a vector axis.
+    pub fn rotation_matrix_from_axis_angle<T: Coordinate3d>(axis: T, angle: f64) -> [[f64; 4]; 4] {
+        // Normalize the axis vector
+        let x = axis.get_x();
+        let y = axis.get_y();
+        let z = axis.get_z();
+        let length = (x * x + y * y + z * z).sqrt();
+
+        if length == 0.0 {
+            panic!("Axis vector cannot be zero-length.");
+        }
+
+        let ux = x / length;
+        let uy = y / length;
+        let uz = z / length;
+
+        // Convert the angle to radians
+        let theta = angle.to_radians();
+
+        // Precompute trigonometric terms
+        let cos_theta = theta.cos();
+        let sin_theta = theta.sin();
+        let one_minus_cos = 1.0 - cos_theta;
+
+        // Compute the rotation matrix using the axis-angle formula
+        [
+            [
+                cos_theta + ux * ux * one_minus_cos,
+                ux * uy * one_minus_cos - uz * sin_theta,
+                ux * uz * one_minus_cos + uy * sin_theta,
+                0.0,
+            ],
+            [
+                uy * ux * one_minus_cos + uz * sin_theta,
+                cos_theta + uy * uy * one_minus_cos,
+                uy * uz * one_minus_cos - ux * sin_theta,
+                0.0,
+            ],
+            [
+                uz * ux * one_minus_cos - uy * sin_theta,
+                uz * uy * one_minus_cos + ux * sin_theta,
+                cos_theta + uz * uz * one_minus_cos,
+                0.0,
+            ],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    }
+
     /// Combine multiple transformation matrices into one...
     /// since transformation order is not commutative order history must be kept
     /// so a function call from stack queue is required use the macro vec! for that.
@@ -1876,59 +1932,11 @@ pub mod transformation {
             .collect()
     }
 
-    /// Rotate a matrix from an angle and a vector axis.
-    pub fn rotation_matrix_from_axis_angle<T: Coordinate3d>(axis: T, angle: f64) -> [[f64; 4]; 4] {
-        // Normalize the axis vector
-        let x = axis.get_x();
-        let y = axis.get_y();
-        let z = axis.get_z();
-        let length = (x * x + y * y + z * z).sqrt();
-
-        if length == 0.0 {
-            panic!("Axis vector cannot be zero-length.");
-        }
-
-        let ux = x / length;
-        let uy = y / length;
-        let uz = z / length;
-
-        // Convert the angle to radians
-        let theta = angle.to_radians();
-
-        // Precompute trigonometric terms
-        let cos_theta = theta.cos();
-        let sin_theta = theta.sin();
-        let one_minus_cos = 1.0 - cos_theta;
-
-        // Compute the rotation matrix using the axis-angle formula
-        [
-            [
-                cos_theta + ux * ux * one_minus_cos,
-                ux * uy * one_minus_cos - uz * sin_theta,
-                ux * uz * one_minus_cos + uy * sin_theta,
-                0.0,
-            ],
-            [
-                uy * ux * one_minus_cos + uz * sin_theta,
-                cos_theta + uy * uy * one_minus_cos,
-                uy * uz * one_minus_cos - ux * sin_theta,
-                0.0,
-            ],
-            [
-                uz * ux * one_minus_cos - uy * sin_theta,
-                uz * uy * one_minus_cos + ux * sin_theta,
-                cos_theta + uz * uz * one_minus_cos,
-                0.0,
-            ],
-            [0.0, 0.0, 0.0, 1.0],
-        ]
-    }
     ////////////////////////////////////////////////////////////////////////////
+    // The 3x3 version more efficient for rotation and scaling but cannot
+    // represent translation.
     ////////////////////////////////////////////////////////////////////////////
-    /// the 3x3 version more efficient for rotation and scaling but cannot
-    /// represent translation.
-    ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
+
     /// Create a 3x3 rotation matrix from angles (in degrees) for X, Y, and Z axes
     pub fn rotation_matrix_from_angles_3x3(
         x_angle: f64,

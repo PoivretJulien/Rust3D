@@ -52,7 +52,7 @@ fn main() {
             mesh.vertices.len(),
             mesh.triangles.len()
         );
-        if mesh.is_watertight_par() {
+        if mesh.is_watertight() {
             println!("Volume:({0})cubic/unit(s)", mesh.compute_volume());
         }
         mesh.vertices.par_iter_mut().for_each(|v| *v = ((*v) + z_offset) * DISPLAY_RATIO);
