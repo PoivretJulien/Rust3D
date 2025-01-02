@@ -49,7 +49,26 @@ pub struct Virtual_space {
     pub display: Display_config,
     pub object_list: Vec<Object3d>, // array of Object3d.
 }
+impl Virtual_space {
+    /// Constructor of the main class.
+    /// define principal option for the interactive system.
+    pub fn new(
+        name: &str,
+        file_path: Option<String>,
+        unit_type: Unit_scale,
+        display: Display_config,
+    ) -> Self {
+        Self {
+            project_name: name.to_owned(),
+            file_path,
+            unit_scale: unit_type,
+            display,
+            object_list: Vec::new(),
+        }
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
+/// Oject System.
 pub struct Object3d {
     id: u64,
     data: Option<Displayable>, // if object is removed position is kept
@@ -73,18 +92,22 @@ impl Object3d {
         self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     }
 }
+/// every thing that can be displayed for now 
+/// Curve are basically a set of points.
 pub enum Displayable {
     Point3d(Vec<Point3d>),
     Vector3d(Vec<Vector3d>),
     Vertex(Vec<Vertex>),
     Mesh(Vec<Mesh>),
 }
+// metric or imperial system reference.
 pub enum Unit_scale {
     Minimeters,
     Centimeters,
     Meters,
     Inch,
 }
+// Config for the pipe_line Display thread.
 pub struct Display_config {
     pub display_resolution_height: usize,
     pub display_resolution_width: usize,
@@ -100,11 +123,11 @@ impl Display_config {
             display_ratio: (height as f64 / width as f64),
             // create an identity matrix
             camera_position: [
-            [1.0,0.0,0.0],
-            [0.0,1.0,0.0],
-            [0.0,0.0,1.0],
-            [0.0,0.0,0.0],// last row are the embedded translation vector.
-        ],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0], // last row are the embedded translation vector.
+            ],
         }
     }
 }
