@@ -2019,7 +2019,7 @@ pub mod transformation {
             .collect()
     }
     /// Create a 4x3 rotation matrix from angles (in degrees) for X, Y, and Z axes
-    pub fn rotation_matrix_from_angles_3x4(
+    pub fn rotation_matrix_from_angles_4x3(
         x_angle: f64,
         y_angle: f64,
         z_angle: f64,
@@ -2051,14 +2051,14 @@ pub mod transformation {
         ];
 
         // Combine the rotation matrices: R = Rz * Ry * Rx
-        let rotation_xy = multiply_matrices_3x4(rotation_y, rotation_x);
-        let rotation_xyz = multiply_matrices_3x4(rotation_z, rotation_xy);
+        let rotation_xy = multiply_matrices_4x3(rotation_y, rotation_x);
+        let rotation_xyz = multiply_matrices_4x3(rotation_z, rotation_xy);
 
         rotation_xyz
     }
 
     /// Generate a 4x3 translation matrix from a translation vector
-    pub fn translation_matrix_3x4<T: Coordinate3d>(translation: T) -> [[f64; 4]; 3] {
+    pub fn translation_matrix_4x3<T: Coordinate3d>(translation: T) -> [[f64; 4]; 3] {
         [
             [1.0, 0.0, 0.0, translation.get_x()],
             [0.0, 1.0, 0.0, translation.get_y()],
@@ -2067,7 +2067,7 @@ pub mod transformation {
     }
 
     /// Helper function to multiply two 4x3 matrices
-    pub fn multiply_matrices_3x4(a: [[f64; 4]; 3], b: [[f64; 4]; 3]) -> [[f64; 4]; 3] {
+    pub fn multiply_matrices_4x3(a: [[f64; 4]; 3], b: [[f64; 4]; 3]) -> [[f64; 4]; 3] {
         let mut result = [[0.0; 4]; 3];
         for i in 0..3 {
             for j in 0..4 {
@@ -2081,20 +2081,20 @@ pub mod transformation {
     }
 
     /// Combine multiple 4x3 transformation matrices into one
-    pub fn combine_matrices_3x4(matrices: Vec<[[f64; 4]; 3]>) -> [[f64; 4]; 3] {
+    pub fn combine_matrices_4x3(matrices: Vec<[[f64; 4]; 3]>) -> [[f64; 4]; 3] {
         let mut result = [
             [1.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
         ];
         for matrix in matrices {
-            result = multiply_matrices_3x4(result, matrix);
+            result = multiply_matrices_4x3(result, matrix);
         }
         result
     }
 
     /// Apply a 4x3 transformation matrix to a vector of points
-    pub fn transform_points_3x4<T: Coordinate3d + Send + Sync>(
+    pub fn transform_points_4x3<T: Coordinate3d + Send + Sync>(
         transform_matrix: &[[f64; 4]; 3],
         points_to_process: Vec<T>,
     ) -> Vec<T>
