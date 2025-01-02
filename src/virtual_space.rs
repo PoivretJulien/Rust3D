@@ -47,11 +47,12 @@ pub struct Virtual_space {
     pub file_path: Option<String>,
     pub unit_scale: Unit_scale,
     pub display: Display_config,
-    pub object_list: Vec<Object3d>, // array of Object3d.
+    object_list: Vec<Object3d>, // array of Object3d.
 }
 impl Virtual_space {
     /// Constructor of the main class.
-    /// define principal option for the interactive system.
+    /// define principal options for the
+    /// user interactive system.
     pub fn new(
         name: &str,
         file_path: Option<String>,
@@ -66,14 +67,62 @@ impl Virtual_space {
             object_list: Vec::new(),
         }
     }
+    /// Add a new object on the stack.
+    pub fn add_obj(&mut self, object: Object3d) {
+        self.object_list.push(object);
+    }
+    /// Replace a displayable on same location object..
+    pub fn replace_displayable_in_place(
+        &mut self,
+        index: usize,
+        new_displayable_data: Displayable,
+    ) {
+        // Check if there is an object and then proceed to backup and replacement.
+        // if not simply replace the object with no backup.
+        if let Some(data) = self.object_list[index].data.clone() {
+            self.object_list[index].undo_stack.push(data); // Backup a copy on undo stack.
+            self.object_list[index].data = Some(new_displayable_data);
+        } else {
+            self.object_list[index].data = Some(new_displayable_data);
+        }
+    }
+    /// Recover previous change.
+    pub fn undo_displayable_in_place(&mut self, index: usize) {
+        if self.object_list[index].undo_stack.len() > 0 {
+            if let Some(data) = self.object_list[index].data.clone(){
+                self.object_list[index].redo_stack.push(data); // place element in redo stack.
+                // put back in place undo element.
+                self.object_list[index].data = self.object_list[index].undo_stack.pop();
+            }
+        } else {
+            eprintln!("Nothing to undo... no change has occurred.")
+        }
+    }
+    /// Recover previous change.
+    pub fn redo_displayable_in_place(&mut self, index: usize) {
+        if self.object_list[index].redo_stack.len() > 0 {
+            if let Some(data) = self.object_list[index].data.clone() {
+                self.object_list[index].undo_stack.push(data);
+                self.object_list[index].data = self.object_list[index].redo_stack.pop();
+            }
+        } else {
+            eprintln!("Nothing to undo... no change has occurred.")
+        }
+    }
+    /// Clean the stack of Empty elements.
+    pub fn clean_stack(&mut self) {
+        self.object_list.retain(|obj| obj.data.is_none());
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// Oject System.
 pub struct Object3d {
-    id: u64,
-    data: Option<Displayable>, // if object is removed position is kept
     origin: CPlane,
+    data: Option<Displayable>, // if object is removed position is kept
+    undo_stack: Vec<Displayable>,
+    redo_stack: Vec<Displayable>,
     local_scale_ratio: f64,
+    id: u64,
     last_change_date: String,
 }
 impl Object3d {
@@ -85,6 +134,8 @@ impl Object3d {
             origin,
             local_scale_ratio,
             last_change_date: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
     }
     /// Update last change date time.
@@ -92,8 +143,9 @@ impl Object3d {
         self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     }
 }
-/// every thing that can be displayed for now 
+/// every thing that can be displayed for now
 /// Curve are basically a set of points.
+#[derive(Clone, Debug)]
 pub enum Displayable {
     Point3d(Vec<Point3d>),
     Vector3d(Vec<Vector3d>),
@@ -113,7 +165,8 @@ pub struct Display_config {
     pub display_resolution_width: usize,
     pub display_ratio: f64,
     pub camera_position: [[f64; 3]; 4], // special matrix format optimized
-                                        // for visualization system.
+    // for visualization system.
+    pub raytrace: bool,
 }
 impl Display_config {
     pub fn new(height: usize, width: usize) -> Self {
@@ -126,8 +179,9 @@ impl Display_config {
                 [1.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
                 [0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0], // last row are the embedded translation vector.
+                [0.0, 0.0, 0.0], // last row are the swapped embedded translation vector.
             ],
+            raytrace: false,
         }
     }
 }
