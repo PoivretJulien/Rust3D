@@ -2227,6 +2227,30 @@ pub mod new_mesh {
                 z: self.z / mag,
             }
         }
+        /// Test if a point is inside a given mesh.
+        pub fn is_inside_a_mesh(&self, mesh_to_test: &Mesh) -> bool {
+            let direction = Vertex::new(1.0, 0.0, 0.0);
+            let ray = Ray::new(*self, direction);
+            let mut intersection_count = 0;
+
+            // Use a HashSet to store truncated distances as integers for hashing
+            use std::collections::HashSet;
+            let mut distances = HashSet::new();
+
+            for triangle in mesh_to_test.triangles.iter() {
+                if let Some(t) = triangle.intersect(&mesh_to_test.vertices,&ray) {
+                    // Scale and truncate to an integer to make it hashable
+                    let scaled_t = (t * 10000.0).trunc() as i64;
+
+                    // Only count the intersection if it's unique
+                    if distances.insert(scaled_t) {
+                        intersection_count += 1;
+                    }
+                }
+            }
+            // Odd intersection count means the point is inside the mesh
+            (intersection_count % 2) != 0
+        }
         pub fn to_point3d(&self) -> Point3d {
             Point3d::new(self.x, self.y, self.z)
         }
@@ -2815,6 +2839,46 @@ pub mod new_mesh {
             }
 
             Ok((vertex_count, normal_count, face_count))
+        }
+        /// Test if a mesh is closed (watertight).
+        pub fn is_watertight(&self) -> bool {
+            let mut edge_count: HashMap<(Vertex, Vertex), i32> = HashMap::new();
+            for triangle in self.triangles.iter() {
+                for &(start, end) in &triangle.edges(&self.vertices) {
+                    let edge = if start < end {
+                        (start, end)
+                    } else {
+                        (end, start)
+                    };
+                    let counter = edge_count.entry(edge).or_insert(0);
+                    *counter += 1;
+                }
+            }
+            edge_count.values().all(|&count| count == 2)
+        }
+
+        /// Test if a mesh is closed (watertight) using parallel processing.
+        pub fn is_watertight_par(&self) -> bool {
+            let edge_count = Mutex::new(HashMap::new());
+
+            // Process triangles in parallel
+            self.triangles.par_iter().for_each(|triangle| {
+                for &(start, end) in &triangle.edges(&self.vertices) {
+                    let edge = if start < end {
+                        (start, end)
+                    } else {
+                        (end, start)
+                    };
+
+                    // Lock the mutex, update the edge count, and immediately release the lock
+                    let mut map = edge_count.lock().unwrap();
+                    *map.entry(edge).or_insert(0) += 1;
+                }
+            });
+
+            // Perform the final watertight check
+            let final_map = edge_count.lock().unwrap(); // Lock again to check
+            final_map.values().all(|&count| count == 2)
         }
     }
     #[derive(Debug, Clone)]
