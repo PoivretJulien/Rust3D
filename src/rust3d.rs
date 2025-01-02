@@ -1644,14 +1644,14 @@ pub mod visualization_disabled_alpha {
     }
 }
 
-/*  
+/*
  *  Most of the time for CAD applications rotating a CPlane
- *  is more than enough for operating geometry or CAD design. 
+ *  is more than enough for operating geometry or CAD design.
  *  but for animation,simulation or robotic automation...
- *  where several transformations must occur one after the others, 
- *  matrix transformation offer the possibility to be combined into only one 
+ *  where several transformations must occur one after the others,
+ *  matrix transformation offer the possibility to be combined into only one
  *  and then being factorized over and array of points in a single shot
- *  reducing significantly the computation cost of the final transformation. 
+ *  reducing significantly the computation cost of the final transformation.
  */
 pub mod transformation {
     use super::geometry::Coordinate3d;
@@ -2018,7 +2018,109 @@ pub mod transformation {
             })
             .collect()
     }
+    /// Create a 4x3 rotation matrix from angles (in degrees) for X, Y, and Z axes
+    pub fn rotation_matrix_from_angles_3x4(
+        x_angle: f64,
+        y_angle: f64,
+        z_angle: f64,
+    ) -> [[f64; 4]; 3] {
+        // Convert angles from degrees to radians
+        let x_rad = x_angle.to_radians();
+        let y_rad = y_angle.to_radians();
+        let z_rad = z_angle.to_radians();
 
+        // Rotation matrix around the X-axis
+        let rotation_x = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, x_rad.cos(), -x_rad.sin(), 0.0],
+            [0.0, x_rad.sin(), x_rad.cos(), 0.0],
+        ];
+
+        // Rotation matrix around the Y-axis
+        let rotation_y = [
+            [y_rad.cos(), 0.0, y_rad.sin(), 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
+        ];
+
+        // Rotation matrix around the Z-axis
+        let rotation_z = [
+            [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
+            [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+        ];
+
+        // Combine the rotation matrices: R = Rz * Ry * Rx
+        let rotation_xy = multiply_matrices_3x4(rotation_y, rotation_x);
+        let rotation_xyz = multiply_matrices_3x4(rotation_z, rotation_xy);
+
+        rotation_xyz
+    }
+
+    /// Generate a 4x3 translation matrix from a translation vector
+    pub fn translation_matrix_3x4<T: Coordinate3d>(translation: T) -> [[f64; 4]; 3] {
+        [
+            [1.0, 0.0, 0.0, translation.get_x()],
+            [0.0, 1.0, 0.0, translation.get_y()],
+            [0.0, 0.0, 1.0, translation.get_z()],
+        ]
+    }
+
+    /// Helper function to multiply two 4x3 matrices
+    pub fn multiply_matrices_3x4(a: [[f64; 4]; 3], b: [[f64; 4]; 3]) -> [[f64; 4]; 3] {
+        let mut result = [[0.0; 4]; 3];
+        for i in 0..3 {
+            for j in 0..4 {
+                result[i][j] = a[i][0] * b[0][j]
+                    + a[i][1] * b[1][j]
+                    + a[i][2] * b[2][j]
+                    + if j == 3 { a[i][3] } else { 0.0 };
+            }
+        }
+        result
+    }
+
+    /// Combine multiple 4x3 transformation matrices into one
+    pub fn combine_matrices_3x4(matrices: Vec<[[f64; 4]; 3]>) -> [[f64; 4]; 3] {
+        let mut result = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+        ];
+        for matrix in matrices {
+            result = multiply_matrices_3x4(result, matrix);
+        }
+        result
+    }
+
+    /// Apply a 4x3 transformation matrix to a vector of points
+    pub fn transform_points_3x4<T: Coordinate3d + Send + Sync>(
+        transform_matrix: &[[f64; 4]; 3],
+        points_to_process: Vec<T>,
+    ) -> Vec<T>
+    where
+        T: Coordinate3d<Output = T>,
+    {
+        points_to_process
+            .par_iter()
+            .map(|point| {
+                T::new(
+                    transform_matrix[0][0] * point.get_x()
+                        + transform_matrix[0][1] * point.get_y()
+                        + transform_matrix[0][2] * point.get_z()
+                        + transform_matrix[0][3],
+                    transform_matrix[1][0] * point.get_x()
+                        + transform_matrix[1][1] * point.get_y()
+                        + transform_matrix[1][2] * point.get_z()
+                        + transform_matrix[1][3],
+                    transform_matrix[2][0] * point.get_x()
+                        + transform_matrix[2][1] * point.get_y()
+                        + transform_matrix[2][2] * point.get_z()
+                        + transform_matrix[2][3],
+                )
+            })
+            .collect()
+    }
     /// Project a 3d point on a 4 Point3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
