@@ -2171,16 +2171,29 @@ pub mod visualization_v3 {
         }
     }
 }
-
+/*
+ *   WORKINPROGRES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *   New mesh prototype with shared vertices.
+ *   like this moving points location will also move
+ *   faces.
+ *   - triangles contain only index id of the vertex.
+ *   - and normal vectors
+ */
 pub mod new_mesh {
     use crate::rust3d::geometry::{Point3d, Vector3d};
     use dashmap::DashMap;
     use iter::{IntoParallelRefMutIterator, ParallelIterator};
+    use rayon::prelude::*; // For parallel processing
     use rayon::*;
     use std::collections::HashMap;
+    use std::fs::File;
     use std::hash::{Hash, Hasher};
+    use std::io;
+    use std::io::{BufRead, BufReader};
+    use std::io::{BufWriter, Write};
     use std::marker::Copy;
     use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
+    use std::sync::{Arc, Mutex};
     /// A 3D vertex or point.
     #[derive(Debug, Clone, Copy, PartialOrd)]
     pub struct Vertex {
@@ -2347,6 +2360,7 @@ pub mod new_mesh {
             let edge2 = v2 - v0;
             self.normal = edge1.cross(&edge2).normalize();
         }
+
         // Möller–Trumbore algorithm.
         pub fn intersect(&self, vertices: &Vec<Vertex>, ray: &Ray) -> Option<f64> {
             let ref v0 = vertices[self.vertex_indices[0]];
@@ -2396,15 +2410,14 @@ pub mod new_mesh {
             if v < 0.0 || u + v > 1.0 {
                 return None;
             }
-
             let t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
-
             if t > 1e-8 {
                 Some(t) // Intersection distance
             } else {
                 None
             }
         }
+
         // Compute the centroid of the triangle
         pub fn center(&self, vertices: &Vec<Vertex>) -> [f64; 3] {
             let ref v0 = vertices[self.vertex_indices[0]];
@@ -2413,14 +2426,53 @@ pub mod new_mesh {
             let centroid = (*v0 + *v1 + *v2) / 3.0;
             [centroid.x, centroid.y, centroid.z]
         }
-        // give bac edge components.
+
+        // Give back edges components.
         pub fn edges(&self, vertices: &Vec<Vertex>) -> [(Vertex, Vertex); 3] {
             let ref v0 = vertices[self.vertex_indices[0]];
             let ref v1 = vertices[self.vertex_indices[1]];
             let ref v2 = vertices[self.vertex_indices[2]];
             [(*v0, *v1), (*v1, *v2), (*v2, *v0)]
         }
+        pub fn with_indices_and_normal(v0: usize, v1: usize, v2: usize, normal: Vertex) -> Self {
+            Self {
+                vertex_indices: [v0, v1, v2],
+                normal,
+                id: None,
+            }
+        }
+        pub fn with_indices(v0: usize, v1: usize, v2: usize, vertices: &[Vertex]) -> Self {
+            let p0 = vertices[v0];
+            let p1 = vertices[v1];
+            let p2 = vertices[v2];
+            let normal = (p1 - p0).cross(&(p2 - p0)).normalize();
+            Self {
+                vertex_indices: [v0, v1, v2],
+                normal,
+                id: None,
+            }
+        }
+        // Compute the bounding box of the triangle
+        pub fn bounding_box(&self, vertices: &Vec<Vertex>) -> AABB {
+            let ref v0 = vertices[self.vertex_indices[0]];
+            let ref v1 = vertices[self.vertex_indices[1]];
+            let ref v2 = vertices[self.vertex_indices[2]];
+            AABB {
+                min: Vertex {
+                    x: v0.x.min(v1.x).min(v2.x),
+                    y: v0.y.min(v1.y).min(v2.y),
+                    z: v0.z.min(v1.z).min(v2.z),
+                },
+                max: Vertex {
+                    x: v0.x.max(v1.x).max(v2.x),
+                    y: v0.y.max(v1.y).max(v2.y),
+                    z: v0.z.max(v1.z).max(v2.z),
+                },
+            }
+        }
     }
+
+    use std::path::Path;
     /// A mesh containing vertices and triangles.
     #[derive(Debug, Clone, PartialEq, PartialOrd)]
     pub struct Mesh {
@@ -2460,6 +2512,310 @@ pub mod new_mesh {
                 .map(|tri| tri.signed_volume(&self.vertices))
                 .sum()
         }
+        /// make hash map from triangle with id. (slower version from std lib)
+        /// Mutex ensure thread safety over threads.
+        /// use .get() on option inside value to retrieve triangle from id.
+        pub fn make_triangle_hash_map(&self) -> Option<HashMap<u64, &Triangle>> {
+            // allocate memory for result.
+            let mut tri_hash_map = Mutex::new(HashMap::new());
+            self.triangles.par_iter().for_each(|triangle| {
+                if let Some(id) = triangle.id {
+                    let mut hash = tri_hash_map.lock().unwrap();
+                    hash.insert(id, triangle);
+                }
+            });
+            tri_hash_map.lock().ok().map(|hash| hash.clone())
+        }
+
+        /// make a dhashmap (external dependency) from triangle with id. (recommended lib from IA)
+        /// use .get() on option inside value to retrieve triangle from id.
+        pub fn make_triangle_dhash_map(&self) -> Option<HashMap<u64, &Triangle>> {
+            // Use DashMap for thread-safe concurrent updates
+            let tri_hash_map = DashMap::new();
+
+            // Use par_iter for parallel iteration
+            self.triangles.par_iter().for_each(|triangle| {
+                if let Some(id) = triangle.id {
+                    tri_hash_map.insert(id, triangle);
+                }
+            });
+
+            // Convert DashMap to HashMap
+            let result: HashMap<u64, &Triangle> = tri_hash_map.into_iter().collect();
+            Some(result)
+        }
+        // Import a mesh from an .obj file
+        fn import_from_obj<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+            let file = File::open(path)?;
+            let reader = BufReader::new(file);
+
+            let mut vertices = Vec::new();
+            let mut triangles = Vec::new();
+
+            for line in reader.lines() {
+                let line = line?;
+                let parts: Vec<&str> = line.split_whitespace().collect();
+
+                if parts.is_empty() {
+                    continue;
+                }
+
+                match parts[0] {
+                    "v" => {
+                        // Vertex line
+                        let x: f64 = parts[1].parse().unwrap();
+                        let y: f64 = parts[2].parse().unwrap();
+                        let z: f64 = parts[3].parse().unwrap();
+                        vertices.push(Vertex::new(x, y, z));
+                    }
+                    "f" => {
+                        // Face line
+                        let indices: Vec<usize> = parts[1..]
+                            .iter()
+                            .map(|p| p.split('/').next().unwrap().parse::<usize>().unwrap() - 1)
+                            .collect();
+                        if indices.len() == 3 {
+                            triangles.push([indices[0], indices[1], indices[2]]);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            // Build the mesh
+            let mut mesh = Mesh::new();
+            mesh.vertices = vertices;
+            for triangle_indices in triangles {
+                mesh.add_triangle(triangle_indices);
+            }
+            Ok(mesh)
+        }
+
+        /// Export the mesh to an .obj file
+        fn export_to_obj<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+            let mut file = File::create(path)?;
+
+            // Write vertices
+            for vertex in &self.vertices {
+                writeln!(file, "v {} {} {}", vertex.x, vertex.y, vertex.z)?;
+            }
+
+            // Write faces
+            for triangle in &self.triangles {
+                writeln!(
+                    file,
+                    "f {} {} {}",
+                    triangle.vertex_indices[0] + 1,
+                    triangle.vertex_indices[1] + 1,
+                    triangle.vertex_indices[2] + 1
+                )?;
+            }
+
+            Ok(())
+        }
+
+        pub fn import_obj_with_normals(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+            let file = File::open(path)?;
+            let reader = BufReader::new(file);
+
+            let mut vertices = Vec::new();
+            let mut normals = Vec::new();
+            let mut triangles = Vec::new();
+
+            for line in reader.lines() {
+                let line = line?;
+                let parts: Vec<&str> = line.split_whitespace().collect();
+
+                if parts.is_empty() {
+                    continue;
+                }
+
+                match parts[0] {
+                    "v" => {
+                        // Vertex position
+                        let x: f64 = parts[1].parse()?;
+                        let y: f64 = parts[2].parse()?;
+                        let z: f64 = parts[3].parse()?;
+                        vertices.push(Vertex::new(x, y, z));
+                    }
+                    "vn" => {
+                        // Vertex normal
+                        let x: f64 = parts[1].parse()?;
+                        let y: f64 = parts[2].parse()?;
+                        let z: f64 = parts[3].parse()?;
+                        normals.push(Vertex::new(x, y, z).normalize());
+                    }
+                    "f" => {
+                        // Face
+                        let mut vertex_indices = Vec::new();
+                        let mut normal_indices = Vec::new();
+
+                        for part in &parts[1..] {
+                            let indices: Vec<&str> = part.split('/').collect();
+                            let vertex_idx: usize = indices[0].parse::<usize>()? - 1; // .obj is 1-indexed
+                            vertex_indices.push(vertex_idx);
+
+                            // If normals are available
+                            if indices.len() > 2 && !indices[2].is_empty() {
+                                let normal_idx: usize = indices[2].parse::<usize>()? - 1;
+                                normal_indices.push(normal_idx);
+                            }
+                        }
+
+                        if vertex_indices.len() == 3 {
+                            let triangle = if normal_indices.len() == 3 {
+                                // Use the first normal for the entire triangle
+                                let normal = normals[normal_indices[0]];
+                                Triangle::with_indices_and_normal(
+                                    vertex_indices[0],
+                                    vertex_indices[1],
+                                    vertex_indices[2],
+                                    normal,
+                                )
+                            } else {
+                                // Compute normal if not provided
+                                Triangle::with_indices(
+                                    vertex_indices[0],
+                                    vertex_indices[1],
+                                    vertex_indices[2],
+                                    &vertices,
+                                )
+                            };
+                            triangles.push(triangle);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            Ok(Mesh {
+                vertices,
+                triangles,
+            })
+        }
+
+        /// Export Mesh to an obj file.
+        pub fn export_to_obj_with_normals_fast(
+            &self,
+            path: &str,
+        ) -> Result<(), Box<dyn std::error::Error>> {
+            let file = File::create(path)?;
+            let mut writer = BufWriter::new(file);
+
+            println!("\x1b[2J");
+            println!("\x1b[3;0HExporting (optimized) Path:({})", path);
+
+            let vertex_count = self.vertices.len();
+            let triangle_count = self.triangles.len();
+
+            // Step 1: Precompute vertex-to-index mapping
+            let vertex_index_map: HashMap<usize, usize> = self
+                .vertices
+                .iter()
+                .enumerate()
+                .map(|(i, _)| (i, i + 1)) // OBJ indices are 1-based
+                .collect();
+
+            // Step 2: Generate vertex data in parallel
+            println!("\x1b[4;0HGenerating vertex data...");
+            let vertex_data: Vec<String> = self
+                .vertices
+                .par_iter()
+                .map(|vertex| format!("v {} {} {}\n", vertex.x, vertex.y, vertex.z))
+                .collect();
+
+            // Step 3: Generate normal data in parallel
+            println!("\x1b[5;0HGenerating normal data...");
+            let normal_data: Vec<String> = self
+                .triangles
+                .par_iter()
+                .map(|triangle| {
+                    format!(
+                        "vn {} {} {}\n",
+                        triangle.normal.x, triangle.normal.y, triangle.normal.z
+                    )
+                })
+                .collect();
+
+            // Step 4: Generate face data in parallel
+            println!("\x1b[6;0HGenerating face data...");
+            let face_data: Vec<String> = self
+                .triangles
+                .par_iter()
+                .map(|triangle| {
+                    let v0_idx = vertex_index_map[&triangle.vertex_indices[0]];
+                    let v1_idx = vertex_index_map[&triangle.vertex_indices[1]];
+                    let v2_idx = vertex_index_map[&triangle.vertex_indices[2]];
+                    format!(
+                        "f {}/{} {}/{} {}/{}\n",
+                        v0_idx, v0_idx, v1_idx, v1_idx, v2_idx, v2_idx
+                    )
+                })
+                .collect();
+
+            // Step 5: Write data to file in batches
+            println!("\x1b[7;0HWriting data to file...");
+            for (i, line) in vertex_data.iter().enumerate() {
+                writer.write_all(line.as_bytes())?;
+                if i % 1000 == 0 || i == vertex_count - 1 {
+                    println!("\x1b[4;0HVertex step Progress: {}/{}", i + 1, vertex_count);
+                }
+            }
+
+            for (i, line) in normal_data.iter().enumerate() {
+                writer.write_all(line.as_bytes())?;
+                if i % 1000 == 0 || i == triangle_count - 1 {
+                    println!(
+                        "\x1b[5;0HVertex Normals step Progress: {}/{}",
+                        i + 1,
+                        triangle_count
+                    );
+                }
+            }
+
+            for (i, line) in face_data.iter().enumerate() {
+                writer.write_all(line.as_bytes())?;
+                if i % 1000 == 0 || i == triangle_count - 1 {
+                    println!(
+                        "\x1b[6;0HFace(s) step Progress: {}/{}",
+                        i + 1,
+                        triangle_count
+                    );
+                }
+            }
+
+            println!("\x1b[8;0HExport completed successfully!");
+            Ok(())
+        }
+
+        /// Display Statistics of obj file.
+        /// # Arguments
+        ///     file path of the obj file.
+        /// # Returns
+        ///     Result(vertex count,normal count,face count)
+        pub fn count_obj_elements(file_path: &str) -> io::Result<(usize, usize, usize)> {
+            let file = File::open(file_path)?;
+            let reader = BufReader::new(file);
+
+            let mut vertex_count = 0;
+            let mut normal_count = 0;
+            let mut face_count = 0;
+
+            for line in reader.lines() {
+                let line = line?;
+                let mut words = line.split_whitespace();
+
+                if let Some(prefix) = words.next() {
+                    match prefix {
+                        "v" => vertex_count += 1,  // Vertex position
+                        "vn" => normal_count += 1, // Vertex normal
+                        "f" => face_count += 1,    // Face
+                        _ => {}                    // Ignore other lines
+                    }
+                }
+            }
+
+            Ok((vertex_count, normal_count, face_count))
+        }
     }
     #[derive(Debug, Clone)]
     pub struct Ray {
@@ -2472,6 +2828,274 @@ pub mod new_mesh {
                 origin: pt1,
                 direction: pt2,
             }
+        }
+    }
+    // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
+    // into a tree structure to accelerate ray tracing
+    // by reducing the number of intersection tests.
+
+    // AABB stand for Axis aligned Bounding Box.
+    #[derive(Debug, Clone)]
+    pub struct AABB {
+        min: Vertex, // Minimum corner of the bounding box
+        max: Vertex, // Maximum corner of the bounding box
+    }
+
+    impl AABB {
+        // Combine two AABBs into one that encompasses both
+        pub fn surrounding_box(box1: &AABB, box2: &AABB) -> AABB {
+            AABB {
+                min: Vertex {
+                    x: box1.min.x.min(box2.min.x),
+                    y: box1.min.y.min(box2.min.y),
+                    z: box1.min.z.min(box2.min.z),
+                },
+                max: Vertex {
+                    x: box1.max.x.max(box2.max.x),
+                    y: box1.max.y.max(box2.max.y),
+                    z: box1.max.z.max(box2.max.z),
+                },
+            }
+        }
+
+        // Ray-AABB intersection test (needed for BVH traversal)
+        pub fn intersects(&self, ray: &Ray) -> bool {
+            let inv_dir = Vertex {
+                x: 1.0 / ray.direction.x,
+                y: 1.0 / ray.direction.y,
+                z: 1.0 / ray.direction.z,
+            };
+
+            let t_min = (
+                (self.min.x - ray.origin.x) * inv_dir.x,
+                (self.min.y - ray.origin.y) * inv_dir.y,
+                (self.min.z - ray.origin.z) * inv_dir.z,
+            );
+            let t_max = (
+                (self.max.x - ray.origin.x) * inv_dir.x,
+                (self.max.y - ray.origin.y) * inv_dir.y,
+                (self.max.z - ray.origin.z) * inv_dir.z,
+            );
+
+            let t_enter = t_min.0.max(t_min.1).max(t_min.2);
+            let t_exit = t_max.0.min(t_max.1).min(t_max.2);
+
+            t_enter <= t_exit
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum BVHNode<'a> {
+        Leaf {
+            bounding_box: AABB,
+            triangles: Vec<Triangle>, // Triangles in the leaf
+            vertices: &'a Vec<Vertex>,
+        },
+        Internal {
+            bounding_box: AABB,
+            left: Arc<BVHNode<'a>>,  // Left child
+            right: Arc<BVHNode<'a>>, // Right child
+        },
+    }
+
+    impl<'a> BVHNode<'a> {
+        // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
+        // into a tree structure to accelerate ray tracing by
+        // reducing the number of intersection tests.
+        pub fn build(vertices: &Vec<Vertex>, triangles: Vec<Triangle>, depth: usize) -> BVHNode {
+            // Base case: Create a leaf node if triangle count is small
+            if triangles.len() <= 2 {
+                let bounding_box = triangles
+                    .iter()
+                    .map(|tri| tri.bounding_box(&vertices))
+                    .reduce(|a, b| AABB::surrounding_box(&a, &b))
+                    .unwrap();
+                return BVHNode::Leaf {
+                    bounding_box,
+                    triangles,
+                    vertices,
+                };
+            }
+
+            // Find the axis to split (X, Y, or Z)
+            let axis = depth % 3;
+            let mut sorted_triangles = triangles;
+            sorted_triangles.sort_by(|a, b| {
+                let center_a = a.center(&vertices)[axis];
+                let center_b = b.center(&vertices)[axis];
+                center_a.partial_cmp(&center_b).unwrap()
+            });
+
+            // Partition the triangles into two groups
+            let mid = sorted_triangles.len() / 2;
+            let (left_triangles, right_triangles) = sorted_triangles.split_at(mid);
+
+            // Recursively build the left and right subtrees
+            let left = Arc::new(BVHNode::build(
+                &vertices,
+                left_triangles.to_vec(),
+                depth + 1,
+            ));
+            let right = Arc::new(BVHNode::build(
+                &vertices,
+                right_triangles.to_vec(),
+                depth + 1,
+            ));
+
+            // Create the bounding box for this node
+            let bounding_box = AABB::surrounding_box(&left.bounding_box(), &right.bounding_box());
+
+            BVHNode::Internal {
+                bounding_box,
+                left,
+                right,
+            }
+        }
+
+        pub fn bounding_box(&self) -> &AABB {
+            match self {
+                BVHNode::Leaf { bounding_box, .. } => bounding_box,
+                BVHNode::Internal { bounding_box, .. } => bounding_box,
+            }
+        }
+        pub fn intersect(&self, vertices: &Vec<Vertex>, ray: &Ray) -> Option<(f64, &Triangle)> {
+            if !self.bounding_box().intersects(ray) {
+                return None; // Ray doesn't hit this node
+            }
+
+            match self {
+                BVHNode::Leaf { triangles, .. } => {
+                    // Test against all triangles in the leaf
+                    let mut closest_hit: Option<(f64, &Triangle)> = None;
+                    for triangle in triangles {
+                        if let Some(t) = triangle.intersect(vertices, ray) {
+                            if closest_hit.is_none() || t < closest_hit.unwrap().0 {
+                                closest_hit = Some((t, triangle));
+                            }
+                        }
+                    }
+                    closest_hit
+                }
+                BVHNode::Internal { left, right, .. } => {
+                    // Recursively test left and right children
+                    let left_hit = left.intersect(vertices, ray);
+                    let right_hit = right.intersect(vertices, ray);
+
+                    match (left_hit, right_hit) {
+                        (Some(l), Some(r)) => {
+                            if l.0 < r.0 {
+                                Some(l)
+                            } else {
+                                Some(r)
+                            }
+                        }
+                        (Some(l), None) => Some(l),
+                        (None, Some(r)) => Some(r),
+                        (None, None) => None,
+                    }
+                }
+            }
+        }
+    }
+
+    pub struct Camera {
+        position: Vertex,  // Camera position
+        forward: Vertex,   // Forward direction
+        right: Vertex,     // Right direction
+        up: Vertex,        // Up direction
+        fov: f64,          // Field of view in degrees
+        aspect_ratio: f64, // Aspect ratio (width / height)
+        width: usize,      // Image width
+        height: usize,     // Image height
+    }
+
+    impl Camera {
+        // Generate rays for a given pixel
+        pub fn generate_ray(&self, pixel_x: usize, pixel_y: usize) -> Ray {
+            // Convert FOV to radians and compute scaling factor
+            let fov_scale = (self.fov.to_radians() / 2.0).tan();
+
+            // Map pixel to normalized device coordinates (NDC)
+            let ndc_x = (pixel_x as f64 + 0.5) / self.width as f64; // Center pixel
+            let ndc_y = (pixel_y as f64 + 0.5) / self.height as f64;
+
+            // Map NDC to screen space [-1, 1]
+            let screen_x = 2.0 * ndc_x - 1.0;
+            let screen_y = 1.0 - 2.0 * ndc_y;
+
+            // Adjust for aspect ratio and FOV
+            let pixel_camera_x = screen_x * self.aspect_ratio * fov_scale;
+            let pixel_camera_y = screen_y * fov_scale;
+    use std::sync::Mutex;
+
+            // Compute ray direction in camera space
+            let ray_direction = self
+                .forward
+                .add(self.right.mul(pixel_camera_x))
+                .add(self.up.mul(pixel_camera_y))
+                .normalize(); // Normalize to get unit vector
+
+            // Create the ray
+            Ray {
+                origin: self.position,
+                direction: ray_direction,
+            }
+        }
+
+        // Generate a memory allocated array: Vec<Ray> of Ray object for further
+        // Ray tracing from Camera fov generated rays.
+        pub fn render(camera: &Camera, ray_buffer: &mut Vec<Ray>) {
+            for y in 0..camera.height {
+                for x in 0..camera.width {
+                    let ray = camera.generate_ray(x, y);
+                    println!(
+                        "Pixel ({}, {}) -> Ray Origin: {:?}, Direction: {:?}",
+                        x, y, ray.origin, ray.direction
+                    );
+                    ray_buffer.push(ray);
+                }
+            }
+        }
+    }
+    mod ray_operations {
+        fn shade_with_distance(
+            base_color: (u8, u8, u8),
+            distance: f64,
+            attenuation: f64,
+        ) -> (u8, u8, u8) {
+            let intensity = 1.0 / (1.0 + attenuation * distance);
+            let (r, g, b) = base_color;
+            (
+                (r as f64 * intensity) as u8,
+                (g as f64 * intensity) as u8,
+                (b as f64 * intensity) as u8,
+            )
+        }
+        fn fog_with_distance(
+            base_color: (u8, u8, u8),
+            fog_color: (u8, u8, u8),
+            distance: f64,
+            max_distance: f64,
+        ) -> (u8, u8, u8) {
+            let fog_factor = (distance / max_distance).min(1.0);
+            let (r1, g1, b1) = base_color;
+            let (r2, g2, b2) = fog_color;
+
+            (
+                ((r1 as f64 * (1.0 - fog_factor)) + (r2 as f64 * fog_factor)) as u8,
+                ((g1 as f64 * (1.0 - fog_factor)) + (g2 as f64 * fog_factor)) as u8,
+                ((b1 as f64 * (1.0 - fog_factor)) + (b2 as f64 * fog_factor)) as u8,
+            )
+        }
+        fn light_falloff(base_color: (u8, u8, u8), distance: f64) -> (u8, u8, u8) {
+            let intensity = 1.0 / (distance + 1.0); // Soft falloff
+            let (r, g, b) = base_color;
+
+            (
+                (r as f64 * intensity) as u8,
+                (g as f64 * intensity) as u8,
+                (b as f64 * intensity) as u8,
+            )
         }
     }
 }

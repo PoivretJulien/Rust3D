@@ -1,16 +1,17 @@
 use minifb::{Key, Window, WindowOptions};
+mod display_pipe_line;
 mod models_3d;
 mod rust3d;
-mod display_pipe_line;
+mod virtual_space;
+use display_pipe_line::redering_object::{Mesh, Vertex};
+use display_pipe_line::visualization_v3::coloring::Color;
+use display_pipe_line::visualization_v3::Camera;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rust3d::draw::*;
 use rust3d::geometry::*;
 use rust3d::transformation::rotate_z;
 use rust3d::utillity::degree_to_radians;
-use display_pipe_line::visualization_v3::coloring::Color;
-use display_pipe_line::visualization_v3::Camera;
-use display_pipe_line::redering_object::{Mesh,Vertex};
 use std::time::Duration;
 
 fn main() {
@@ -28,8 +29,8 @@ fn main() {
     println!("\x1b[2J"); // Clear console.
                          // 3840x2160
                          // 1470x956
-    const WIDTH: usize = 3840 / 5; // screen pixel width.
-    const HEIGHT: usize = 2160 / 5; // screen pixel height.
+    const WIDTH: usize = 3840 / 3; // screen pixel width.
+    const HEIGHT: usize = 2160 / 3; // screen pixel height.
     const DISPLAY_RATIO: f64 = 0.57; // Display space model scale unit dimension.
     const BACK_GROUND_COLOR: u32 = 0x141314;
     const ANGLE_STEP: f64 = 3.0;
@@ -55,7 +56,9 @@ fn main() {
         if mesh.is_watertight() {
             println!("Volume:({0})cubic/unit(s)", mesh.compute_volume());
         }
-        mesh.vertices.par_iter_mut().for_each(|v| *v = ((*v) + z_offset) * DISPLAY_RATIO);
+        mesh.vertices
+            .par_iter_mut()
+            .for_each(|v| *v = ((*v) + z_offset) * DISPLAY_RATIO);
         import_obj = mesh.vertices;
     }
     ////////////////////////////////////////////////////////////////////////////
@@ -80,7 +83,13 @@ fn main() {
         preprocess_circle = draw_3d_circle(Point3d::new(0.0, 0.0, 0.0), 0.35, 400.0);
         for i in 0..preprocess_circle.len() {
             circle.push(
-                plane.point_on_plane_uv(preprocess_circle[i].X * DISPLAY_RATIO, preprocess_circle[i].Y * DISPLAY_RATIO).to_vertex());
+                plane
+                    .point_on_plane_uv(
+                        preprocess_circle[i].X * DISPLAY_RATIO,
+                        preprocess_circle[i].Y * DISPLAY_RATIO,
+                    )
+                    .to_vertex(),
+            );
             // unsafe {
             //     // Evaluate as safe in that context (no concurrent access).
             //     let ptr = circle.as_ptr().offset(i as isize) as *mut Point3d;
@@ -109,7 +118,7 @@ fn main() {
     let target_frame_time = Duration::from_millis(1000 / 60); //limit 60 fps (for laptop
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let now = std::time::Instant::now(); // record time  at t.
-        // First format the screen background (0x0 = Black).
+                                             // First format the screen background (0x0 = Black).
         for pixel in buffer.iter_mut() {
             *pixel = BACK_GROUND_COLOR; // set a dark gray color as background.
         }
@@ -236,7 +245,8 @@ fn main() {
             &text_height,
             &color,
         );
-        if window.is_key_down(Key::P) {
+        use minifb::KeyRepeat;
+        if window.is_key_pressed(Key::P, KeyRepeat::No) {
             pause = true;
         }
         if pause {
