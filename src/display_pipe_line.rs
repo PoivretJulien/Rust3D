@@ -266,8 +266,8 @@ pub mod redering_object {
         pub fn set_id(&mut self, id: u64) {
             self.id = Some(id);
         }
-        /// provide a copy of the triangle id. 
-        pub fn get_id(&self)->Option<u64>{
+        /// provide a copy of the triangle id.
+        pub fn get_id(&self) -> Option<u64> {
             self.id
         }
         /// Compute the area of the triangle.
@@ -375,7 +375,7 @@ pub mod redering_object {
     use std::sync::Mutex;
     use tobj;
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct Mesh {
         pub vertices: Vec<Vertex>,
         pub triangles: Vec<Triangle>,
@@ -2167,6 +2167,310 @@ pub mod visualization_v3 {
 
                 // Recombine into a single u32 color
                 (blended_r << 16) | (blended_g << 8) | blended_b
+            }
+        }
+    }
+}
+
+pub mod new_mesh {
+    use crate::rust3d::geometry::{Point3d, Vector3d};
+    use dashmap::DashMap;
+    use iter::{IntoParallelRefMutIterator, ParallelIterator};
+    use rayon::*;
+    use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
+    use std::marker::Copy;
+    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
+    /// A 3D vertex or point.
+    #[derive(Debug, Clone, Copy, PartialOrd)]
+    pub struct Vertex {
+        pub x: f64,
+        pub y: f64,
+        pub z: f64,
+    }
+    impl Vertex {
+        /// Creates a new Vertex.
+        pub fn new(x: f64, y: f64, z: f64) -> Self {
+            Vertex { x, y, z }
+        }
+        /// Computes the cross product of two vectors.
+        pub fn cross(self, other: &Vertex) -> Vertex {
+            Vertex {
+                x: self.y * other.z - self.z * other.y,
+                y: self.z * other.x - self.x * other.z,
+                z: self.x * other.y - self.y * other.x,
+            }
+        }
+        /// Computes the magnitude of the vector.
+        pub fn magnitude(self) -> f64 {
+            (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        }
+        /// Normalizes the vector.
+        pub fn normalize(self) -> Self {
+            let mag = self.magnitude();
+            Vertex {
+                x: self.x / mag,
+                y: self.y / mag,
+                z: self.z / mag,
+            }
+        }
+        pub fn to_point3d(&self) -> Point3d {
+            Point3d::new(self.x, self.y, self.z)
+        }
+        pub fn to_vector3d(&self) -> Vector3d {
+            Vector3d::new(self.x, self.y, self.z)
+        }
+    }
+    impl Sub for Vertex {
+        type Output = Self; // Specify the result type of the addition
+        fn sub(self, other: Self) -> Self {
+            Vertex::new(self.x - other.x, self.y - other.y, self.z - other.z)
+        }
+    }
+    impl Add for Vertex {
+        type Output = Self; // Specify the result type of the addition
+        fn add(self, other: Self) -> Self {
+            Vertex::new(self.x + other.x, self.y + other.y, self.z + other.z)
+        }
+    }
+    impl Div<f64> for Vertex {
+        type Output = Self; // Specify the result type of the addition
+        fn div(self, scalar: f64) -> Self {
+            Vertex::new(self.x / scalar, self.y / scalar, self.z / scalar)
+        }
+    }
+    impl Mul for Vertex {
+        type Output = Self; // Specify the result type of the addition
+        fn mul(self, other: Self) -> Self {
+            Vertex::new(self.x * other.x, self.y * other.y, self.z * other.z)
+        }
+    }
+    impl PartialEq for Vertex {
+        fn eq(&self, other: &Self) -> bool {
+            self.x == other.x && self.y == other.y && self.z == other.z
+        }
+    }
+    impl Eq for Vertex {}
+    use std::fmt;
+    impl fmt::Display for Vertex {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                f,
+                "Vertex(x: {:.2}, y: {:.2}, z: {:.2})",
+                self.x, self.y, self.z
+            )
+        }
+    }
+    impl AddAssign<Vertex> for Vertex {
+        fn add_assign(&mut self, other: Vertex) {
+            self.x = self.x + other.x;
+            self.y = self.y + other.y;
+            self.z = self.z + other.z;
+        }
+    }
+    impl MulAssign<f64> for Vertex {
+        fn mul_assign(&mut self, scalar: f64) {
+            self.x *= scalar;
+            self.y *= scalar;
+            self.z *= scalar;
+        }
+    }
+    impl Hash for Vertex {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            self.x.to_bits().hash(state);
+            self.y.to_bits().hash(state);
+            self.z.to_bits().hash(state);
+        }
+    }
+    impl Mul<f64> for Vertex {
+        type Output = Vertex;
+        fn mul(self, scalar: f64) -> Self {
+            let v_x = self.x * scalar;
+            let v_y = self.y * scalar;
+            let v_z = self.z * scalar;
+            Vertex::new(v_x, v_y, v_z)
+        }
+    }
+    /// A triangle that references vertices in the shared vertex pool.
+    #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+    pub struct Triangle {
+        pub vertex_indices: [usize; 3], // Indices into the vertex pool
+        pub normal: Vertex,             // The normal vector for the triangle
+        pub id: Option<u64>,
+    }
+    impl Triangle {
+        /// Set a triangle Id
+        pub fn set_id(&mut self, id: u64) {
+            self.id = Some(id);
+        }
+        /// provide a copy of the triangle id.
+        pub fn get_id(&self) -> Option<u64> {
+            self.id
+        }
+        /// Compute the area of the triangle.
+        pub fn get_triangle_area(&self, vertices: &Vec<Vertex>) -> f64 {
+            let va = vertices[self.vertex_indices[1]] - vertices[self.vertex_indices[0]];
+            let vb = vertices[self.vertex_indices[2]] - vertices[self.vertex_indices[0]];
+            va.cross(&vb).magnitude() / 2.0
+        }
+        /// Compute the signed volume of the tetrahedron formed by the triangle and the origin
+        pub fn signed_volume(&self, vertices: &Vec<Vertex>) -> f64 {
+            let v0 = &vertices[self.vertex_indices[0]];
+            let v1 = &vertices[self.vertex_indices[1]];
+            let v2 = &vertices[self.vertex_indices[2]];
+            ((*v0).x * ((*v1).y * (*v2).z - (*v1).z * (*v2).y)
+                - (*v0).y * ((*v1).x * (*v2).z - (*v1).z * (*v2).x)
+                + (*v0).z * ((*v1).x * (*v2).y - (*v1).y * (*v2).x))
+                / 6.0
+        }
+        /// Creates a new Triangle and computes its normal.
+        pub fn new(vertices: &[Vertex], vertex_indices: [usize; 3]) -> Self {
+            let v0 = vertices[vertex_indices[0]];
+            let v1 = vertices[vertex_indices[1]];
+            let v2 = vertices[vertex_indices[2]];
+            // Compute the normal using the cross product of two edges
+            let edge1 = v1 - v0;
+            let edge2 = v2 - v0;
+            let normal = edge1.cross(&edge2).normalize();
+            Self {
+                vertex_indices,
+                normal,
+                id: None,
+            }
+        }
+        /// Recomputes the normal for this triangle based on the current vertices.
+        pub fn recompute_normal(&mut self, vertices: &[Vertex]) {
+            let v0 = vertices[self.vertex_indices[0]];
+            let v1 = vertices[self.vertex_indices[1]];
+            let v2 = vertices[self.vertex_indices[2]];
+            let edge1 = v1 - v0;
+            let edge2 = v2 - v0;
+            self.normal = edge1.cross(&edge2).normalize();
+        }
+        // Möller–Trumbore algorithm.
+        pub fn intersect(&self, vertices: &Vec<Vertex>, ray: &Ray) -> Option<f64> {
+            let ref v0 = vertices[self.vertex_indices[0]];
+            let ref v1 = vertices[self.vertex_indices[1]];
+            let ref v2 = vertices[self.vertex_indices[2]];
+            let edge1 = Vertex {
+                x: v1.x - v0.x,
+                y: v1.y - v0.y,
+                z: v1.z - v0.z,
+            };
+            let edge2 = Vertex {
+                x: v2.x - v0.x,
+                y: v2.y - v0.y,
+                z: v2.z - v0.z,
+            };
+
+            let h = Vertex {
+                x: ray.direction.y * edge2.z - ray.direction.z * edge2.y,
+                y: ray.direction.z * edge2.x - ray.direction.x * edge2.z,
+                z: ray.direction.x * edge2.y - ray.direction.y * edge2.x,
+            };
+            let a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
+
+            if a > -1e-8 && a < 1e-8 {
+                return None; // Ray is parallel to the triangle.
+            }
+
+            let f = 1.0 / a;
+            let s = Vertex {
+                x: ray.origin.x - v0.x,
+                y: ray.origin.y - v0.y,
+                z: ray.origin.z - v0.z,
+            };
+            let u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
+
+            if u < 0.0 || u > 1.0 {
+                return None;
+            }
+
+            let q = Vertex {
+                x: s.y * edge1.z - s.z * edge1.y,
+                y: s.z * edge1.x - s.x * edge1.z,
+                z: s.x * edge1.y - s.y * edge1.x,
+            };
+            let v = f * (ray.direction.x * q.x + ray.direction.y * q.y + ray.direction.z * q.z);
+
+            if v < 0.0 || u + v > 1.0 {
+                return None;
+            }
+
+            let t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
+
+            if t > 1e-8 {
+                Some(t) // Intersection distance
+            } else {
+                None
+            }
+        }
+        // Compute the centroid of the triangle
+        pub fn center(&self, vertices: &Vec<Vertex>) -> [f64; 3] {
+            let ref v0 = vertices[self.vertex_indices[0]];
+            let ref v1 = vertices[self.vertex_indices[1]];
+            let ref v2 = vertices[self.vertex_indices[2]];
+            let centroid = (*v0 + *v1 + *v2) / 3.0;
+            [centroid.x, centroid.y, centroid.z]
+        }
+        // give bac edge components.
+        pub fn edges(&self, vertices: &Vec<Vertex>) -> [(Vertex, Vertex); 3] {
+            let ref v0 = vertices[self.vertex_indices[0]];
+            let ref v1 = vertices[self.vertex_indices[1]];
+            let ref v2 = vertices[self.vertex_indices[2]];
+            [(*v0, *v1), (*v1, *v2), (*v2, *v0)]
+        }
+    }
+    /// A mesh containing vertices and triangles.
+    #[derive(Debug, Clone, PartialEq, PartialOrd)]
+    pub struct Mesh {
+        vertices: Vec<Vertex>,
+        triangles: Vec<Triangle>,
+    }
+    impl Mesh {
+        /// Creates a new empty mesh.
+        pub fn new() -> Self {
+            Mesh {
+                vertices: Vec::new(),
+                triangles: Vec::new(),
+            }
+        }
+        /// Adds a vertex to the mesh and returns its index.
+        pub fn add_vertex(&mut self, vertex: Vertex) -> usize {
+            self.vertices.push(vertex);
+            self.vertices.len() - 1
+        }
+        /// Adds a triangle to the mesh by specifying its vertex indices.
+        /// Automatically computes and stores the normal for the triangle.
+        pub fn add_triangle(&mut self, vertex_indices: [usize; 3]) {
+            let triangle = Triangle::new(&self.vertices, vertex_indices);
+            self.triangles.push(triangle);
+        }
+        /// Recomputes the normals for all triangles in the mesh.
+        pub fn recompute_normals(&mut self) {
+            self.triangles
+                .par_iter_mut()
+                .for_each(|tri| tri.recompute_normal(&self.vertices));
+        }
+        /// Give the volume of the mesh in file system base unit.
+        /// Based on divergence theorem (also known as Gauss's theorem)
+        pub fn compute_volume(&self) -> f64 {
+            self.triangles
+                .iter()
+                .map(|tri| tri.signed_volume(&self.vertices))
+                .sum()
+        }
+    }
+    #[derive(Debug, Clone)]
+    pub struct Ray {
+        pub origin: Vertex,
+        pub direction: Vertex,
+    }
+    impl Ray {
+        pub fn new(pt1: Vertex, pt2: Vertex) -> Self {
+            Self {
+                origin: pt1,
+                direction: pt2,
             }
         }
     }
