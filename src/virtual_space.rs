@@ -36,12 +36,78 @@
 //   (by matrix operations from user input and rasterize / raytrace
 //    the virtual_space)
 
-use crate::display_pipe_line::redering_object::Mesh;
+use crate::display_pipe_line::redering_object::{Mesh, Vertex};
 use crate::display_pipe_line::visualization_v3::coloring::*;
 use crate::rust3d::geometry::*;
 use crate::rust3d::transformation::*;
+use chrono::Local;
 ////////////////////////////////////////////////////////////////////////////////
-
+pub struct Virtual_space {
+    pub project_name: String,
+    pub file_path: Option<String>,
+    pub unit_scale: Unit_scale,
+    pub display: Display_config,
+    pub object_list: Vec<Object3d>, // array of Object3d.
+}
+////////////////////////////////////////////////////////////////////////////////
+pub struct Object3d {
+    id: u64,
+    data: Option<Displayable>, // if object is removed position is kept
+    origin: CPlane,
+    local_scale_ratio: f64,
+    last_change_date: String,
+}
+impl Object3d {
+    /// Create an object ready to be stacked
+    pub fn new(id: u64, data: Option<Displayable>, origin: CPlane, local_scale_ratio: f64) -> Self {
+        Self {
+            id,
+            data,
+            origin,
+            local_scale_ratio,
+            last_change_date: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        }
+    }
+    /// Update last change date time.
+    pub fn update_date(&mut self) {
+        self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    }
+}
+pub enum Displayable {
+    Point3d(Vec<Point3d>),
+    Vector3d(Vec<Vector3d>),
+    Vertex(Vec<Vertex>),
+    Mesh(Vec<Mesh>),
+}
+pub enum Unit_scale {
+    Minimeters,
+    Centimeters,
+    Meters,
+    Inch,
+}
+pub struct Display_config {
+    pub display_resolution_height: usize,
+    pub display_resolution_width: usize,
+    pub display_ratio: f64,
+    pub camera_position: [[f64; 3]; 4], // special matrix format optimized
+                                        // for visualization system.
+}
+impl Display_config {
+    pub fn new(height: usize, width: usize) -> Self {
+        Self {
+            display_resolution_height: height,
+            display_resolution_width: width,
+            display_ratio: (height as f64 / width as f64),
+            // create an identity matrix
+            camera_position: [
+            [1.0,0.0,0.0],
+            [0.0,1.0,0.0],
+            [0.0,0.0,1.0],
+            [0.0,0.0,0.0],// last row are the embedded translation vector.
+        ],
+        }
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
 /*
  * this is a template prototype of the scripted runtime
@@ -128,16 +194,16 @@ pub mod json {
         // Serialize the struct to a JSON string
         let json_string = serde_json::to_string(&person).unwrap();
         println!("Serialized JSON: {}", json_string);
-        
+
         // Write file
         fs::write("./user_data/person.json", json_string).expect("Unable to write file");
-        
+
         // Read file
         let json_data = fs::read_to_string("person.json").expect("Unable to read file");
         let json_data = r#"{"name":"John Doe","age":30,"email":"john.doe@example.com"}"#;
 
         // Deserialize the JSON string into a struct with error handling.
-        let result :Result<String, serde_json::Error>= serde_json::from_str(json_data);
+        let result: Result<String, serde_json::Error> = serde_json::from_str(json_data);
         match result {
             Ok(person) => println!("Deserialized struct: {:?}", person),
             Err(e) => eprintln!("Error deserializing JSON: {}", e),
