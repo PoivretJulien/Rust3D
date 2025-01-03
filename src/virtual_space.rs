@@ -125,53 +125,56 @@ impl Virtual_space {
     }
 }
 impl fmt::Display for Virtual_space {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let project_name = format!("{}",self.project_name);
-            let path = if let Some(path) = &self.file_path { 
-                format!("{0}",path)
-            }else{
-                format!("None")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let project_name = format!("{}", self.project_name);
+        let path = if let Some(path) = &self.file_path {
+            format!("{0}", path)
+        } else {
+            format!("None")
+        };
+        let unit_scale = match self.unit_scale {
+            Unit_scale::Inch => {
+                format!("Inch (imperial)")
+            }
+            Unit_scale::Meters => {
+                format!("Meter (metric)")
+            }
+            Unit_scale::Millimeters => {
+                format!("Millimeters (metric)")
+            }
+            Unit_scale::Centimeters => {
+                format!("Centimeters (metric)")
+            }
+        };
+        let display_config = format!(
+            "height:{}, width:{}, ratio:{}, raytrace enabled:({}).",
+            self.display.display_resolution_height,
+            self.display.display_resolution_width,
+            self.display.display_ratio,
+            self.display.raytrace
+        );
+        let mut obj_list = String::new();
+        obj_list.push_str(&format!("Contain ({}) Object3d: ", self.object_list.len()));
+        for i in 0..self.object_list.len() {
+            let data_display = match &self.object_list[i].data {
+                Some(disp) => disp.to_string(),
+                None => "None".to_string(),
             };
-            let unit_scale = match self.unit_scale{
-                      Unit_scale::Inch => {
-                          format!("Inch (imperial)")
-                      },
-                      Unit_scale::Meters => {
-                          format!("Meter (metric)")
-                      },
-                      Unit_scale::Millimeters =>{
-                          format!("Millimeters (metric)")
-                      },
-                      Unit_scale::Centimeters =>{
-                          format!("Centimeters (metric)")
-                      }
-            };
-            let display_config = format!("height:{}, width:{}, ratio:{}, raytrace enabled:({}).",
-                self.display.display_resolution_height,
-                self.display.display_resolution_width,
-                self.display.display_ratio,
-                self.display.raytrace
-                );
-            let mut obj_list = String::new();
-                obj_list.push_str(&format!("Contain ({}) Object3d: ", self.object_list.len()));
-                for i in 0..self.object_list.len(){
-                    let data_display = match &self.object_list[i].data {
-                    Some(Displayable::Point3d(_)) => format!("Object of type Point3d, "),
-                    Some(Displayable::Vector3d(_)) => format!("Object of type Vector3d, "),
-                    Some(Displayable::Vertex(_)) => format!("Object of type Vertex, "),
-                    Some(Displayable::Mesh(_)) => format!("Object of type Mesh, "),
-                    None => "None".to_string(),
-                    };
-                    obj_list.push_str(data_display.as_str());
-                }
-            write!(f,"Virtual Space:
+            obj_list.push_str(data_display.as_str());
+            obj_list.push_str(format!(" (index: {0}), ", i).as_str());
+        }
+        write!(
+            f,
+            "Virtual Space:
                 Project name: '{0}'
                 File path: {1}
                 Unit scale: {2}
                 Display Pipeline Config: {3}
                 Object3d List: {4}
-                ",project_name,path,unit_scale,display_config,obj_list)
-        }
+                ",
+            project_name, path, unit_scale, display_config, obj_list
+        )
+    }
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// Oject System.
@@ -207,10 +210,7 @@ impl fmt::Display for Object3d {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Format the `data` field
         let data_display = match &self.data {
-            Some(Displayable::Point3d(_)) => format!("Object of type Point3d"),
-            Some(Displayable::Vector3d(_)) => format!("Object of type Vector3d"),
-            Some(Displayable::Vertex(_)) => format!("Object of type Vertex"),
-            Some(Displayable::Mesh(_)) => format!("Object of type Mesh"),
+            Some(disp) => disp.to_string(),
             None => "None".to_string(),
         };
         // Format the undo and redo stacks
@@ -246,6 +246,16 @@ pub enum Displayable {
     Vector3d(Vec<Vector3d>),
     Vertex(Vec<Vertex>),
     Mesh(Mesh),
+}
+impl Displayable {
+    pub fn to_string(&self) -> String {
+        match &self {
+            Displayable::Point3d(_) => format!("Object of type Point3d"),
+            Displayable::Vector3d(_) => format!("Object of type Vector3d"),
+            Displayable::Vertex(_) => format!("Object of type Vertex"),
+            Displayable::Mesh(_) => format!("Object of type Mesh"),
+        }
+    }
 }
 // metric or imperial system reference.
 #[derive(Clone, Debug)]
