@@ -584,6 +584,7 @@ pub mod geometry {
                 v,
             }
         }
+
         /// Construct a CPlane from origin point and a normal vector
         /// oriented on x_axis direction.
         /// # Arguments
@@ -679,6 +680,14 @@ pub mod geometry {
         }
     }
 
+    impl fmt::Display for CPlane {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let origin = format!("Plane Origin:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",self.origin.X,self.origin.Y,self.origin.Z);
+            let u = format!("Plane u vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",self.u.X,self.u.Y,self.u.Z);
+            let v = format!("Plane v vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",self.v.X,self.v.Y,self.v.Z);
+            write!(f,"CPlane: {0},{1},{2}",origin,u,v)
+        }
+    }
     pub struct NurbsCurve {
         pub control_points: Vec<Point3d>,
         pub degree: usize,

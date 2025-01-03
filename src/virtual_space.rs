@@ -41,6 +41,7 @@ use crate::display_pipe_line::visualization_v3::coloring::*;
 use crate::rust3d::geometry::*;
 use crate::rust3d::transformation::*;
 use chrono::Local;
+use std::fmt;
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct Virtual_space {
@@ -75,36 +76,44 @@ impl Virtual_space {
     /// Replace a displayable on same location object..
     pub fn replace_displayable_in_place(
         &mut self,
-        index: usize,
+        virtual_space_obj_index: usize,
         new_displayable_data: Displayable,
     ) {
         // Check if there is an object and then proceed to backup and replacement.
         // if not simply replace the object with no backup.
-        if let Some(data) = self.object_list[index].data.clone() {
-            self.object_list[index].undo_stack.push(data); // Backup a copy on undo stack.
-            self.object_list[index].data = Some(new_displayable_data);
+        if let Some(data) = self.object_list[virtual_space_obj_index].data.clone() {
+            self.object_list[virtual_space_obj_index]
+                .undo_stack
+                .push(data); // Backup a copy on undo stack.
+            self.object_list[virtual_space_obj_index].data = Some(new_displayable_data);
         } else {
-            self.object_list[index].data = Some(new_displayable_data);
+            self.object_list[virtual_space_obj_index].data = Some(new_displayable_data);
         }
     }
     /// Recover previous change.
-    pub fn undo_displayable_in_place(&mut self, index: usize) {
-        if self.object_list[index].undo_stack.len() > 0 {
-            if let Some(data) = self.object_list[index].data.clone(){
-                self.object_list[index].redo_stack.push(data); // place element in redo stack.
-                // put back in place undo element.
-                self.object_list[index].data = self.object_list[index].undo_stack.pop();
+    pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+        if self.object_list[virtual_space_obj_index].undo_stack.len() > 0 {
+            if let Some(data) = self.object_list[virtual_space_obj_index].data.clone() {
+                self.object_list[virtual_space_obj_index]
+                    .redo_stack
+                    .push(data); // place element in redo stack.
+                                 // put back in place undo element.
+                self.object_list[virtual_space_obj_index].data =
+                    self.object_list[virtual_space_obj_index].undo_stack.pop();
             }
         } else {
             eprintln!("Nothing to undo... no change has occurred.")
         }
     }
     /// Recover previous change.
-    pub fn redo_displayable_in_place(&mut self, index: usize) {
-        if self.object_list[index].redo_stack.len() > 0 {
-            if let Some(data) = self.object_list[index].data.clone() {
-                self.object_list[index].undo_stack.push(data);
-                self.object_list[index].data = self.object_list[index].redo_stack.pop();
+    pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+        if self.object_list[virtual_space_obj_index].redo_stack.len() > 0 {
+            if let Some(data) = self.object_list[virtual_space_obj_index].data.clone() {
+                self.object_list[virtual_space_obj_index]
+                    .undo_stack
+                    .push(data);
+                self.object_list[virtual_space_obj_index].data =
+                    self.object_list[virtual_space_obj_index].redo_stack.pop();
             }
         } else {
             eprintln!("Nothing to undo... no change has occurred.")
@@ -114,6 +123,55 @@ impl Virtual_space {
     pub fn clean_stack(&mut self) {
         self.object_list.retain(|obj| obj.data.is_none());
     }
+}
+impl fmt::Display for Virtual_space {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let project_name = format!("{}",self.project_name);
+            let path = if let Some(path) = &self.file_path { 
+                format!("{0}",path)
+            }else{
+                format!("None")
+            };
+            let unit_scale = match self.unit_scale{
+                      Unit_scale::Inch => {
+                          format!("Inch (imperial)")
+                      },
+                      Unit_scale::Meters => {
+                          format!("Meter (metric)")
+                      },
+                      Unit_scale::Millimeters =>{
+                          format!("Millimeters (metric)")
+                      },
+                      Unit_scale::Centimeters =>{
+                          format!("Centimeters (metric)")
+                      }
+            };
+            let display_config = format!("height:{}, width:{}, ratio:{}, raytrace enabled:({}).",
+                self.display.display_resolution_height,
+                self.display.display_resolution_width,
+                self.display.display_ratio,
+                self.display.raytrace
+                );
+            let mut obj_list = String::new();
+                obj_list.push_str(&format!("Contain ({}) Object3d: ", self.object_list.len()));
+                for i in 0..self.object_list.len(){
+                    let data_display = match &self.object_list[i].data {
+                    Some(Displayable::Point3d(_)) => format!("Object of type Point3d, "),
+                    Some(Displayable::Vector3d(_)) => format!("Object of type Vector3d, "),
+                    Some(Displayable::Vertex(_)) => format!("Object of type Vertex, "),
+                    Some(Displayable::Mesh(_)) => format!("Object of type Mesh, "),
+                    None => "None".to_string(),
+                    };
+                    obj_list.push_str(data_display.as_str());
+                }
+            write!(f,"Virtual Space:
+                Project name: '{0}'
+                File path: {1}
+                Unit scale: {2}
+                Display Pipeline Config: {3}
+                Object3d List: {4}
+                ",project_name,path,unit_scale,display_config,obj_list)
+        }
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// Oject System.
@@ -145,6 +203,41 @@ impl Object3d {
         self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     }
 }
+impl fmt::Display for Object3d {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Format the `data` field
+        let data_display = match &self.data {
+            Some(Displayable::Point3d(_)) => format!("Object of type Point3d"),
+            Some(Displayable::Vector3d(_)) => format!("Object of type Vector3d"),
+            Some(Displayable::Vertex(_)) => format!("Object of type Vertex"),
+            Some(Displayable::Mesh(_)) => format!("Object of type Mesh"),
+            None => "None".to_string(),
+        };
+        // Format the undo and redo stacks
+        let undo_stack_display = format!("({0} undo(s) elements.)", self.undo_stack.len());
+        let redo_stack_display = format!("({0} redo(s) elements.)", self.redo_stack.len());
+        // Display all the fields
+        write!(
+            f,
+            " Object3d:{{
+    origin: {0},
+    data: {1},
+    undo_stack: {2},
+    redo_stack: {3},
+    local_scale_ratio: {4},
+    id: {5},
+    last_change_date: {6},}}
+",
+            self.origin,
+            data_display,
+            undo_stack_display,
+            redo_stack_display,
+            self.local_scale_ratio,
+            self.id,
+            self.last_change_date,
+        )
+    }
+}
 /// every thing that can be displayed for now
 /// Curve are basically a set of points.
 #[derive(Clone, Debug)]
@@ -157,7 +250,7 @@ pub enum Displayable {
 // metric or imperial system reference.
 #[derive(Clone, Debug)]
 pub enum Unit_scale {
-    Minimeters,
+    Millimeters,
     Centimeters,
     Meters,
     Inch,

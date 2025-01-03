@@ -15,9 +15,9 @@ use std::time::Duration;
 use virtual_space::*;
 fn main() {
      // init the app with inputs parameters.
-     let program  = Virtual_space::new("first test",
+     let mut program  = Virtual_space::new("first test",
          None , 
-         Unit_scale::Minimeters, 
+         Unit_scale::Millimeters, 
          Display_config::new(800, 600)
          );
         println!("{:?}",program);
@@ -42,7 +42,7 @@ fn main() {
     mesh.vertices.par_iter_mut().for_each(|vert|{
         *vert = plane.point_on_plane(vert.x, vert.y, vert.z).to_vertex();
     });
-    // Scale With matrix 4x3
+    // Scale With matrix 4x3.
     let matrix = transformation::scaling_matrix_from_center_4x3(origin,0.5, 0.5, 0.5);
     let v = transformation::transform_points_4x3(&matrix, &mesh.vertices);
     mesh.vertices = v; // change allocated pointers,the hold ones are free automatically.
@@ -50,7 +50,14 @@ fn main() {
     ////////moved values////////////////////////////////////////////////////////
     // now the mesh and CPlane variables of above transfer the ownership to object of type Object3d.
     let object = Object3d::new(0, Some(Displayable::Mesh(mesh)),plane, 0.5);
+    println!("{}",object); 
     ////////////////////////////////////////////////////////////////////////////
-    println!("{:?}",object.origin); 
-    //mesh.export_to_obj_with_normals_fast("test.obj").ok();
+    program.add_obj(object);// transfer ownership to program.
+    let vert = vec![Vertex::new(6.28,1.6,81.0)];
+    let normal = Vector3d::new(0.0,0.0,1.0);
+    let object2 = Object3d::new(0, Some(Displayable::Vertex(vert)),CPlane::new(&origin,&normal), 0.5);
+    program.add_obj(object2);
+    println!("{}",program); 
+
+    // mesh.export_to_obj_with_normals_fast("test.obj").ok();
 }
