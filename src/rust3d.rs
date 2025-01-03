@@ -1906,7 +1906,7 @@ pub mod transformation {
     /// input data can be Point3d Vector3d or a Vertex
     pub fn transform_points<T: Coordinate3d + Send + Sync>(
         tranform_matrix: &[[f64; 4]; 4],
-        points_to_process: Vec<T>,
+        points_to_process: &Vec<T>,
     ) -> Vec<T>
     where
         T: Coordinate3d<Output = T>,
@@ -1932,92 +1932,6 @@ pub mod transformation {
             .collect()
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // The 3x3 version more efficient for rotation and scaling but cannot
-    // represent translation.
-    ////////////////////////////////////////////////////////////////////////////
-
-    /// Create a 3x3 rotation matrix from angles (in degrees) for X, Y, and Z axes
-    pub fn rotation_matrix_from_angles_3x3(
-        x_angle: f64,
-        y_angle: f64,
-        z_angle: f64,
-    ) -> [[f64; 3]; 3] {
-        // Convert angles from degrees to radians
-        let x_rad = x_angle.to_radians();
-        let y_rad = y_angle.to_radians();
-        let z_rad = z_angle.to_radians();
-
-        // Rotation matrix around the X-axis
-        let rotation_x = [
-            [1.0, 0.0, 0.0],
-            [0.0, x_rad.cos(), -x_rad.sin()],
-            [0.0, x_rad.sin(), x_rad.cos()],
-        ];
-
-        // Rotation matrix around the Y-axis
-        let rotation_y = [
-            [y_rad.cos(), 0.0, y_rad.sin()],
-            [0.0, 1.0, 0.0],
-            [-y_rad.sin(), 0.0, y_rad.cos()],
-        ];
-
-        // Rotation matrix around the Z-axis
-        let rotation_z = [
-            [z_rad.cos(), -z_rad.sin(), 0.0],
-            [z_rad.sin(), z_rad.cos(), 0.0],
-            [0.0, 0.0, 1.0],
-        ];
-
-        // Combine the rotation matrices: R = Rz * Ry * Rx
-        let rotation_xy = multiply_matrices_3x3(rotation_y, rotation_x);
-        let rotation_xyz = multiply_matrices_3x3(rotation_z, rotation_xy);
-
-        rotation_xyz
-    }
-    /// Helper function to multiply two 3x3 matrices
-    pub fn multiply_matrices_3x3(a: [[f64; 3]; 3], b: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
-        let mut result = [[0.0; 3]; 3];
-        for i in 0..3 {
-            for j in 0..3 {
-                result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
-            }
-        }
-        result
-    }
-    /// Combine multiple 3x3 transformation matrices into one
-    pub fn combine_matrices_3x3(matrices: Vec<[[f64; 3]; 3]>) -> [[f64; 3]; 3] {
-        let mut result = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-        for matrix in matrices {
-            result = multiply_matrices_3x3(result, matrix);
-        }
-        result
-    }
-    /// Apply a 3x3 transformation matrix to a vector of points
-    pub fn transform_points_3x3<T: Coordinate3d + Send + Sync>(
-        transform_matrix: &[[f64; 3]; 3],
-        points_to_process: Vec<T>,
-    ) -> Vec<T>
-    where
-        T: Coordinate3d<Output = T>,
-    {
-        points_to_process
-            .par_iter()
-            .map(|point| {
-                T::new(
-                    transform_matrix[0][0] * point.get_x()
-                        + transform_matrix[0][1] * point.get_y()
-                        + transform_matrix[0][2] * point.get_z(),
-                    transform_matrix[1][0] * point.get_x()
-                        + transform_matrix[1][1] * point.get_y()
-                        + transform_matrix[1][2] * point.get_z(),
-                    transform_matrix[2][0] * point.get_x()
-                        + transform_matrix[2][1] * point.get_y()
-                        + transform_matrix[2][2] * point.get_z(),
-                )
-            })
-            .collect()
-    }
     /// Create a 4x3 rotation matrix from angles (in degrees) for X, Y, and Z axes
     pub fn rotation_matrix_from_angles_4x3(
         x_angle: f64,
@@ -2092,11 +2006,33 @@ pub mod transformation {
         }
         result
     }
+    pub fn scaling_matrix_from_center_4x3<T: Coordinate3d>(
+        center: T,
+        scale_x: f64,
+        scale_y: f64,
+        scale_z: f64,
+    ) -> [[f64; 4]; 3] {
+        // Extract the center coordinates
+        let cx = center.get_x();
+        let cy = center.get_y();
+        let cz = center.get_z();
 
+        // Compute the translation components after scaling
+        let translation_x = cx - (scale_x * cx);
+        let translation_y = cy - (scale_y * cy);
+        let translation_z = cz - (scale_z * cz);
+
+        // Construct the 4x3 matrix with [[f64; 4]; 3] format
+        [
+            [scale_x, 0.0, 0.0, translation_x], // Row 1: scale_x and translation_x
+            [0.0, scale_y, 0.0, translation_y], // Row 2: scale_y and translation_y
+            [0.0, 0.0, scale_z, translation_z], // Row 3: scale_z and translation_z
+        ]
+    }
     /// Apply a 4x3 transformation matrix to a vector of points
     pub fn transform_points_4x3<T: Coordinate3d + Send + Sync>(
         transform_matrix: &[[f64; 4]; 3],
-        points_to_process: Vec<T>,
+        points_to_process: &Vec<T>,
     ) -> Vec<T>
     where
         T: Coordinate3d<Output = T>,
@@ -2795,8 +2731,8 @@ mod test {
             Vertex::new(0.0, 1.0, 0.2),
         ];
         let triangles = vec![
-            Triangle::new(&vertices, [0,1,2]),
-            Triangle::new(&vertices,[0,2,3]),
+            Triangle::new(&vertices, [0, 1, 2]),
+            Triangle::new(&vertices, [0, 2, 3]),
         ];
         let mesh = Mesh::new_with_data(vertices, triangles);
         mesh.export_to_obj_with_normals_fast("./geometry/exported_light_with_rust.obj")
@@ -2885,8 +2821,8 @@ mod test {
         let v1 = Vertex::new(1.834429, 0.0, -0.001996);
         let v2 = Vertex::new(1.975597, 0.0, 0.893012);
         let v3 = Vertex::new(2.579798, 0.0, 0.150466);
-        let vertices = vec![v1,v2,v3];
-        let tri = Triangle::new(&vertices, [0,1,2]);
+        let vertices = vec![v1, v2, v3];
+        let tri = Triangle::new(&vertices, [0, 1, 2]);
         let expected_reuslt_area = 0.322794;
         let result = tri.get_triangle_area(&vertices);
         if (expected_reuslt_area - result).abs() < 1e-6 {
@@ -3011,36 +2947,37 @@ mod test {
     }
     use crate::display_pipe_line::rendering_object::*;
     #[test]
-    fn test_ray_trace(){
-        let obj = Mesh::import_obj_with_normals("./geometry/flatbox.obj").ok().unwrap();
-        let v_inside = Vertex::new(-0.130, -0.188,2.327);
+    fn test_ray_trace() {
+        let obj = Mesh::import_obj_with_normals("./geometry/flatbox.obj")
+            .ok()
+            .unwrap();
+        let v_inside = Vertex::new(-0.130, -0.188, 2.327);
         assert!(v_inside.is_inside_a_mesh(&obj));
-        let v_outside = Vertex::new(0.623, -0.587,2.327);
+        let v_outside = Vertex::new(0.623, -0.587, 2.327);
         assert!(!v_outside.is_inside_a_mesh(&obj));
 
-        let pt_origin = Vertex::new(1.240, -0.860,3.169);
-        let pt_direction = Vertex::new(-0.743, 0.414,-0.526);
+        let pt_origin = Vertex::new(1.240, -0.860, 3.169);
+        let pt_direction = Vertex::new(-0.743, 0.414, -0.526);
 
-        let ray =  Ray::new(pt_origin,pt_direction);
+        let ray = Ray::new(pt_origin, pt_direction);
         let bvh = BVHNode::build(&obj, (0..obj.triangles.len()).collect(), 0);
-        for tri in obj.triangles.iter(){
-              if let Some(t)  = tri.intersect(&ray, &obj.vertices){
-                  println!("---------->{t}");
-              }
-         }
+        for tri in obj.triangles.iter() {
+            if let Some(t) = tri.intersect(&ray, &obj.vertices) {
+                println!("---------->{t}");
+            }
+        }
         // Perform intersection test on bvh.
-        if let Some((t ,_vert)) = bvh.intersect( &obj,&ray) {
+        if let Some((t, _vert)) = bvh.intersect(&obj, &ray) {
             //  _triangle is the ref to intersected triangle geometry.
             // *_triangle.intersect(&ray) (for refinements...)
             println!("Hit triangle at t = {}!", t);
-            assert_eq!("1.436",format!("{t:0.3}").as_str());
+            assert_eq!("1.436", format!("{t:0.3}").as_str());
         } else {
-            println!("No intersection. {:?} {:?}",obj.vertices, ray);
+            println!("No intersection. {:?} {:?}", obj.vertices, ray);
             assert!(false);
         }
         assert!(true);
-        
-   }
+    }
 }
 /*
 * notes:
