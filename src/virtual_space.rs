@@ -35,6 +35,8 @@
 //   (from another thread) the whole virtual_space object list
 //   (by matrix operations from user input and rasterize / raytrace
 //    the virtual_space)
+//  - Before sending to display pipe line iter from LayerVisibility object and 
+//    apply related parmeter in function.
 
 use crate::display_pipe_line::rendering_object::{Mesh, Vertex};
 use crate::display_pipe_line::visualization_v3::coloring::*;
@@ -297,6 +299,14 @@ impl Display_config {
         }
     }
 }
+#[derive(Debug)]
+struct LayerVisibility{
+  object3d_list_index:Vec<usize>,
+  visibility:bool,
+  color:Color,
+  lock:bool
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*
  * this is a template prototype of the scripted runtime
