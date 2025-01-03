@@ -2238,7 +2238,7 @@ pub mod new_mesh {
             let mut distances = HashSet::new();
 
             for triangle in mesh_to_test.triangles.iter() {
-                if let Some(t) = triangle.intersect(&mesh_to_test.vertices,&ray) {
+                if let Some(t) = triangle.intersect(&ray, &mesh_to_test.vertices) {
                     // Scale and truncate to an integer to make it hashable
                     let scaled_t = (t * 10000.0).trunc() as i64;
 
@@ -2257,9 +2257,14 @@ pub mod new_mesh {
         pub fn to_vector3d(&self) -> Vector3d {
             Vector3d::new(self.x, self.y, self.z)
         }
+
+        /// Computes the dot product of two vertices
+        pub fn dot(&self, other: &Vertex) -> f64 {
+            self.x * other.x + self.y * other.y + self.z * other.z
+        }
     }
     impl Sub for Vertex {
-        type Output = Self; // Specify the result type of the addition
+        type Output = Self;
         fn sub(self, other: Self) -> Self {
             Vertex::new(self.x - other.x, self.y - other.y, self.z - other.z)
         }
@@ -2277,9 +2282,9 @@ pub mod new_mesh {
         }
     }
     impl Mul for Vertex {
-        type Output = Self; // Specify the result type of the addition
-        fn mul(self, other: Self) -> Self {
-            Vertex::new(self.x * other.x, self.y * other.y, self.z * other.z)
+        type Output = f64;
+        fn mul(self, other: Vertex) -> f64 {
+            self.x * other.x + self.y * other.y + self.z * other.z
         }
     }
     impl PartialEq for Vertex {
@@ -2385,72 +2390,6 @@ pub mod new_mesh {
             self.normal = edge1.cross(&edge2).normalize();
         }
 
-        // Möller–Trumbore algorithm.
-        pub fn intersect(&self, vertices: &Vec<Vertex>, ray: &Ray) -> Option<f64> {
-            let ref v0 = vertices[self.vertex_indices[0]];
-            let ref v1 = vertices[self.vertex_indices[1]];
-            let ref v2 = vertices[self.vertex_indices[2]];
-            let edge1 = Vertex {
-                x: v1.x - v0.x,
-                y: v1.y - v0.y,
-                z: v1.z - v0.z,
-            };
-            let edge2 = Vertex {
-                x: v2.x - v0.x,
-                y: v2.y - v0.y,
-                z: v2.z - v0.z,
-            };
-
-            let h = Vertex {
-                x: ray.direction.y * edge2.z - ray.direction.z * edge2.y,
-                y: ray.direction.z * edge2.x - ray.direction.x * edge2.z,
-                z: ray.direction.x * edge2.y - ray.direction.y * edge2.x,
-            };
-            let a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
-
-            if a > -1e-8 && a < 1e-8 {
-                return None; // Ray is parallel to the triangle.
-            }
-
-            let f = 1.0 / a;
-            let s = Vertex {
-                x: ray.origin.x - v0.x,
-                y: ray.origin.y - v0.y,
-                z: ray.origin.z - v0.z,
-            };
-            let u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
-
-            if u < 0.0 || u > 1.0 {
-                return None;
-            }
-
-            let q = Vertex {
-                x: s.y * edge1.z - s.z * edge1.y,
-                y: s.z * edge1.x - s.x * edge1.z,
-                z: s.x * edge1.y - s.y * edge1.x,
-            };
-            let v = f * (ray.direction.x * q.x + ray.direction.y * q.y + ray.direction.z * q.z);
-
-            if v < 0.0 || u + v > 1.0 {
-                return None;
-            }
-            let t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
-            if t > 1e-8 {
-                Some(t) // Intersection distance
-            } else {
-                None
-            }
-        }
-
-        // Compute the centroid of the triangle
-        pub fn center(&self, vertices: &Vec<Vertex>) -> [f64; 3] {
-            let ref v0 = vertices[self.vertex_indices[0]];
-            let ref v1 = vertices[self.vertex_indices[1]];
-            let ref v2 = vertices[self.vertex_indices[2]];
-            let centroid = (*v0 + *v1 + *v2) / 3.0;
-            [centroid.x, centroid.y, centroid.z]
-        }
-
         // Give back edges components.
         pub fn edges(&self, vertices: &Vec<Vertex>) -> [(Vertex, Vertex); 3] {
             let ref v0 = vertices[self.vertex_indices[0]];
@@ -2476,32 +2415,135 @@ pub mod new_mesh {
                 id: None,
             }
         }
-        // Compute the bounding box of the triangle
-        pub fn bounding_box(&self, vertices: &Vec<Vertex>) -> AABB {
-            let ref v0 = vertices[self.vertex_indices[0]];
-            let ref v1 = vertices[self.vertex_indices[1]];
-            let ref v2 = vertices[self.vertex_indices[2]];
-            AABB {
-                min: Vertex {
-                    x: v0.x.min(v1.x).min(v2.x),
-                    y: v0.y.min(v1.y).min(v2.y),
-                    z: v0.z.min(v1.z).min(v2.z),
-                },
-                max: Vertex {
-                    x: v0.x.max(v1.x).max(v2.x),
-                    y: v0.y.max(v1.y).max(v2.y),
-                    z: v0.z.max(v1.z).max(v2.z),
-                },
+
+        /// Ray-triangle intersection using the Möller–Trumbore algorithm.
+        /// Returns `Some(t)` where `t` is the distance along the ray, or `None` if no intersection occurs.
+        pub fn intersect(
+            &self,
+            ray: &Ray,
+            vertices: &[Vertex], // Shared vertices from the Mesh
+        ) -> Option<f64> {
+            // Retrieve vertices of the triangle using their indices
+            let v0 = vertices[self.vertex_indices[0]];
+            let v1 = vertices[self.vertex_indices[1]];
+            let v2 = vertices[self.vertex_indices[2]];
+
+            // Edge vectors of the triangle
+            let edge1 = v1 - v0;
+            let edge2 = v2 - v0;
+
+            // Compute determinant
+            let h = ray.direction.cross(&edge2);
+            let det = edge1.dot(&h);
+
+            // If the determinant is near zero, the ray lies in the triangle's plane
+            if det.abs() < 1e-8 {
+                return None;
+            }
+
+            let inv_det = 1.0 / det;
+
+            // Calculate distance from v0 to ray origin
+            let s = ray.origin - v0;
+
+            // Calculate u parameter and test bounds
+            let u = s.dot(&h) * inv_det;
+            if u < 0.0 || u > 1.0 {
+                return None;
+            }
+
+            // Calculate v parameter and test bounds
+            let q = s.cross(&edge1);
+            let v = ray.direction.dot(&q) * inv_det;
+            if v < 0.0 || u + v > 1.0 {
+                return None;
+            }
+
+            // Calculate t to find the intersection point
+            let t = edge2.dot(&q) * inv_det;
+
+            // If t is positive, the ray intersects the triangle
+            if t > 1e-8 {
+                Some(t)
+            } else {
+                None
+            }
+        }
+
+        /// Helper to retrieve vertices of the triangle from the mesh
+        pub fn get_vertices(&self, vertices: &[Vertex]) -> [Vertex; 3] {
+            [
+                vertices[self.vertex_indices[0]],
+                vertices[self.vertex_indices[1]],
+                vertices[self.vertex_indices[2]],
+            ]
+        }
+
+        // Compute the centroid of the triangle
+        pub fn center(&self, vertices: &Vec<Vertex>) -> [f64; 3] {
+            let v0 = vertices[self.vertex_indices[0]];
+            let v1 = vertices[self.vertex_indices[1]];
+            let v2 = vertices[self.vertex_indices[2]];
+            let centroid = Vertex {
+                x: (v0.x + v1.x + v2.x) / 3.0,
+                y: (v0.y + v1.y + v2.y) / 3.0,
+                z: (v0.z + v1.z + v2.z) / 3.0,
+            };
+            [centroid.x, centroid.y, centroid.z]
+        }
+        /// Tests for intersection between a ray and this triangle.
+        /// Returns `Some(t)` where `t` is the distance along the ray to the intersection,
+        /// or `None` if there's no intersection.
+        pub fn intersect_vb(&self, ray: &Ray, vertices: &[Vertex]) -> Option<f64> {
+            let v0 = vertices[self.vertex_indices[0]];
+            let v1 = vertices[self.vertex_indices[1]];
+            let v2 = vertices[self.vertex_indices[2]];
+
+            let edge1 = v1 - v0;
+            let edge2 = v2 - v0;
+
+            let h = ray.direction.cross(&edge2);
+            let a = edge1.dot(&h);
+
+            // Check if the ray is parallel to the triangle (a is near zero)
+            if a.abs() < 1e-8 {
+                return None;
+            }
+
+            let f = 1.0 / a;
+            let s = ray.origin - v0;
+            let u = f * s.dot(&h);
+
+            // Check if the intersection is outside the triangle
+            if u < 0.0 || u > 1.0 {
+                return None;
+            }
+
+            let q = s.cross(&edge1);
+            let v = f * ray.direction.dot(&q);
+
+            // Check if the intersection is outside the triangle
+            if v < 0.0 || u + v > 1.0 {
+                return None;
+            }
+
+            // Compute the distance `t` along the ray
+            let t = f * edge2.dot(&q);
+
+            // Check if the intersection is behind the ray origin
+            if t > 1e-8 {
+                Some(t) // Valid intersection
+            } else {
+                None // Line intersection but not a ray intersection
             }
         }
     }
-
     use std::path::Path;
     /// A mesh containing vertices and triangles.
     #[derive(Debug, Clone, PartialEq, PartialOrd)]
     pub struct Mesh {
-        vertices: Vec<Vertex>,
-        triangles: Vec<Triangle>,
+        pub vertices: Vec<Vertex>,
+        pub triangles: Vec<Triangle>,
     }
     impl Mesh {
         /// Creates a new empty mesh.
@@ -2880,12 +2922,38 @@ pub mod new_mesh {
             let final_map = edge_count.lock().unwrap(); // Lock again to check
             final_map.values().all(|&count| count == 2)
         }
+        /// Merges another mesh into this mesh while maintaining relationships between vertices and triangles.
+        pub fn merge(&mut self, other: &Mesh) {
+            // Store the current number of vertices in the mesh.
+            let vertex_offset = self.vertices.len();
+
+            // Add the vertices from the other mesh.
+            self.vertices.extend_from_slice(&other.vertices);
+
+            // Add the triangles from the other mesh, adjusting their vertex indices.
+            for triangle in &other.triangles {
+                let adjusted_indices = [
+                    triangle.vertex_indices[0] + vertex_offset,
+                    triangle.vertex_indices[1] + vertex_offset,
+                    triangle.vertex_indices[2] + vertex_offset,
+                ];
+
+                // Add the new triangle with adjusted vertex indices.
+                self.triangles.push(Triangle {
+                    vertex_indices: adjusted_indices,
+                    normal: triangle.normal,
+                    id: triangle.id, // Preserve the triangle ID if applicable.
+                });
+            }
+        }
     }
+
     #[derive(Debug, Clone)]
     pub struct Ray {
         pub origin: Vertex,
         pub direction: Vertex,
     }
+
     impl Ray {
         pub fn new(pt1: Vertex, pt2: Vertex) -> Self {
             Self {
@@ -2894,35 +2962,49 @@ pub mod new_mesh {
             }
         }
     }
-    // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
-    // into a tree structure to accelerate ray tracing
-    // by reducing the number of intersection tests.
-
-    // AABB stand for Axis aligned Bounding Box.
+    ////////////////////////////////////////////////////////////////////////
     #[derive(Debug, Clone)]
     pub struct AABB {
-        min: Vertex, // Minimum corner of the bounding box
-        max: Vertex, // Maximum corner of the bounding box
+        pub min: Vertex, // Minimum corner of the bounding box
+        pub max: Vertex, // Maximum corner of the bounding box
     }
 
     impl AABB {
-        // Combine two AABBs into one that encompasses both
-        pub fn surrounding_box(box1: &AABB, box2: &AABB) -> AABB {
+        /// Create a new AABB with infinite bounds.
+        pub fn new() -> Self {
+            AABB {
+                min: Vertex::new(f64::INFINITY, f64::INFINITY, f64::INFINITY),
+                max: Vertex::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
+            }
+        }
+
+        /// Expand the bounding box to include a vertex.
+        pub fn expand(&mut self, vertex: &Vertex) {
+            self.min.x = self.min.x.min(vertex.x);
+            self.min.y = self.min.y.min(vertex.y);
+            self.min.z = self.min.z.min(vertex.z);
+            self.max.x = self.max.x.max(vertex.x);
+            self.max.y = self.max.y.max(vertex.y);
+            self.max.z = self.max.z.max(vertex.z);
+        }
+
+        /// Merge two AABBs into one that encompasses both.
+        pub fn merge(&self, other: &AABB) -> AABB {
             AABB {
                 min: Vertex {
-                    x: box1.min.x.min(box2.min.x),
-                    y: box1.min.y.min(box2.min.y),
-                    z: box1.min.z.min(box2.min.z),
+                    x: self.min.x.min(other.min.x),
+                    y: self.min.y.min(other.min.y),
+                    z: self.min.z.min(other.min.z),
                 },
                 max: Vertex {
-                    x: box1.max.x.max(box2.max.x),
-                    y: box1.max.y.max(box2.max.y),
-                    z: box1.max.z.max(box2.max.z),
+                    x: self.max.x.max(other.max.x),
+                    y: self.max.y.max(other.max.y),
+                    z: self.max.z.max(other.max.z),
                 },
             }
         }
 
-        // Ray-AABB intersection test (needed for BVH traversal)
+        /// Check if a ray intersects this bounding box.
         pub fn intersects(&self, ray: &Ray) -> bool {
             let inv_dir = Vertex {
                 x: 1.0 / ray.direction.x,
@@ -2941,73 +3023,93 @@ pub mod new_mesh {
                 (self.max.z - ray.origin.z) * inv_dir.z,
             );
 
-            let t_enter = t_min.0.max(t_min.1).max(t_min.2);
-            let t_exit = t_max.0.min(t_max.1).min(t_max.2);
+            let t_enter = t_min
+                .0
+                .min(t_max.0)
+                .max(t_min.1.min(t_max.1))
+                .max(t_min.2.min(t_max.2));
+            let t_exit = t_max
+                .0
+                .max(t_min.0)
+                .min(t_max.1.max(t_min.1))
+                .min(t_max.2.max(t_min.2));
 
-            t_enter <= t_exit
+            t_enter <= t_exit && t_exit >= 0.0
         }
     }
 
-    #[derive(Debug)]
-    pub enum BVHNode<'a> {
+    #[derive(Debug, Clone)]
+    pub enum BVHNode {
         Leaf {
             bounding_box: AABB,
-            triangles: Vec<Triangle>, // Triangles in the leaf
-            vertices: &'a Vec<Vertex>,
+            triangle_indices: Vec<usize>, // Indices of triangles in the leaf
         },
         Internal {
             bounding_box: AABB,
-            left: Arc<BVHNode<'a>>,  // Left child
-            right: Arc<BVHNode<'a>>, // Right child
+            left: Arc<BVHNode>,
+            right: Arc<BVHNode>,
         },
     }
-
-    impl<'a> BVHNode<'a> {
-        // A Bounding Volume Hierarchy (BVH) organizes objects (e.g., triangles)
-        // into a tree structure to accelerate ray tracing by
-        // reducing the number of intersection tests.
-        pub fn build(vertices: &Vec<Vertex>, triangles: Vec<Triangle>, depth: usize) -> BVHNode {
-            // Base case: Create a leaf node if triangle count is small
-            if triangles.len() <= 2 {
-                let bounding_box = triangles
-                    .iter()
-                    .map(|tri| tri.bounding_box(&vertices))
-                    .reduce(|a, b| AABB::surrounding_box(&a, &b))
-                    .unwrap();
+    impl BVHNode {
+        pub fn build(mesh: &Mesh, triangle_indices: Vec<usize>, depth: usize) -> BVHNode {
+            // Base case: Create a leaf node if the triangle count is small.
+            if triangle_indices.len() <= 2 {
+                let mut bounding_box = AABB::new();
+                for &index in &triangle_indices {
+                    let triangle = &mesh.triangles[index];
+                    for &vertex_index in &triangle.vertex_indices {
+                        bounding_box.expand(&mesh.vertices[vertex_index]);
+                    }
+                }
                 return BVHNode::Leaf {
                     bounding_box,
-                    triangles,
-                    vertices,
+                    triangle_indices,
                 };
             }
 
-            // Find the axis to split (X, Y, or Z)
-            let axis = depth % 3;
-            let mut sorted_triangles = triangles;
-            sorted_triangles.sort_by(|a, b| {
-                let center_a = a.center(&vertices)[axis];
-                let center_b = b.center(&vertices)[axis];
-                center_a.partial_cmp(&center_b).unwrap()
+            // Compute the bounding box for the current set of triangles.
+            let mut bounding_box = AABB::new();
+            for &index in &triangle_indices {
+                let triangle = &mesh.triangles[index];
+                for &vertex_index in &triangle.vertex_indices {
+                    bounding_box.expand(&mesh.vertices[vertex_index]);
+                }
+            }
+
+            // Find the axis to split along (longest axis of the bounding box).
+            let axis = {
+                let extents = Vertex {
+                    x: bounding_box.max.x - bounding_box.min.x,
+                    y: bounding_box.max.y - bounding_box.min.y,
+                    z: bounding_box.max.z - bounding_box.min.z,
+                };
+                if extents.x >= extents.y && extents.x >= extents.z {
+                    0 // X-axis
+                } else if extents.y >= extents.z {
+                    1 // Y-axis
+                } else {
+                    2 // Z-axis
+                }
+            };
+
+            // Sort triangles along the chosen axis.
+            let mut sorted_indices = triangle_indices.clone();
+            sorted_indices.sort_by(|&a, &b| {
+                let center_a = mesh.triangles[a].center(&mesh.vertices);
+                let center_b = mesh.triangles[b].center(&mesh.vertices);
+                center_a[axis].partial_cmp(&center_b[axis]).unwrap()
             });
 
-            // Partition the triangles into two groups
-            let mid = sorted_triangles.len() / 2;
-            let (left_triangles, right_triangles) = sorted_triangles.split_at(mid);
+            // Split triangles into two groups.
+            let mid = sorted_indices.len() / 2;
+            let (left_indices, right_indices) = sorted_indices.split_at(mid);
 
-            // Recursively build the left and right subtrees
-            let left = Arc::new(BVHNode::build(
-                &vertices,
-                left_triangles.to_vec(),
-                depth + 1,
-            ));
-            let right = Arc::new(BVHNode::build(
-                &vertices,
-                right_triangles.to_vec(),
-                depth + 1,
-            ));
+            // Recursively build left and right subtrees.
+            let left = Arc::new(BVHNode::build(mesh, left_indices.to_vec(), depth + 1));
+            let right = Arc::new(BVHNode::build(mesh, right_indices.to_vec(), depth + 1));
 
-            // Create the bounding box for this node
-            let bounding_box = AABB::surrounding_box(&left.bounding_box(), &right.bounding_box());
+            // Combine bounding boxes of left and right nodes.
+            let bounding_box = left.bounding_box().merge(right.bounding_box());
 
             BVHNode::Internal {
                 bounding_box,
@@ -3022,28 +3124,32 @@ pub mod new_mesh {
                 BVHNode::Internal { bounding_box, .. } => bounding_box,
             }
         }
-        pub fn intersect(&self, vertices: &Vec<Vertex>, ray: &Ray) -> Option<(f64, &Triangle)> {
+    }
+
+    impl BVHNode {
+        pub fn intersect(&self, mesh: &Mesh, ray: &Ray) -> Option<(f64, usize)> {
             if !self.bounding_box().intersects(ray) {
-                return None; // Ray doesn't hit this node
+                return None; // Ray misses this node.
             }
 
             match self {
-                BVHNode::Leaf { triangles, .. } => {
-                    // Test against all triangles in the leaf
-                    let mut closest_hit: Option<(f64, &Triangle)> = None;
-                    for triangle in triangles {
-                        if let Some(t) = triangle.intersect(vertices, ray) {
+                BVHNode::Leaf {
+                    triangle_indices, ..
+                } => {
+                    let mut closest_hit: Option<(f64, usize)> = None;
+                    for &index in triangle_indices {
+                        let triangle = &mesh.triangles[index];
+                        if let Some(t) = triangle.intersect_vb(ray, &mesh.vertices) {
                             if closest_hit.is_none() || t < closest_hit.unwrap().0 {
-                                closest_hit = Some((t, triangle));
+                                closest_hit = Some((t, index)); // Store distance and triangle index.
                             }
                         }
                     }
                     closest_hit
                 }
                 BVHNode::Internal { left, right, .. } => {
-                    // Recursively test left and right children
-                    let left_hit = left.intersect(vertices, ray);
-                    let right_hit = right.intersect(vertices, ray);
+                    let left_hit = left.intersect(mesh, ray);
+                    let right_hit = right.intersect(mesh, ray);
 
                     match (left_hit, right_hit) {
                         (Some(l), Some(r)) => {
@@ -3061,6 +3167,7 @@ pub mod new_mesh {
             }
         }
     }
+    /////////////////////////////////////////////////////////////////////////
 
     pub struct Camera {
         position: Vertex,  // Camera position
@@ -3090,7 +3197,7 @@ pub mod new_mesh {
             // Adjust for aspect ratio and FOV
             let pixel_camera_x = screen_x * self.aspect_ratio * fov_scale;
             let pixel_camera_y = screen_y * fov_scale;
-    use std::sync::Mutex;
+            use std::sync::Mutex;
 
             // Compute ray direction in camera space
             let ray_direction = self
