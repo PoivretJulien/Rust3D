@@ -20,7 +20,6 @@ fn main() {
          Unit_scale::Millimeters, 
          Display_config::new(800, 600)
          );
-        println!("{:?}",program);
     // import a mesh...
     let mut mesh = Mesh::new(); // pointer holder of the mesh structure
     if let Ok(obj) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj") {

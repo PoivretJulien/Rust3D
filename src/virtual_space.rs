@@ -132,20 +132,7 @@ impl fmt::Display for Virtual_space {
         } else {
             format!("None")
         };
-        let unit_scale = match self.unit_scale {
-            Unit_scale::Inch => {
-                format!("Inch (imperial)")
-            }
-            Unit_scale::Meters => {
-                format!("Meter (metric)")
-            }
-            Unit_scale::Millimeters => {
-                format!("Millimeters (metric)")
-            }
-            Unit_scale::Centimeters => {
-                format!("Centimeters (metric)")
-            }
-        };
+        let unit_scale = self.unit_scale.to_string();
         let display_config = format!(
             "height:{}, width:{}, ratio:{}, raytrace enabled:({}).",
             self.display.display_resolution_height,
@@ -264,6 +251,24 @@ pub enum Unit_scale {
     Centimeters,
     Meters,
     Inch,
+}
+impl Unit_scale {
+    pub fn to_string(&self) -> String {
+        match self {
+            Unit_scale::Inch => {
+                format!("Inch (imperial)")
+            }
+            Unit_scale::Meters => {
+                format!("Meter (metric)")
+            }
+            Unit_scale::Millimeters => {
+                format!("Millimeters (metric)")
+            }
+            Unit_scale::Centimeters => {
+                format!("Centimeters (metric)")
+            }
+        }
+    }
 }
 // Config for the pipe_line Display thread.
 #[derive(Debug)]
