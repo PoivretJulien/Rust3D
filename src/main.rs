@@ -14,12 +14,15 @@ use rust3d::transformation::rotate_z;
 use std::time::Duration;
 use virtual_space::*;
 fn main() {
-    /*
-     * Precision orientation test with matrix transformation scaling.
-     * in a nice and elegant way.
-     * */
+     // init the app with inputs parameters.
+     let program  = Virtual_space::new("first test",
+         None , 
+         Unit_scale::Minimeters, 
+         Display_config::new(800, 600)
+         );
+        println!("{:?}",program);
+    // import a mesh...
     let mut mesh = Mesh::new(); // pointer holder of the mesh structure
-    // Test of the new Mesh entity with CPlane.
     if let Ok(obj) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj") {
        println!("obj-> Triangles number: {}",obj.triangles.len());
        println!("obj-> Vertices number: {}",obj.vertices.len());
@@ -29,10 +32,10 @@ fn main() {
     }else{
         eprint!("Error on import.");
     }
-    // the to_point3d should be optimized statically at compile time (zero cost abstraction).
-    let origin = Vertex::new(1.156, -0.247,1.245).to_point3d();
-    let point_u = Vertex::new(1.012, 0.174,1.081).to_point3d();
-    let point_v = Vertex::new(0.854, -0.247,1.510).to_point3d();
+    // init a Cplane.
+    let origin = Point3d::new(1.156, -0.247,1.245);
+    let point_u = Point3d::new(1.012, 0.174,1.081);
+    let point_v = Point3d::new(0.854, -0.247,1.510);
     // Create a construction plane from 3 points.
     let plane = CPlane::new_origin_x_aligned_y_oriented(&origin, &point_u, &point_v);
     // Transform with CPlane.
@@ -44,6 +47,10 @@ fn main() {
     let v = transformation::transform_points_4x3(&matrix, &mesh.vertices);
     mesh.vertices = v; // change allocated pointers,the hold ones are free automatically.
     mesh.recompute_normals();
-    mesh.export_to_obj_with_normals_fast("test.obj").ok();
-                                            
+    ////////moved values////////////////////////////////////////////////////////
+    // now the mesh and CPlane variables of above transfer the ownership to object of type Object3d.
+    let object = Object3d::new(0, Some(Displayable::Mesh(mesh)),plane, 0.5);
+    ////////////////////////////////////////////////////////////////////////////
+    println!("{:?}",object.origin); 
+    //mesh.export_to_obj_with_normals_fast("test.obj").ok();
 }
