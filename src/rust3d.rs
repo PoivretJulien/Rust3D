@@ -554,6 +554,7 @@ pub mod geometry {
             (self.x, self.y, self.z)
         }
     }
+    #[derive(Debug)]
     pub struct CPlane {
         pub origin: Point3d,
         pub normal: Vector3d,

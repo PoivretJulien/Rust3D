@@ -42,6 +42,7 @@ use crate::rust3d::geometry::*;
 use crate::rust3d::transformation::*;
 use chrono::Local;
 ////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
 pub struct Virtual_space {
     pub project_name: String,
     pub file_path: Option<String>,
@@ -116,14 +117,15 @@ impl Virtual_space {
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// Oject System.
+#[derive(Debug)]
 pub struct Object3d {
-    origin: CPlane,
-    data: Option<Displayable>, // if object is removed position is kept
+    pub origin: CPlane,
+    pub data: Option<Displayable>, // if object is removed position is kept
     undo_stack: Vec<Displayable>,
     redo_stack: Vec<Displayable>,
-    local_scale_ratio: f64,
-    id: u64,
-    last_change_date: String,
+    pub local_scale_ratio: f64,
+    pub id: u64,
+    pub last_change_date: String,
 }
 impl Object3d {
     /// Create an object ready to be stacked
@@ -150,9 +152,10 @@ pub enum Displayable {
     Point3d(Vec<Point3d>),
     Vector3d(Vec<Vector3d>),
     Vertex(Vec<Vertex>),
-    Mesh(Vec<Mesh>),
+    Mesh(Mesh),
 }
 // metric or imperial system reference.
+#[derive(Clone, Debug)]
 pub enum Unit_scale {
     Minimeters,
     Centimeters,
@@ -160,6 +163,7 @@ pub enum Unit_scale {
     Inch,
 }
 // Config for the pipe_line Display thread.
+#[derive(Debug)]
 pub struct Display_config {
     pub display_resolution_height: usize,
     pub display_resolution_width: usize,
