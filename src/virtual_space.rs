@@ -36,7 +36,7 @@
 //   (by matrix operations from user input and rasterize / raytrace
 //    the virtual_space)
 
-use crate::display_pipe_line::redering_object::{Mesh, Vertex};
+use crate::display_pipe_line::rendering_object::{Mesh, Vertex};
 use crate::display_pipe_line::visualization_v3::coloring::*;
 use crate::rust3d::geometry::*;
 use crate::rust3d::transformation::*;

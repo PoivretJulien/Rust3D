@@ -9,7 +9,7 @@ pub mod geometry {
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
-    use crate::display_pipe_line::redering_object::Vertex;
+    use crate::display_pipe_line::rendering_object::Vertex;
     use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
 
     #[allow(non_snake_case)]
@@ -2778,55 +2778,6 @@ mod test {
             }
         }
     }
-    #[test]
-    fn test_ray_trace_v_b() {
-        //use super::visualization::redering_object::*;
-        use crate::display_pipe_line::redering_object::*;
-
-        // Define some triangles.
-        let triangles = vec![
-            Triangle::new(
-                Vertex::new(0.0, 0.0, 0.0),
-                Vertex::new(1.0, 0.0, 0.0),
-                Vertex::new(0.0, 1.0, 0.0),
-            ),
-            Triangle::new(
-                Vertex::new(1.0, 1.0, 1.0),
-                Vertex::new(2.0, 1.0, 1.0),
-                Vertex::new(1.0, 2.0, 1.0),
-            ),
-        ];
-
-        // Spatial Acceleration with BVH tree.
-        // Consist to build volumes box(s) around mesh triangles
-        // to first evaluate rays intersections only with
-        // that bounding box before weather or not digging
-        // deeper in the mesh face itself with more rays.
-        // box are build in tree structures where
-        // - leafs are face Bounding box volumes,
-        // - parent are the sum of the childrens bb volumes
-        // - the root tree is the bounding box of the whole sub bb volumes.
-
-        // Build the BVH (Bounding Volumes Hiearchy).
-        let bvh = BVHNode::build(triangles, 0);
-
-        // Define a ray.
-        let origin = Vertex::new(0.5, 0.5, -1.0);
-        let direction = Vertex::new(0.0, 0.0, 1.0);
-        let ray = Ray::new(origin, direction);
-
-        // Perform intersection test on bvh.
-        if let Some((t, _triangle)) = bvh.intersect(&ray) {
-            //  _triangle is the ref to intersected triangle geometry.
-            // *_triangle.intersect(&ray) (for refinements...)
-            println!("Hit triangle at t = {}!", t);
-        } else {
-            println!("No intersection.");
-            assert!(false);
-        }
-        assert!(true);
-    }
-
     use crate::display_pipe_line::visualization_v3::coloring::Color;
     #[test]
     fn test_color() {
@@ -2844,11 +2795,11 @@ mod test {
             Vertex::new(0.0, 1.0, 0.2),
         ];
         let triangles = vec![
-            Triangle::new(vertices[0], vertices[1], vertices[2]),
-            Triangle::new(vertices[0], vertices[2], vertices[3]),
+            Triangle::new(&vertices, [0,1,2]),
+            Triangle::new(&vertices,[0,2,3]),
         ];
-        let mesh = Mesh::new(vertices, triangles);
-        mesh.export_to_obj("./geometry/exported_light_with_rust.obj")
+        let mesh = Mesh::new_with_data(vertices, triangles);
+        mesh.export_to_obj_with_normals_fast("./geometry/exported_light_with_rust.obj")
             .ok();
         let expected_data = Mesh::count_obj_elements("./geometry/exported_light_with_rust.obj")
             .ok()
@@ -2927,16 +2878,17 @@ mod test {
         }
     }
 
-    use crate::display_pipe_line::redering_object::{Mesh, Triangle, Vertex};
+    use crate::display_pipe_line::rendering_object::{Mesh, Triangle, Vertex};
     #[test]
     fn test_triangle_area() {
         // The following Triangle is flat in XY plane.
         let v1 = Vertex::new(1.834429, 0.0, -0.001996);
         let v2 = Vertex::new(1.975597, 0.0, 0.893012);
         let v3 = Vertex::new(2.579798, 0.0, 0.150466);
-        let tri = Triangle::new(v1, v2, v3);
+        let vertices = vec![v1,v2,v3];
+        let tri = Triangle::new(&vertices, [0,1,2]);
         let expected_reuslt_area = 0.322794;
-        let result = tri.get_triangle_area();
+        let result = tri.get_triangle_area(&vertices);
         if (expected_reuslt_area - result).abs() < 1e-6 {
             assert!(true);
         } else {
@@ -3057,6 +3009,38 @@ mod test {
             assert_eq!((7, 10), result);
         }
     }
+    use crate::display_pipe_line::rendering_object::*;
+    #[test]
+    fn test_ray_trace(){
+        let obj = Mesh::import_obj_with_normals("./geometry/flatbox.obj").ok().unwrap();
+        let v_inside = Vertex::new(-0.130, -0.188,2.327);
+        assert!(v_inside.is_inside_a_mesh(&obj));
+        let v_outside = Vertex::new(0.623, -0.587,2.327);
+        assert!(!v_outside.is_inside_a_mesh(&obj));
+
+        let pt_origin = Vertex::new(1.240, -0.860,3.169);
+        let pt_direction = Vertex::new(-0.743, 0.414,-0.526);
+
+        let ray =  Ray::new(pt_origin,pt_direction);
+        let bvh = BVHNode::build(&obj, (0..obj.triangles.len()).collect(), 0);
+        for tri in obj.triangles.iter(){
+              if let Some(t)  = tri.intersect(&ray, &obj.vertices){
+                  println!("---------->{t}");
+              }
+         }
+        // Perform intersection test on bvh.
+        if let Some((t ,_vert)) = bvh.intersect( &obj,&ray) {
+            //  _triangle is the ref to intersected triangle geometry.
+            // *_triangle.intersect(&ray) (for refinements...)
+            println!("Hit triangle at t = {}!", t);
+            assert_eq!("1.436",format!("{t:0.3}").as_str());
+        } else {
+            println!("No intersection. {:?} {:?}",obj.vertices, ray);
+            assert!(false);
+        }
+        assert!(true);
+        
+   }
 }
 /*
 * notes:

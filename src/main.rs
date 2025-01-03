@@ -3,7 +3,7 @@ mod display_pipe_line;
 mod models_3d;
 mod rust3d;
 mod virtual_space;
-use display_pipe_line::redering_object::{Mesh, Vertex};
+use display_pipe_line::rendering_object::{Mesh, Vertex};
 use display_pipe_line::visualization_v3::coloring::Color;
 use display_pipe_line::visualization_v3::Camera;
 use rayon::iter::IntoParallelRefMutIterator;
@@ -153,7 +153,7 @@ fn main() {
          *    local space.
          */
         /////////////////////////////////////////////////////////////////////////
-        const TEST_MOVE_SIMULATION: bool = false; // Switch on/off matrix test.
+        const TEST_MOVE_SIMULATION: bool = true; // Switch on/off matrix test.
         let mut result = Vec::new();
         let mut result_circle = Vec::new();
         let mut result_tri = Vec::new();
