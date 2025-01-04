@@ -1099,9 +1099,11 @@ pub mod rendering_object{
             // Odd intersection count means the point is inside the mesh
             (intersection_count % 2) != 0
         }
+        #[inline(always)]
         pub fn to_point3d(&self) -> Point3d {
             Point3d::new(self.x, self.y, self.z)
         }
+        #[inline(always)]
         pub fn to_vector3d(&self) -> Vector3d {
             Vector3d::new(self.x, self.y, self.z)
         }
@@ -1129,6 +1131,7 @@ pub mod rendering_object{
             Vertex::new(self.x / scalar, self.y / scalar, self.z / scalar)
         }
     }
+    //dot product.
     impl Mul for Vertex {
         type Output = f64;
         fn mul(self, other: Vertex) -> f64 {
@@ -2023,7 +2026,8 @@ pub mod rendering_object{
         }
     }
     /////////////////////////////////////////////////////////////////////////
-
+    // Ray are base on Vertex so camera for ray is also base on vertex it's 
+    // DIsplay related then Vertex are so used.
     pub struct Camera {
         position: Vertex,  // Camera position
         forward: Vertex,   // Forward direction
@@ -2052,7 +2056,6 @@ pub mod rendering_object{
             // Adjust for aspect ratio and FOV
             let pixel_camera_x = screen_x * self.aspect_ratio * fov_scale;
             let pixel_camera_y = screen_y * fov_scale;
-            use std::sync::Mutex;
 
             // Compute ray direction in camera space
             let ray_direction = self

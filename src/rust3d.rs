@@ -170,10 +170,18 @@ pub mod geometry {
                 Z: self.X * other.Y - self.Y * other.X,
             }
         }
+        #[inline(always)]
         /// Convert a Point3d to Vertex.
         pub fn to_vertex(&self) -> Vertex {
             Vertex::new(self.X, self.Y, self.Z)
         }
+
+        #[inline(always)]
+        /// Return a standardized output.
+        pub fn to_tuple(self) -> (f64, f64, f64) {
+            (self.X, self.Y, self.Z)
+        }
+
     }
 
     // Vector 3d definition.
@@ -414,10 +422,12 @@ pub mod geometry {
                 None
             }
         }
+        #[inline(always)]
         /// Return a standardized output.
         pub fn to_vertex(self) -> Vertex {
             Vertex::new(self.X, self.Y, self.Z)
         }
+        #[inline(always)]
         /// Return a standardized output.
         pub fn to_tuple(self) -> (f64, f64, f64) {
             (self.X, self.Y, self.Z)
@@ -2085,7 +2095,13 @@ pub mod transformation {
         }
     }
 }
-
+/*
+ *- Draw are all objects that are manelly related to the 2d Screen
+    projected space, some are 3d object but they involve buffer rasterization 
+    for being represented they are not real data structure objects but rather 
+    a list of Point3d
+*/
+//TODO: the Draw method of a NurbsCurve must be in draw module.
 pub mod draw {
     // Bresenham's line algorithm.
     // Draw a line between two 2d points on screen.
@@ -2096,6 +2112,7 @@ pub mod draw {
     //   a (x,y) space and efficiently create the illusion of
     //   a 3d line moving or rotating
     //   (if created with a 3d point projected in 2d).
+
     pub fn draw_line(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2149,7 +2166,6 @@ pub mod draw {
     }
 
     use core::f64;
-
     use super::geometry::Point3d;
     use crate::models_3d::FONT_5X7;
 
@@ -2220,21 +2236,23 @@ pub mod draw {
     use super::geometry::CPlane;
     pub fn draw_3d_grid(
         plane: &CPlane,
-        x_max: &f64,
-        y_max: &f64,
-        grid_spacing_unit: &f64,
+        x_length: f64,
+        y_length: f64,
+        grid_spacing_unit: f64,
     ) -> Vec<Point3d> {
         let mut grid_points = Vec::new();
-        let grid_unit = grid_spacing_unit / x_max;
-        let mut x = 0.0;
-        let mut y = 0.0;
-        while x <= *x_max {
-            while y <= *y_max {
+        let x_length = x_length/2.0;
+        let y_length = y_length/2.0;
+        let grid_unit = grid_spacing_unit / x_length;
+        let mut x = -x_length;
+        let mut y = -y_length;
+        while x <= x_length {
+            while y <= y_length {
                 grid_points.push((*plane).point_on_plane_uv(x, y));
                 y += grid_unit;
             }
-            if y >= *y_max {
-                y = 0.0;
+            if y >= y_length {
+                y = -y_length;
             }
             x += grid_unit;
         }

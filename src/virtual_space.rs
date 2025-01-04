@@ -35,7 +35,7 @@
 //   (from another thread) the whole virtual_space object list
 //   (by matrix operations from user input and rasterize / raytrace
 //    the virtual_space)
-//  - Before sending to display pipe line iter from LayerVisibility object and 
+//  - Before sending to display pipe line iter from LayerVisibility object and
 //    apply related parmeter in function.
 
 use crate::display_pipe_line::rendering_object::{Mesh, Vertex};
@@ -53,6 +53,7 @@ pub struct Virtual_space {
     pub unit_scale: Unit_scale,
     pub display: Display_config,
     object_list: Vec<Object3d>, // array of Object3d.
+    pub layers: Vec<LayerVisibility>,
 }
 impl Virtual_space {
     /// Constructor of the main class.
@@ -70,6 +71,7 @@ impl Virtual_space {
             unit_scale: unit_type,
             display,
             object_list: Vec::new(),
+            layers: Vec::new(),
         }
     }
     /// Add a new object on the stack.
@@ -78,52 +80,73 @@ impl Virtual_space {
     }
     /// Replace a displayable on same location object..
     pub fn replace_displayable_in_place(
-    &mut self,
-    virtual_space_obj_index: usize,
-    new_displayable_data: Displayable,
-) {
-    // Get the object to be modified
-    let object = &mut self.object_list[virtual_space_obj_index];
+        &mut self,
+        virtual_space_obj_index: usize,
+        new_displayable_data: Displayable,
+    ) {
+        // Get the object to be modified
+        let object = &mut self.object_list[virtual_space_obj_index];
 
-    // Push the current data to the undo stack if it exists
-    if let Some(current_data) = object.data.clone() {
-        Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
-    }
-
-    // Replace the current `data` with the new `Displayable`
-    object.data = Some(Arc::new(new_displayable_data));
-}
-pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-    let object = &mut self.object_list[virtual_space_obj_index];
-
-    if let Some(undo_data) = Arc::make_mut(&mut object.undo_stack).pop() {
-        if let Some(current_data) = object.data.clone() {
-            Arc::make_mut(&mut object.redo_stack).push((*current_data).clone());
-        }
-
-        // Restore the previous state
-        object.data = Some(Arc::new(undo_data));
-    } else {
-        eprintln!("Nothing to undo... no change has occurred.");
-    }
-}
-pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-    let object = &mut self.object_list[virtual_space_obj_index];
-
-    if let Some(redo_data) = Arc::make_mut(&mut object.redo_stack).pop() {
+        // Push the current data to the undo stack if it exists
         if let Some(current_data) = object.data.clone() {
             Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
         }
 
-        // Restore the next state
-        object.data = Some(Arc::new(redo_data));
-    } else {
-        eprintln!("Nothing to redo... no change has occurred.");
+        // Replace the current `data` with the new `Displayable`
+        object.data = Some(Arc::new(new_displayable_data));
     }
-}
-     /// Clean the stack of Empty elements.
+    pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+        let object = &mut self.object_list[virtual_space_obj_index];
+
+        if let Some(undo_data) = Arc::make_mut(&mut object.undo_stack).pop() {
+            if let Some(current_data) = object.data.clone() {
+                Arc::make_mut(&mut object.redo_stack).push((*current_data).clone());
+            }
+
+            // Restore the previous state
+            object.data = Some(Arc::new(undo_data));
+        } else {
+            eprintln!("Nothing to undo... no change has occurred.");
+        }
+    }
+    pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+        let object = &mut self.object_list[virtual_space_obj_index];
+
+        if let Some(redo_data) = Arc::make_mut(&mut object.redo_stack).pop() {
+            if let Some(current_data) = object.data.clone() {
+                Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
+            }
+
+            // Restore the next state
+            object.data = Some(Arc::new(redo_data));
+        } else {
+            eprintln!("Nothing to redo... no change has occurred.");
+        }
+    }
+    /// Clean the stack of Empty elements.
     pub fn clean_stack(&mut self) {
         self.object_list.retain(|obj| obj.data.is_none());
+    }
+
+    // Other methods remain unchanged...
+
+    /// Add a layer visibility.
+    pub fn add_layer(&mut self, layer: LayerVisibility) {
+        self.layers.push(layer);
+    }
+
+    /// Toggle visibility for a specific layer.
+    pub fn toggle_layer_visibility(&mut self, layer_index: usize) {
+        if let Some(layer) = self.layers.get_mut(layer_index) {
+            layer.visibility = !layer.visibility;
+        }
+    }
+
+    /// Lock or unlock a specific layer.
+    pub fn toggle_layer_lock(&mut self, layer_index: usize) {
+        if let Some(layer) = self.layers.get_mut(layer_index) {
+            layer.lock = !layer.lock;
+        }
     }
 }
 impl fmt::Display for Virtual_space {
@@ -152,6 +175,17 @@ impl fmt::Display for Virtual_space {
             obj_list.push_str(data_display.as_str());
             obj_list.push_str(format!(" (index: {0}), ", i).as_str());
         }
+        let mut layers_str = String::new();
+        if self.layers.len() == 0{
+            layers_str.push_str("No layers created yet.");
+        }else{
+        for (i, layer) in self.layers.iter().enumerate() {
+            layers_str.push_str(&format!(
+                "Layer {}: Visible: {}, Locked: {}, Color: {:?}\n",
+                i, layer.visibility, layer.lock, layer.color
+            ));
+            }
+        }
         write!(
             f,
             "Virtual Space:
@@ -160,8 +194,9 @@ impl fmt::Display for Virtual_space {
                 Unit scale: {2}
                 Display Pipeline Config: {3}
                 Object3d List: {4}
+                layers List: {5}
                 ",
-            project_name, path, unit_scale, display_config, obj_list
+            project_name, path, unit_scale, display_config, obj_list,layers_str
         )
     }
 }
@@ -180,7 +215,12 @@ pub struct Object3d {
 
 impl Object3d {
     /// Create an object ready to be stacked
-    pub fn new(id: u64, data: Option<Arc<Displayable>>, origin: CPlane, local_scale_ratio: f64) -> Self {
+    pub fn new(
+        id: u64,
+        data: Option<Arc<Displayable>>,
+        origin: CPlane,
+        local_scale_ratio: f64,
+    ) -> Self {
         Self {
             id,
             data,
@@ -199,8 +239,8 @@ impl Object3d {
 impl Clone for Object3d {
     fn clone(&self) -> Self {
         Self {
-            origin: self.origin.clone(), // Deep copy origin
-            data: self.data.clone(),    // Clone Arc (pointer)
+            origin: self.origin.clone(),              // Deep copy origin
+            data: self.data.clone(),                  // Clone Arc (pointer)
             undo_stack: Arc::clone(&self.undo_stack), // Clone Arc (pointer)
             redo_stack: Arc::clone(&self.redo_stack), // Clone Arc (pointer)
             local_scale_ratio: self.local_scale_ratio,
@@ -314,12 +354,13 @@ impl Display_config {
         }
     }
 }
+// a nested list will send data to display pipeline from there.
 #[derive(Debug)]
-struct LayerVisibility{
-  object3d_list_index:Vec<usize>,
-  visibility:bool,
-  color:Color,
-  lock:bool
+struct LayerVisibility {
+    object3d_list_index: Vec<usize>,
+    visibility: bool,
+    color: Color,
+    lock: bool,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -60,5 +60,16 @@ fn main() {
     let object2 = Object3d::new(0, Some(Arc::new(Displayable::Vertex(vert))),CPlane::new(&origin,&normal), 0.5);
     program.add_obj(object2);
     println!("{}",program); 
+    ////Draw a grid.
+    let pt_origin = Point3d::new(0.0,0.0,0.0);
+    let x_dir = Vector3d::new(1.0,0.0,0.0);
+    let z_dir = Vector3d::new(0.0,0.0,1.0);
+    let world_plane = CPlane::new_normal_x_oriented( &pt_origin,&x_dir, &z_dir);
+    let grid_pt = draw_3d_grid(&world_plane, 2.0, 2.0, 0.5);
+    grid_pt.iter().for_each(|pt|{
+        print!("Pt: (x:{0},y:{1},z:{2}) ",pt.X,pt.Y,pt.Z);
+    });    
+    println!("Grid dimension: {0}",grid_pt.len());
+
     // mesh.export_to_obj_with_normals_fast("test.obj").ok();
 }
