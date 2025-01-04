@@ -89,7 +89,7 @@ fn main() {
     const BACK_GROUND_COLOR: u32 = 0x9da3aa; // 0x141314;
     const ANGLE_STEP: f64 = 0.3;
     let mut anim_transp = 0.0;
-    let ramp = false;
+    let mut ramp = false;
     // Init a widows 2D mini buffer class.
     let mut window = Window::new(
         "Basis World System.",
@@ -138,7 +138,17 @@ fn main() {
         // animate the CPlane by rotation angle.
         world_plane.u = world_plane.u.rotate_around_axis(&world_plane.normal, -step);
         world_plane.v = world_plane.v.rotate_around_axis(&world_plane.normal, -step);
-        anim_transp += step as f32;
+        if anim_transp< 3.14 && !ramp {
+                anim_transp += step as f32;
+            if anim_transp > 3.0 {
+                ramp=!ramp;
+            }
+        }else {
+            anim_transp -= step as f32;
+            if anim_transp < 0.1 {
+                ramp=!ramp;
+            }
+        } 
         let transparency_animation = utillity::ilerp(0.0, 3.14f32, anim_transp);
         draw_plane_gimball_3d(
             &mut buffer,
