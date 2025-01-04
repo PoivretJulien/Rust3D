@@ -12,6 +12,7 @@ use rust3d::{draw::*, transformation};
 use rust3d::geometry::*;
 use rust3d::transformation::rotate_z;
 use std::time::Duration;
+use std::sync::Arc;
 use virtual_space::*;
 fn main() {
      // init the app with inputs parameters.
@@ -22,7 +23,9 @@ fn main() {
          );
     // import a mesh...
     let mut mesh = Mesh::new(); // pointer holder of the mesh structure
-    if let Ok(obj) = Mesh::import_obj_with_normals("./geometry/ghost_b.obj") {
+    const PATH:&str = "./geometry/ghost_b.obj";
+    if let Ok(obj) = Mesh::import_obj_with_normals(PATH) {
+       println!("imported .obj file from: \"{PATH}\"");
        println!("obj-> Triangles number: {}",obj.triangles.len());
        println!("obj-> Vertices number: {}",obj.vertices.len());
        // pass inner pointers.
@@ -31,7 +34,7 @@ fn main() {
     }else{
         eprint!("Error on import.");
     }
-    // init a Cplane.
+    // init a CPlane.
     let origin = Point3d::new(1.156, -0.247,1.245);
     let point_u = Point3d::new(1.012, 0.174,1.081);
     let point_v = Point3d::new(0.854, -0.247,1.510);
@@ -48,15 +51,14 @@ fn main() {
     mesh.recompute_normals();
     ////////moved values////////////////////////////////////////////////////////
     // now the mesh and CPlane variables of above transfer the ownership to object of type Object3d.
-    let object = Object3d::new(0, Some(Displayable::Mesh(mesh)),plane, 0.5);
+    let object = Object3d::new(0, Some(Arc::new(Displayable::Mesh(mesh))),plane, 0.5);
     println!("{}",object); 
     ////////////////////////////////////////////////////////////////////////////
     program.add_obj(object);// transfer ownership to program.
     let vert = vec![Vertex::new(6.28,1.6,81.0)];
     let normal = Vector3d::new(0.0,0.0,1.0);
-    let object2 = Object3d::new(0, Some(Displayable::Vertex(vert)),CPlane::new(&origin,&normal), 0.5);
+    let object2 = Object3d::new(0, Some(Arc::new(Displayable::Vertex(vert))),CPlane::new(&origin,&normal), 0.5);
     program.add_obj(object2);
     println!("{}",program); 
-
     // mesh.export_to_obj_with_normals_fast("test.obj").ok();
 }

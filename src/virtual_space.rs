@@ -44,6 +44,7 @@ use crate::rust3d::geometry::*;
 use crate::rust3d::transformation::*;
 use chrono::Local;
 use std::fmt;
+use std::sync::Arc;
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct Virtual_space {
@@ -77,51 +78,50 @@ impl Virtual_space {
     }
     /// Replace a displayable on same location object..
     pub fn replace_displayable_in_place(
-        &mut self,
-        virtual_space_obj_index: usize,
-        new_displayable_data: Displayable,
-    ) {
-        // Check if there is an object and then proceed to backup and replacement.
-        // if not simply replace the object with no backup.
-        if let Some(data) = self.object_list[virtual_space_obj_index].data.clone() {
-            self.object_list[virtual_space_obj_index]
-                .undo_stack
-                .push(data); // Backup a copy on undo stack.
-            self.object_list[virtual_space_obj_index].data = Some(new_displayable_data);
-        } else {
-            self.object_list[virtual_space_obj_index].data = Some(new_displayable_data);
-        }
+    &mut self,
+    virtual_space_obj_index: usize,
+    new_displayable_data: Displayable,
+) {
+    // Get the object to be modified
+    let object = &mut self.object_list[virtual_space_obj_index];
+
+    // Push the current data to the undo stack if it exists
+    if let Some(current_data) = object.data.clone() {
+        Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
     }
-    /// Recover previous change.
-    pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-        if self.object_list[virtual_space_obj_index].undo_stack.len() > 0 {
-            if let Some(data) = self.object_list[virtual_space_obj_index].data.clone() {
-                self.object_list[virtual_space_obj_index]
-                    .redo_stack
-                    .push(data); // place element in redo stack.
-                                 // put back in place undo element.
-                self.object_list[virtual_space_obj_index].data =
-                    self.object_list[virtual_space_obj_index].undo_stack.pop();
-            }
-        } else {
-            eprintln!("Nothing to undo... no change has occurred.")
+
+    // Replace the current `data` with the new `Displayable`
+    object.data = Some(Arc::new(new_displayable_data));
+}
+pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+    let object = &mut self.object_list[virtual_space_obj_index];
+
+    if let Some(undo_data) = Arc::make_mut(&mut object.undo_stack).pop() {
+        if let Some(current_data) = object.data.clone() {
+            Arc::make_mut(&mut object.redo_stack).push((*current_data).clone());
         }
+
+        // Restore the previous state
+        object.data = Some(Arc::new(undo_data));
+    } else {
+        eprintln!("Nothing to undo... no change has occurred.");
     }
-    /// Recover previous change.
-    pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-        if self.object_list[virtual_space_obj_index].redo_stack.len() > 0 {
-            if let Some(data) = self.object_list[virtual_space_obj_index].data.clone() {
-                self.object_list[virtual_space_obj_index]
-                    .undo_stack
-                    .push(data);
-                self.object_list[virtual_space_obj_index].data =
-                    self.object_list[virtual_space_obj_index].redo_stack.pop();
-            }
-        } else {
-            eprintln!("Nothing to undo... no change has occurred.")
+}
+pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+    let object = &mut self.object_list[virtual_space_obj_index];
+
+    if let Some(redo_data) = Arc::make_mut(&mut object.redo_stack).pop() {
+        if let Some(current_data) = object.data.clone() {
+            Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
         }
+
+        // Restore the next state
+        object.data = Some(Arc::new(redo_data));
+    } else {
+        eprintln!("Nothing to redo... no change has occurred.");
     }
-    /// Clean the stack of Empty elements.
+}
+     /// Clean the stack of Empty elements.
     pub fn clean_stack(&mut self) {
         self.object_list.retain(|obj| obj.data.is_none());
     }
@@ -170,24 +170,25 @@ impl fmt::Display for Virtual_space {
 #[derive(Debug)]
 pub struct Object3d {
     pub origin: CPlane,
-    pub data: Option<Displayable>, // if object is removed position is kept
-    undo_stack: Vec<Displayable>,
-    redo_stack: Vec<Displayable>,
+    pub data: Option<Arc<Displayable>>, // if object is removed position is kept
+    undo_stack: Arc<Vec<Displayable>>,
+    redo_stack: Arc<Vec<Displayable>>,
     pub local_scale_ratio: f64,
     pub id: u64,
     pub last_change_date: String,
 }
+
 impl Object3d {
     /// Create an object ready to be stacked
-    pub fn new(id: u64, data: Option<Displayable>, origin: CPlane, local_scale_ratio: f64) -> Self {
+    pub fn new(id: u64, data: Option<Arc<Displayable>>, origin: CPlane, local_scale_ratio: f64) -> Self {
         Self {
             id,
             data,
             origin,
             local_scale_ratio,
             last_change_date: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
+            undo_stack: Arc::new(Vec::new()),
+            redo_stack: Arc::new(Vec::new()),
         }
     }
     /// Update last change date time.
@@ -195,6 +196,20 @@ impl Object3d {
         self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     }
 }
+impl Clone for Object3d {
+    fn clone(&self) -> Self {
+        Self {
+            origin: self.origin.clone(), // Deep copy origin
+            data: self.data.clone(),    // Clone Arc (pointer)
+            undo_stack: Arc::clone(&self.undo_stack), // Clone Arc (pointer)
+            redo_stack: Arc::clone(&self.redo_stack), // Clone Arc (pointer)
+            local_scale_ratio: self.local_scale_ratio,
+            id: self.id,
+            last_change_date: self.last_change_date.clone(),
+        }
+    }
+}
+
 impl fmt::Display for Object3d {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Format the `data` field

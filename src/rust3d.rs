@@ -84,7 +84,6 @@ pub mod geometry {
             }
         }
     }
-
     // Implementation of + and - operator for Point3d.
     impl Add for Point3d {
         type Output = Self; // Specify the result type of the addition
@@ -96,7 +95,6 @@ pub mod geometry {
             }
         }
     }
-
     impl Sub for Point3d {
         type Output = Vector3d; // Specify the result type of the addition
         fn sub(self, other: Self) -> Vector3d {
@@ -554,7 +552,7 @@ pub mod geometry {
             (self.x, self.y, self.z)
         }
     }
-    #[derive(Debug)]
+    #[derive(Debug,Clone,Copy)]
     pub struct CPlane {
         pub origin: Point3d,
         pub normal: Vector3d,
