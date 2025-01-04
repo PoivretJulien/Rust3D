@@ -16,14 +16,14 @@ use std::sync::Arc;
 use virtual_space::*;
 fn main() {
      // init the app with inputs parameters.
+     const PATH:&str = "./geometry/ghost_b.obj";
      let mut program  = Virtual_space::new("first test",
-         None , 
+         None, 
          Unit_scale::Millimeters, 
          Display_config::new(800, 600)
          );
     // import a mesh...
     let mut mesh = Mesh::new(); // pointer holder of the mesh structure
-    const PATH:&str = "./geometry/ghost_b.obj";
     if let Ok(obj) = Mesh::import_obj_with_normals(PATH) {
        println!("imported .obj file from: \"{PATH}\"");
        println!("obj-> Triangles number: {}",obj.triangles.len());
@@ -66,6 +66,7 @@ fn main() {
     let z_dir = Vector3d::new(0.0,0.0,1.0);
     let world_plane = CPlane::new_normal_x_oriented( &pt_origin,&x_dir, &z_dir);
     let grid_pt = draw_3d_grid(&world_plane, 2.0, 2.0, 0.5);
+    println!("Make Grid of points ({0})x({1}) oriented on:({2})",5,5,world_plane);
     grid_pt.iter().for_each(|pt|{
         print!("Pt: (x:{0},y:{1},z:{2}) ",pt.X,pt.Y,pt.Z);
     });    

@@ -181,7 +181,6 @@ pub mod geometry {
         pub fn to_tuple(self) -> (f64, f64, f64) {
             (self.X, self.Y, self.Z)
         }
-
     }
 
     // Vector 3d definition.
@@ -562,7 +561,7 @@ pub mod geometry {
             (self.x, self.y, self.z)
         }
     }
-    #[derive(Debug,Clone,Copy)]
+    #[derive(Debug, Clone, Copy)]
     pub struct CPlane {
         pub origin: Point3d,
         pub normal: Vector3d,
@@ -690,10 +689,19 @@ pub mod geometry {
 
     impl fmt::Display for CPlane {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let origin = format!("Plane Origin:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",self.origin.X,self.origin.Y,self.origin.Z);
-            let u = format!("Plane u vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",self.u.X,self.u.Y,self.u.Z);
-            let v = format!("Plane v vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",self.v.X,self.v.Y,self.v.Z);
-            write!(f,"CPlane: {0},{1},{2}",origin,u,v)
+            let origin = format!(
+                "Plane Origin:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                self.origin.X, self.origin.Y, self.origin.Z
+            );
+            let u = format!(
+                "Plane u vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                self.u.X, self.u.Y, self.u.Z
+            );
+            let v = format!(
+                "Plane v vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                self.v.X, self.v.Y, self.v.Z
+            );
+            write!(f, "CPlane: {0},{1},{2}", origin, u, v)
         }
     }
     pub struct NurbsCurve {
@@ -2097,8 +2105,8 @@ pub mod transformation {
 }
 /*
  *- Draw are all objects that are manelly related to the 2d Screen
-    projected space, some are 3d object but they involve buffer rasterization 
-    for being represented they are not real data structure objects but rather 
+    projected space, some are 3d object but they involve buffer rasterization
+    for being represented they are not real data structure objects but rather
     a list of Point3d
 */
 //TODO: the Draw method of a NurbsCurve must be in draw module.
@@ -2165,9 +2173,10 @@ pub mod draw {
         }
     }
 
-    use core::f64;
     use super::geometry::Point3d;
-    use crate::models_3d::FONT_5X7;
+    use crate::{display_pipe_line::visualization_v3::coloring::Color, models_3d::FONT_5X7};
+    use core::f64;
+    use std::usize;
 
     pub fn draw_text(
         buffer: &mut Vec<u32>,
@@ -2241,8 +2250,8 @@ pub mod draw {
         grid_spacing_unit: f64,
     ) -> Vec<Point3d> {
         let mut grid_points = Vec::new();
-        let x_length = x_length/2.0;
-        let y_length = y_length/2.0;
+        let x_length = x_length / 2.0;
+        let y_length = y_length / 2.0;
         let grid_unit = grid_spacing_unit / x_length;
         let mut x = -x_length;
         let mut y = -y_length;
@@ -2257,6 +2266,157 @@ pub mod draw {
             x += grid_unit;
         }
         grid_points
+    }
+    use crate::display_pipe_line::rendering_object::Vertex;
+    use crate::display_pipe_line::visualization_v3::Camera;
+    pub fn draw_plane_gimball_3d(
+        mut buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        plane: CPlane,
+        camera: Camera,
+        alpha: f32,
+        background_color: u32,
+        scalar: f64,
+    ) {
+        // check if plane sytem is in camera frame.
+        if let Some(origin) = camera.project(plane.origin.to_vertex()) {
+            if let Some(x_axis) = camera.project((plane.origin + (plane.u * scalar)).to_vertex()) {
+                draw_line(
+                    &mut buffer,
+                    width,
+                    (origin.0, origin.1),
+                    (x_axis.0, x_axis.1),
+                    Color::convert_rgba_color(255, 0, 0, alpha, background_color),
+                );
+            }
+            if let Some(y_axis) = camera.project((plane.origin + (plane.v * scalar)).to_vertex()) {
+                draw_line(
+                    &mut buffer,
+                    width,
+                    (origin.0, origin.1),
+                    (y_axis.0, y_axis.1),
+                    Color::convert_rgba_color(0, 255, 0, alpha, background_color),
+                );
+            }
+            if let Some(z_axis) =
+                camera.project((plane.origin + (plane.normal * scalar)).to_vertex())
+            {
+                draw_line(
+                    &mut buffer,
+                    width,
+                    (origin.0, origin.1),
+                    (z_axis.0, z_axis.1),
+                    Color::convert_rgba_color(0, 0, 255, alpha, background_color),
+                );
+            }
+        }
+        let arrow_x = vec![
+            (Vertex::new(1.000, 0.000, -0.083) * scalar) + (plane.u * scalar).to_vertex(),
+            (Vertex::new(1.000, 0.000, 0.083) * scalar) + (plane.u * scalar).to_vertex(),
+            (Vertex::new(1.250, 0.000, 0.000) * scalar) + (plane.u * scalar).to_vertex(),
+        ];
+        let arrow_y = vec![
+            (Vertex::new(-0.000, 1.000, -0.083) * scalar) + (plane.v * scalar).to_vertex(),
+            (Vertex::new(0.000, 1.000, 0.083) * scalar) + (plane.v * scalar).to_vertex(),
+            (Vertex::new(0.000, 1.250, -0.000) * scalar) + (plane.v * scalar).to_vertex(),
+        ];
+        let arrow_z = vec![
+            (Vertex::new(0.083, 0.000, 1.000) * scalar) + (plane.normal * scalar).to_vertex(),
+            (Vertex::new(-0.083, 0.000, 1.000) * scalar) + (plane.normal * scalar).to_vertex(),
+            (Vertex::new(0.000, 0.000, 1.250) * scalar) + (plane.normal * scalar).to_vertex(),
+        ];
+        // Project arrows 3d system on 2d screen.
+        // and if arows are in frame draw the triangle with lines.
+        ///////////////////////////////////////////////////////////////////////////////////////
+        let mut arrow_x_pt: Vec<(usize, usize)> = Vec::new();
+        for i in 0..3usize {
+            if let Some(pt) = camera.project(arrow_x[i]) {
+                arrow_x_pt.push((pt.0, pt.1));
+            }
+        }
+        if arrow_x_pt.len() == 3 {
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_x_pt[0].0, arrow_x_pt[0].1),
+                (arrow_x_pt[1].0, arrow_x_pt[1].1),
+                Color::convert_rgba_color(255, 0, 0, alpha, background_color),
+            );
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_x_pt[0].0, arrow_x_pt[0].1),
+                (arrow_x_pt[2].0, arrow_x_pt[2].1),
+                Color::convert_rgba_color(255, 0, 0, alpha, background_color),
+            );
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_x_pt[1].0, arrow_x_pt[1].1),
+                (arrow_x_pt[2].0, arrow_x_pt[2].1),
+                Color::convert_rgba_color(255, 0, 0, alpha, background_color),
+            );
+        }
+        let mut arrow_y_pt: Vec<(usize, usize)> = Vec::new();
+        for i in 0..3usize {
+            if let Some(pt) = camera.project(arrow_y[i]) {
+                arrow_y_pt.push((pt.0, pt.1));
+            }
+        }
+        if arrow_y_pt.len() == 3 {
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_y_pt[0].0, arrow_y_pt[0].1),
+                (arrow_y_pt[1].0, arrow_y_pt[1].1),
+                Color::convert_rgba_color(0, 255, 0, alpha, background_color),
+            );
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_y_pt[0].0, arrow_y_pt[0].1),
+                (arrow_y_pt[2].0, arrow_y_pt[2].1),
+                Color::convert_rgba_color(0, 255, 0, alpha, background_color),
+            );
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_y_pt[1].0, arrow_y_pt[1].1),
+                (arrow_y_pt[2].0, arrow_y_pt[2].1),
+                Color::convert_rgba_color(0, 255, 0, alpha, background_color),
+            );
+        }
+        let mut arrow_z_pt: Vec<(usize, usize)> = Vec::new();
+        for i in 0..3usize {
+            if let Some(pt) = camera.project(arrow_z[i]) {
+                arrow_z_pt.push((pt.0, pt.1));
+            }
+        }
+        if arrow_z_pt.len() == 3 {
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_z_pt[0].0, arrow_z_pt[0].1),
+                (arrow_z_pt[1].0, arrow_z_pt[1].1),
+                Color::convert_rgba_color(0, 0, 255, alpha, background_color),
+            );
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_z_pt[0].0, arrow_z_pt[0].1),
+                (arrow_z_pt[2].0, arrow_z_pt[2].1),
+                Color::convert_rgba_color(0, 0, 255, alpha, background_color),
+            );
+            draw_line(
+                &mut buffer,
+                width,
+                (arrow_z_pt[1].0, arrow_z_pt[1].1),
+                (arrow_z_pt[2].0, arrow_z_pt[2].1),
+                Color::convert_rgba_color(0, 0, 255, alpha, background_color),
+            );
+        }
+        ///////////////////////////////////////////////////////////////////////////////////////
     }
 
     /// Draw a circle.
