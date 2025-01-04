@@ -89,9 +89,9 @@ pub mod visualization_v3 {
             // Vertex as Vector3d to avoid run time penalty.
             let translation = Vertex::new(-self.position.X, -self.position.Y, -self.position.Z);
             [
-                [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
-                [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
-                [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
+                [right.get_X(), up.get_X(), forward.get_X(), 0.0],
+                [right.get_Y(), up.get_Y(), forward.get_Y(), 0.0],
+                [right.get_Z(), up.get_Z(), forward.get_Z(), 0.0],
                 [
                     (right.get_X() * translation.x)
                         + (right.get_Y() * translation.y)

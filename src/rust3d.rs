@@ -613,7 +613,7 @@ pub mod geometry {
             // Define local Y 'v' from normal at 90 deg (orthogonalization).
             let v = Vector3d::cross_product(&normalized_normal, &x_axis).unitize_b();
             // Define local X 'u' always relative to 90deg from (y,z) plane.
-            let u = -Vector3d::cross_product(&v, &normalized_normal).unitize_b();
+            let u = Vector3d::cross_product(&v, &normalized_normal).unitize_b();
             Self {
                 origin: *origin,
                 normal: normalized_normal,
@@ -701,7 +701,11 @@ pub mod geometry {
                 "Plane v vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
                 self.v.X, self.v.Y, self.v.Z
             );
-            write!(f, "CPlane: {0},{1},{2}", origin, u, v)
+            let w = format!(
+                "Plane Normal vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                self.normal.X, self.normal.Y, self.normal.Z
+            );
+            write!(f, "CPlane: {0},{1},{2},{3}", origin, u, v, w)
         }
     }
     pub struct NurbsCurve {
@@ -2245,25 +2249,25 @@ pub mod draw {
     use super::geometry::CPlane;
     pub fn draw_3d_grid(
         plane: &CPlane,
-        x_length: f64,
-        y_length: f64,
+        x_positif_length: f64,
+        y_positif_length: f64,
         grid_spacing_unit: f64,
-    ) -> Vec<Point3d> {
+    ) -> Vec<Vertex> {
         let mut grid_points = Vec::new();
-        let x_length = x_length / 2.0;
-        let y_length = y_length / 2.0;
-        let grid_unit = grid_spacing_unit / x_length;
-        let mut x = -x_length;
-        let mut y = -y_length;
-        while x <= x_length {
-            while y <= y_length {
-                grid_points.push((*plane).point_on_plane_uv(x, y));
-                y += grid_unit;
+        let x_positif_length = x_positif_length / 2.0;
+        let y_positif_length = y_positif_length / 2.0;
+        let grid_spacing_unit = grid_spacing_unit / 2.0;
+        let mut x = -x_positif_length;
+        let mut y = -y_positif_length;
+        while x <= x_positif_length {
+            while y <= y_positif_length {
+                grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
+                y += grid_spacing_unit;
             }
-            if y >= y_length {
-                y = -y_length;
+            if y >= y_positif_length {
+                y = -y_positif_length;
             }
-            x += grid_unit;
+            x += grid_spacing_unit;
         }
         grid_points
     }
@@ -2272,9 +2276,8 @@ pub mod draw {
     pub fn draw_plane_gimball_3d(
         mut buffer: &mut Vec<u32>,
         width: usize,
-        height: usize,
         plane: CPlane,
-        camera: Camera,
+        camera: &Camera,
         alpha: f32,
         background_color: u32,
         scalar: f64,
@@ -2311,21 +2314,37 @@ pub mod draw {
                 );
             }
         }
-        let arrow_x = vec![
-            (Vertex::new(1.000, 0.000, -0.083) * scalar) + (plane.u * scalar).to_vertex(),
-            (Vertex::new(1.000, 0.000, 0.083) * scalar) + (plane.u * scalar).to_vertex(),
-            (Vertex::new(1.250, 0.000, 0.000) * scalar) + (plane.u * scalar).to_vertex(),
+
+        let mut arrow_x = vec![
+            (Vertex::new(0.000, 0.000, -0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
+            (Vertex::new(0.000, -0.000, 0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
+            (Vertex::new(0.250, 0.000, -0.000) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
         ];
-        let arrow_y = vec![
-            (Vertex::new(-0.000, 1.000, -0.083) * scalar) + (plane.v * scalar).to_vertex(),
-            (Vertex::new(0.000, 1.000, 0.083) * scalar) + (plane.v * scalar).to_vertex(),
-            (Vertex::new(0.000, 1.250, -0.000) * scalar) + (plane.v * scalar).to_vertex(),
+        arrow_x.iter_mut().for_each(|vertex| {
+            *vertex = plane
+                .point_on_plane(vertex.x, vertex.y, vertex.z)
+                .to_vertex()
+        });
+        let mut arrow_y = vec![
+            (Vertex::new(-0.000, 0.000, -0.083) + Vertex::new(0.0, 1.0, 0.0)) * scalar,
+            (Vertex::new(0.000, 0.000, 0.083) + Vertex::new(0.0, 1.0, 0.0)) * scalar,
+            (Vertex::new(0.000, 0.250, -0.000) + Vertex::new(0.0, 1.0, 0.0)) * scalar,
         ];
-        let arrow_z = vec![
-            (Vertex::new(0.083, 0.000, 1.000) * scalar) + (plane.normal * scalar).to_vertex(),
-            (Vertex::new(-0.083, 0.000, 1.000) * scalar) + (plane.normal * scalar).to_vertex(),
-            (Vertex::new(0.000, 0.000, 1.250) * scalar) + (plane.normal * scalar).to_vertex(),
+        arrow_y.iter_mut().for_each(|vertex| {
+            *vertex = plane
+                .point_on_plane(vertex.x, vertex.y, vertex.z)
+                .to_vertex()
+        });
+        let mut arrow_z = vec![
+            (Vertex::new(0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
+            (Vertex::new(-0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
+            (Vertex::new(0.000, 0.000, 0.250) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
         ];
+        arrow_z.iter_mut().for_each(|vertex| {
+            *vertex = plane
+                .point_on_plane(vertex.x, vertex.y, vertex.z)
+                .to_vertex()
+        });
         // Project arrows 3d system on 2d screen.
         // and if arows are in frame draw the triangle with lines.
         ///////////////////////////////////////////////////////////////////////////////////////
