@@ -4,18 +4,19 @@ mod display_pipe_line;
 mod models_3d;
 mod rust3d;
 mod virtual_space;
+use core::f64;
 use display_pipe_line::rendering_object::{Mesh, Vertex};
 use display_pipe_line::visualization_v3::coloring::Color;
 use display_pipe_line::visualization_v3::Camera;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
-use rust3d::geometry::*;
+use rayon::*;
 use rust3d::transformation::rotate_z;
 use rust3d::{draw::*, transformation};
+use rust3d::{geometry::*, utillity};
 use std::sync::Arc;
 use std::time::Duration;
 use virtual_space::*;
-use rayon::*;
 fn main() {
     // init the app with inputs parameters.
     const PATH: &str = "./geometry/ghost_b.obj";
@@ -72,14 +73,12 @@ fn main() {
     let pt_origin = Point3d::new(0.0, 0.0, 0.0);
     let x_dir = Vector3d::new(1.0, 0.0, 0.0);
     let z_dir = Vector3d::new(0.0, 0.0, 1.0);
-    let mut world_plane = 
-        CPlane::new_normal_x_oriented(&pt_origin, &x_dir, &z_dir);
-    let mut grid_pt = 
-        draw_3d_grid(&world_plane, 4.0, 4.0, 0.5);
-    println!("System World Plane:{0}",world_plane);
+    let mut world_plane = CPlane::new_normal_x_oriented(&pt_origin, &x_dir, &z_dir);
+    let mut grid_pt = draw_3d_grid(&world_plane, 4.0, 4.0, 0.5);
+    println!("System World Plane:{0}", world_plane);
     // Scale the Grid to display unit (future display pipeline responsibility)
     grid_pt.iter_mut().for_each(|pt| {
-        *pt*=0.1;
+        *pt *= 0.1;
     });
     println!("Grid dimension: {0}x{0}", ((grid_pt.len()) as f64).sqrt());
     ////////////////////////////////////////////////////////////////////////////
@@ -87,8 +86,10 @@ fn main() {
     ////////////////////////////////////////////////////////////////////////////
     const WIDTH: usize = 3840 / 3; // screen pixel width.
     const HEIGHT: usize = 2160 / 3; // screen pixel height.
-    const BACK_GROUND_COLOR: u32 =0x9da3aa;// 0x141314;
+    const BACK_GROUND_COLOR: u32 = 0x9da3aa; // 0x141314;
     const ANGLE_STEP: f64 = 0.3;
+    let mut anim_transp = 0.0;
+    let ramp = false;
     // Init a widows 2D mini buffer class.
     let mut window = Window::new(
         "Basis World System.",
@@ -107,7 +108,7 @@ fn main() {
     // Define the Display Unit Projection System.
     let camera = Camera::new(
         Point3d::new(0.0, -1.0, -0.27), // Camera position (1 is the max value)
-        Point3d::new(0.0, 0.0, 0.0),  // Camera target ( relative to position must
+        Point3d::new(0.0, 0.0, 0.0),    // Camera target ( relative to position must
         // be 0,0,0 )
         Vector3d::new(0.0, 0.0, 1.0), // Camera up vector (for inner cross product operation usually Y=1)
         WIDTH as f64,
@@ -119,27 +120,37 @@ fn main() {
     let step = ANGLE_STEP.to_radians();
     window.set_target_fps(60); // limit to 60 fps.
     while window.is_open() && !window.is_key_down(Key::Escape) {
-    for pixel in buffer.iter_mut() {
+        for pixel in buffer.iter_mut() {
             *pixel = BACK_GROUND_COLOR; // Stet the bg color.
         }
-    // Rotate the Grid.
-    let mut index = 0usize;
-    while index < grid_pt.len() {
+        // Rotate the Grid.
+        let mut index = 0usize;
+        while index < grid_pt.len() {
             grid_pt[index] = rotate_z(grid_pt[index], step);
             index += 1;
         }
-    let result_grid = camera.project_points(&grid_pt);
-    // write Buffer.
-    for data in result_grid.iter(){
+        let result_grid = camera.project_points(&grid_pt);
+        // write Buffer.
+        for data in result_grid.iter() {
             buffer[data.1 * WIDTH + data.0] =
-                Color::convert_rgba_color(0, 0,0, 1.0, BACK_GROUND_COLOR);
+                Color::convert_rgba_color(0, 0, 0, 1.0, BACK_GROUND_COLOR);
         }
-    // animate the CPlane by rotation angle.
-    world_plane.u = world_plane.u.rotate_around_axis(&world_plane.normal, -step);
-    world_plane.v = world_plane.v.rotate_around_axis(&world_plane.normal, -step);
-    draw_plane_gimball_3d(&mut buffer, WIDTH, world_plane, &camera, 1.0, BACK_GROUND_COLOR, 0.04);
-    // Update buffer.
-    window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+        // animate the CPlane by rotation angle.
+        world_plane.u = world_plane.u.rotate_around_axis(&world_plane.normal, -step);
+        world_plane.v = world_plane.v.rotate_around_axis(&world_plane.normal, -step);
+        anim_transp += step as f32;
+        let transparency_animation = utillity::ilerp(0.0, 3.14f32, anim_transp);
+        draw_plane_gimball_3d(
+            &mut buffer,
+            WIDTH,
+            world_plane,
+            &camera,
+            transparency_animation.unwrap(),
+            BACK_GROUND_COLOR,
+            0.04,
+        );
+        // Update buffer.
+        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
     // mesh.export_to_obj_with_normals_fast("test.obj").ok();
 }
