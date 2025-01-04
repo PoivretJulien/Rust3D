@@ -74,7 +74,7 @@ fn main() {
     let x_dir = Vector3d::new(1.0, 0.0, 0.0);
     let z_dir = Vector3d::new(0.0, 0.0, 1.0);
     let mut world_plane = CPlane::new_normal_x_oriented(&pt_origin, &x_dir, &z_dir);
-    let mut grid_pt = draw_3d_grid(&world_plane, 4.0, 4.0, 0.5);
+    let mut grid_pt = draw_3d_grid(&world_plane, 6.0, 6.0, 0.5);
     println!("System World Plane:{0}", world_plane);
     // Scale the Grid to display unit (future display pipeline responsibility)
     grid_pt.iter_mut().for_each(|pt| {

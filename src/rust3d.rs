@@ -690,19 +690,19 @@ pub mod geometry {
     impl fmt::Display for CPlane {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let origin = format!(
-                "Plane Origin:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                "Origin:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
                 self.origin.X, self.origin.Y, self.origin.Z
             );
             let u = format!(
-                "Plane u vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                "u vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
                 self.u.X, self.u.Y, self.u.Z
             );
             let v = format!(
-                "Plane v vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                "v vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
                 self.v.X, self.v.Y, self.v.Z
             );
             let w = format!(
-                "Plane Normal vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
+                "Normal vector:(x:{0:0.3},y:{1:0.3},z:{2:0.3}) ",
                 self.normal.X, self.normal.Y, self.normal.Z
             );
             write!(f, "CPlane: {0},{1},{2},{3}", origin, u, v, w)
@@ -2273,6 +2273,7 @@ pub mod draw {
     }
     use crate::display_pipe_line::rendering_object::Vertex;
     use crate::display_pipe_line::visualization_v3::Camera;
+    /// Draw a Gimball from a CPlane and a scalar value.
     pub fn draw_plane_gimball_3d(
         mut buffer: &mut Vec<u32>,
         width: usize,
@@ -2282,7 +2283,7 @@ pub mod draw {
         background_color: u32,
         scalar: f64,
     ) {
-        // check if plane sytem is in camera frame.
+        // Check if the CPlane sytem is in the camera frame if yes draw bsis axis vectors of the system.
         if let Some(origin) = camera.project(plane.origin.to_vertex()) {
             if let Some(x_axis) = camera.project((plane.origin + (plane.u * scalar)).to_vertex()) {
                 draw_line(
@@ -2314,12 +2315,14 @@ pub mod draw {
                 );
             }
         }
-
+        //Draw triangles arrows on CPlane (uvn)
+        //below are unit triangles points from normalized basis system.
         let mut arrow_x = vec![
             (Vertex::new(0.000, 0.000, -0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
             (Vertex::new(0.000, -0.000, 0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
             (Vertex::new(0.250, 0.000, -0.000) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
         ];
+        // mutate the static data of triangles points on the CPlane location. 
         arrow_x.iter_mut().for_each(|vertex| {
             *vertex = plane
                 .point_on_plane(vertex.x, vertex.y, vertex.z)
@@ -2345,8 +2348,8 @@ pub mod draw {
                 .point_on_plane(vertex.x, vertex.y, vertex.z)
                 .to_vertex()
         });
-        // Project arrows 3d system on 2d screen.
-        // and if arows are in frame draw the triangle with lines.
+        // Project arrows 3d system on 2d screen space.
+        // if arrows are in screen space then draw the triangle with simple 2d lines.
         ///////////////////////////////////////////////////////////////////////////////////////
         let mut arrow_x_pt: Vec<(usize, usize)> = Vec::new();
         for i in 0..3usize {
