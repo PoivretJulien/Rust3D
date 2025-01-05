@@ -673,9 +673,19 @@ impl DisplayPipeLine {
                     x_angle += 25.0;
                 } ////////////////////////////////////////////////////////////////
                 let matrix = transformation::rotation_matrix_from_angles_4x3(x_angle, 0.0, z_angle);
-                let scale_matrix = transformation::scaling_matrix_from_center_4x3(Vertex::new(0.0,0.0,0.0), 0.5, 0.5, 0.5);
-                let translation_matrix = transformation::translation_matrix_4x3(Vertex::new(0.0,0.0,-0.5));
-                let matrix = transformation::combine_matrices_4x3(vec![matrix,scale_matrix,translation_matrix]);
+                let scale_matrix = transformation::scaling_matrix_from_center_4x3(
+                    Vertex::new(0.0, 0.0, 0.0),
+                    0.5,
+                    0.5,
+                    0.5,
+                );
+                let translation_matrix =
+                    transformation::translation_matrix_4x3(Vertex::new(0.0, 0.0, -0.5));
+                let matrix = transformation::combine_matrices_4x3(vec![
+                    matrix,
+                    scale_matrix,
+                    translation_matrix,
+                ]);
                 println!(
                     "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
                     matrix[0], matrix[1], matrix[2]
@@ -685,17 +695,12 @@ impl DisplayPipeLine {
                     if let Some(mut obj) = torus.data.clone() {
                         if let Ok(mut m) = obj.lock() {
                             if let Displayable::Mesh(ref mut mesh) = *m {
-                                let transformed_point = transformation::transform_points_4x3(&matrix, &mesh.vertices);
+                                let transformed_point =
+                                    transformation::transform_points_4x3(&matrix, &mesh.vertices);
                                 let r = camera.project_points(&transformed_point);
                                 for projected_point in r.iter() {
                                     buffer[projected_point.1 * screen_width + projected_point.0] =
-                                        Color::convert_rgba_color(
-                                            0,
-                                            0,
-                                            0,
-                                            1.0,
-                                            background_color,
-                                        );
+                                        Color::convert_rgba_color(0, 0, 0, 1.0, background_color);
                                 }
                             }
                         }
