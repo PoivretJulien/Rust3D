@@ -544,6 +544,9 @@ pub struct DisplayPipeLine {
 ////////////////////////////////////////////////////////////////////////////////
 impl DisplayPipeLine {
     /// Init the display pipe line.
+    /// # Arguments
+    /// take an Atomic Reference Counter Mutex of The Virtual_space.
+    /// (for updating the scene state with hight priority).
     pub fn new(virtual_space_arc:Arc<Mutex<Virtual_space>>) -> Self {
         Self {
             data_to_render: Vec::new(),
@@ -553,6 +556,8 @@ impl DisplayPipeLine {
 
     /// Format pointer stack for display Pipe Line Thread input
     /// by avoiding deep data copy but just passing pointers.
+    /// # Returns 
+    /// a new Vec with Atomic References Counted pointer inside.
     pub fn format_rx_data(data_input:&Vec<Arc<Mutex<Object3d>>>)->Vec<Arc<Mutex<Object3d>>>{
         data_input.iter().map(|data|{ 
            data.clone() // copy only the pointer on the returned vector stack.
@@ -560,7 +565,11 @@ impl DisplayPipeLine {
     }
 
     /// Feed display with rx reception data.
-    pub fn feed_data_pipe_entry(&mut self, rx_data: Vec<Arc<Mutex<Object3d>>>) {
+    /// # Arguments 
+    /// input data are internally preprocessed through pointers so no deep copy are involved.
+    pub fn feed_data_pipe_entry(&mut self, rx_data: &Vec<Arc<Mutex<Object3d>>>) {
+        // Format input in order to take only reference copy.
+        let rx_data = DisplayPipeLine::format_rx_data(rx_data);
         // if there is no objects.
         if self.data_to_render.len() == 0 {
             self.data_to_render = rx_data;
