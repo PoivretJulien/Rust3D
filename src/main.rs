@@ -38,7 +38,7 @@ fn main() {
     let normal = Vector3d::new(0.0,0.0,1.0);
     let x_direction = Vector3d::new(1.0,0.0,0.0);
     let construction_plane =CPlane::new_normal_x_oriented(&origin,&x_direction, &normal);
-    // the line bellow will be automated with in a method wrapper.
+    // Create an Object3d can be (mesh,Vertex,Point3d,Vector3d).
     let object1 = Object3d::new(1,Displayable::Mesh(obj_mesh), construction_plane, 1.0);
     // first use of the Mutex so it can be accessed without additional check.
     vs.lock().unwrap().add_obj(object1);
