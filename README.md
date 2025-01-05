@@ -1,23 +1,19 @@
 ------------------------------------------------------------------------------------------
-- A 3d lib representing a Point3d and basic Vector3d operations coded in Rust
-  for basic and fast 3d computation with a convinient 'micro 3d engine' 
-  allowing graphical representation of the virtual space.
-- This repo is not inteded to be a public demonstartion
-  it's my personal work for my personal need this repo is public but i don't
-  comunicate on it (this will not serve my personal interest or those of some one else)
-  so why it's public ? then i have nothing to hide and vertue is to pull collective knowledge
-  up where there is the will to involve yourself in something that may be hard
-  some time to understand.
-  because at some point this kind of stuff ask for all of your time.
-  no matter if IA help you or not to refactorize your code...  you have to
-  understand for driving no choice...
-- A world with clever people needing each other for me it's a better world !
-  and the cold ia is just a subsequent part of that.
-- So if you are there better for you to be ready to work and keep it mind this
-  place is a ghost place this repo does not really exsit beyound your understanding
-  if there is understanding please keep in mind that we need each other and colective
-  knowledge which serve only to build a better world together, without us or the cloud of us
-  there is only selffishness, war and limitation of small interest please think at that.
+- A 3D library representing a Point3d and basic Vector3d operations coded in Rust for basic and 
+fast 3D computation with a convenient 'micro 3D engine' allowing graphical representation of the virtual space.
+- This repository is not intended to be a public demonstration. It’s my personal work for my personal needs.
+- This repository is public but I don't communicate about it (this will not serve my personal interests or those of anyone else).
+- Why is it public, then? Because I have nothing to hide, and virtue is to pull collective knowledge up
+  where there is the will to involve yourself in something that may sometimes be hard to understand.
+- Because at some point, this kind of stuff asks for all of your time.
+  No matter if AI helps you or not to refactor your code... you have to understand for driving—no choice.
+- A world with clever people needing each other is for me, a better world!
+  And the cold AI is just a subsequent part of that.
+- So if you are there, better for you to be ready to work. And keep in mind this place is a ghost place.
+  This repository does not really exist beyond your understanding. If there is understanding,
+  please keep in mind that we need each other and collective knowledge, which serves only to build a
+  better world together. Without us or the cloud of us, there is only selfishness, war,
+  and limitation of small interests. Please think about that.
 ---------------------------------------------------------------------------------------------
                   _____________________
                   | MONSTER COMPUTER  |
