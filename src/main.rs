@@ -39,9 +39,9 @@ fn main() {
     let x_direction = Vector3d::new(1.0,0.0,0.0);
     let construction_plane =CPlane::new_normal_x_oriented(&origin,&x_direction, &normal);
     // the line bellow will be automated with in a method wrapper.
-    let object1 = Object3d::new(1,Some(Arc::new(Mutex::new(Displayable::Mesh(obj_mesh)))), construction_plane, 1.0);
+    let object1 = Object3d::new(1,Displayable::Mesh(obj_mesh), construction_plane, 1.0);
     // first use of the Mutex so it can be accessed without additional check.
-    vs.lock().unwrap().add_obj(Arc::new(Mutex::new(object1)));
+    vs.lock().unwrap().add_obj(object1);
     ////////////////////////////////////////////////////////////////////////////
     // Pass a copy of the visual space pointer.
     let display_conduit = DisplayPipeLine::new(vs.clone());
