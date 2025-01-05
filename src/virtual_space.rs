@@ -39,14 +39,19 @@
 //    apply related parmeter in function.
 
 use crate::render_tools::rendering_object::{Mesh, Vertex};
-use crate::render_tools::visualization_v3::coloring::*;
-use crate::rust3d::geometry::*;
-use crate::rust3d::transformation::*;
+use crate::render_tools::visualization_v3::Camera;
+use crate::render_tools::visualization_v3::{self, coloring::*};
+use crate::rust3d::transformation;
+use crate::rust3d::{self, geometry::*};
 use chrono::Local;
+use core::f64;
+use minifb::{Key, Window, WindowOptions};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::borrow::BorrowMut;
 use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::thread;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Updated Virtual_space
@@ -79,10 +84,9 @@ impl Virtual_space {
             scene_state: VirtualSpaceState::SceneNeedUpdate,
         }
     }
-
     /// Add a new object to the list.
-    pub fn add_obj(&mut self, object: Arc<Mutex<Object3d>>) {
-        self.object_list.push(object);
+    pub fn add_obj(&mut self, object: Object3d) {
+        self.object_list.push(Arc::new(Mutex::new(object)));
         self.seekUpdate();
     }
 
@@ -362,12 +366,8 @@ pub struct Object3d {
 
 impl Object3d {
     /// Create an object ready to be stacked
-    pub fn new(
-        id: u64,
-        data: Option<Arc<Mutex<Displayable>>>,
-        origin: CPlane,
-        local_scale_ratio: f64,
-    ) -> Self {
+    pub fn new(id: u64, data: Displayable, origin: CPlane, local_scale_ratio: f64) -> Self {
+        let data = Some(Arc::new(Mutex::new(data)));
         Self {
             id,
             data,
@@ -503,17 +503,19 @@ impl Unit_scale {
 pub struct Display_config {
     pub display_resolution_height: usize,
     pub display_resolution_width: usize,
+    pub back_ground_color: u32,
     pub display_ratio: f64,
     pub camera_position: [[f64; 3]; 4], // special matrix format optimized
     // for visualization system.
     pub raytrace: bool,
 }
 impl Display_config {
-    pub fn new(height: usize, width: usize) -> Self {
+    pub fn new(height: usize, width: usize, back_ground_color: u32) -> Self {
         Self {
             display_resolution_height: height,
             display_resolution_width: width,
             display_ratio: (height as f64 / width as f64),
+            back_ground_color: back_ground_color,
             // create an identity matrix
             camera_position: [
                 [1.0, 0.0, 0.0],
@@ -547,25 +549,28 @@ impl DisplayPipeLine {
     /// # Arguments
     /// take an Atomic Reference Counter Mutex of The Virtual_space.
     /// (for updating the scene state with hight priority).
-    pub fn new(virtual_space_arc:Arc<Mutex<Virtual_space>>) -> Self {
+    pub fn new(virtual_space_arc: Arc<Mutex<Virtual_space>>) -> Self {
         Self {
             data_to_render: Vec::new(),
-            virtual_space:virtual_space_arc,
+            virtual_space: virtual_space_arc,
         }
     }
 
     /// Format pointer stack for display Pipe Line Thread input
     /// by avoiding deep data copy but just passing pointers.
-    /// # Returns 
+    /// # Returns
     /// a new Vec with Atomic References Counted pointer inside.
-    pub fn format_rx_data(data_input:&Vec<Arc<Mutex<Object3d>>>)->Vec<Arc<Mutex<Object3d>>>{
-        data_input.iter().map(|data|{ 
-           data.clone() // copy only the pointer on the returned vector stack.
-        }).collect()
+    pub fn format_rx_data(data_input: &Vec<Arc<Mutex<Object3d>>>) -> Vec<Arc<Mutex<Object3d>>> {
+        data_input
+            .iter()
+            .map(|data| {
+                data.clone() // copy only the pointer on the returned vector stack.
+            })
+            .collect()
     }
 
     /// Feed display with rx reception data.
-    /// # Arguments 
+    /// # Arguments
     /// input data are internally preprocessed through pointers so no deep copy are involved.
     pub fn feed_data_pipe_entry(&mut self, rx_data: &Vec<Arc<Mutex<Object3d>>>) {
         // Format input in order to take only reference copy.
@@ -601,6 +606,108 @@ impl DisplayPipeLine {
             }
         }
     }
+    /*
+     Start the conduit in a thread, init the fb resolution, the buffer memory space,
+     load/updtae the geometry if virtual state is "SceneNeedUpdate",then preprocess
+     transformation of the geometry from the user imput KEY and finally
+     if conduit need update from the previous loop  project points
+     mutate and update the buffer to the screen.
+    */
+    pub fn start_display_pipeline(&mut self) {
+        let thread_data = self.virtual_space.clone();
+        if let Ok(m) = &thread_data.lock() {
+            let windows_name = m.project_name.clone();
+            let screen_height = m.display.display_resolution_height;
+            let screen_width = m.display.display_resolution_width;
+            let background_color = m.display.back_ground_color;
+            // Init a widows 2D mini buffer class.
+            let mut window = Window::new(
+                &windows_name,
+                screen_width,
+                screen_height,
+                WindowOptions::default(),
+            )
+            .unwrap_or_else(|e| {
+                // panic on error (unwind stack and clean memory)
+                panic!("{e}");
+            });
+            ////////////////////////////////////////////////////////////////////////////
+            // A simple allocated array of u32 initialized at 0
+            // representing the color and the 2d position of points.
+            let mut buffer: Vec<u32> = vec![background_color; screen_width * screen_height];
+            // Define the Display Unit initial Projection System.
+            let camera = Camera::new(
+                Point3d::new(0.0, -1.0, -0.27), // Camera position (1 is the max value)
+                Point3d::new(0.0, 0.0, 0.0), // Camera target ( relative to position must be 0,0,0 )
+                Vector3d::new(0.0, 0.0, 1.0), // Camera up vector (for inner cross product operation usually Y=1)
+                screen_width as f64,
+                screen_height as f64,
+                35.0,  // FOV (Zoom angle increase and you will get a smaller representation)
+                0.5,   // Near clip plane
+                100.0, // Far clip plane
+            );
+            window.set_target_fps(60); // limit to 60 fps.
+            let mut z_angle = 0.0;
+            let mut x_angle = 0.0;
+            println!("\x1b[2J");
+            while window.is_open() && !window.is_key_down(Key::Escape) {
+                for pixel in buffer.iter_mut() {
+                    *pixel = background_color; // Stet the bg color.
+                }
+                // catch user input keys.
+                if window.is_key_pressed(Key::Left, minifb::KeyRepeat::No) {
+                    println!("\x1b[1;0H\x1b[2K\rkey Left pressed");
+                    z_angle -= 25.0;
+                }
+                if window.is_key_pressed(Key::Right, minifb::KeyRepeat::No) {
+                    println!("\x1b[1;0H\x1b[2K\rkey Right pressed");
+                    z_angle += 25.0;
+                }
+                if window.is_key_pressed(Key::Up, minifb::KeyRepeat::No) {
+                    println!("\x1b[1;0H\x1b[2K\rkey Up pressed");
+                    x_angle -= 25.0;
+                }
+                if window.is_key_pressed(Key::Down, minifb::KeyRepeat::No) {
+                    println!("\x1b[1;0H\x1b[2K\rkey Down pressed");
+                    x_angle += 25.0;
+                } ////////////////////////////////////////////////////////////////
+                let matrix = transformation::rotation_matrix_from_angles_4x3(x_angle, 0.0, z_angle);
+                let scale_matrix = transformation::scaling_matrix_from_center_4x3(Vertex::new(0.0,0.0,0.0), 0.5, 0.5, 0.5);
+                let translation_matrix = transformation::translation_matrix_4x3(Vertex::new(0.0,0.0,-0.5));
+                let matrix = transformation::combine_matrices_4x3(vec![matrix,scale_matrix,translation_matrix]);
+                println!(
+                    "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
+                    matrix[0], matrix[1], matrix[2]
+                );
+                // get points
+                if let Ok(mut torus) = m.object_list[0].lock() {
+                    if let Some(mut obj) = torus.data.clone() {
+                        if let Ok(mut m) = obj.lock() {
+                            if let Displayable::Mesh(ref mut mesh) = *m {
+                                let transformed_point = transformation::transform_points_4x3(&matrix, &mesh.vertices);
+                                let r = camera.project_points(&transformed_point);
+                                for projected_point in r.iter() {
+                                    buffer[projected_point.1 * screen_width + projected_point.0] =
+                                        Color::convert_rgba_color(
+                                            0,
+                                            0,
+                                            0,
+                                            1.0,
+                                            background_color,
+                                        );
+                                }
+                            }
+                        }
+                    }
+                }
+                ////////////////////////////////////////////////////////////////
+                // Update buffer.
+                window
+                    .update_with_buffer(&buffer, screen_width, screen_height)
+                    .unwrap();
+            }
+        };
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -608,6 +715,7 @@ impl DisplayPipeLine {
  * this is a template prototype of the scripted runtime
  * from json Deserialization.
  */
+////////////////////////////////////////////////////////////////////////////////
 pub mod runtime_concept {
     pub fn runtime() {
         // Runtime Stack.
