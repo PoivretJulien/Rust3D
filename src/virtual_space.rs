@@ -525,7 +525,8 @@ impl Display_config {
         }
     }
 }
-// a nested list will send data to display pipeline from there.
+
+// A nested loop will send data to display pipeline from there.
 #[derive(Debug)]
 struct LayerVisibility {
     object3d_list_index: Vec<usize>,
@@ -533,18 +534,33 @@ struct LayerVisibility {
     color: Color,
     lock: bool,
 }
+
 #[derive(Debug, Clone)]
 pub struct DisplayPipeLine {
     pub data_to_render: Vec<Arc<Mutex<Object3d>>>,
+    pub virtual_space: Arc<Mutex<Virtual_space>>,
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 impl DisplayPipeLine {
-    pub fn new() -> Self {
+    /// Init the display pipe line.
+    pub fn new(virtual_space_arc:Arc<Mutex<Virtual_space>>) -> Self {
         Self {
             data_to_render: Vec::new(),
+            virtual_space:virtual_space_arc,
         }
     }
-    pub fn data_pipe_entry(&mut self, rx_data: Vec<Arc<Mutex<Object3d>>>) {
+
+    /// Format pointer stack for display Pipe Line Thread input
+    /// by avoiding deep data copy but just passing pointers.
+    pub fn format_rx_data(data_input:&Vec<Arc<Mutex<Object3d>>>)->Vec<Arc<Mutex<Object3d>>>{
+        data_input.iter().map(|data|{ 
+           data.clone() // copy only the pointer on the returned vector stack.
+        }).collect()
+    }
+
+    /// Feed display with rx reception data.
+    pub fn feed_data_pipe_entry(&mut self, rx_data: Vec<Arc<Mutex<Object3d>>>) {
         // if there is no objects.
         if self.data_to_render.len() == 0 {
             self.data_to_render = rx_data;
@@ -560,10 +576,14 @@ impl DisplayPipeLine {
                 }
             }
         }
+        // Acknowledege the received data.
+        self.send_data_received_state();
     }
+
     /// Acknoledge that data_to_render is up to date.
-    pub fn send_data_received_state(virtual_space: Arc<Mutex<Virtual_space>>) {
-        match virtual_space.lock() {
+    /// (intentionally private).
+    fn send_data_received_state(&mut self) {
+        match self.virtual_space.lock() {
             Ok(mut m) => {
                 m.scene_state = VirtualSpaceState::SceneIsOk; // this action is only possible there.
             }
