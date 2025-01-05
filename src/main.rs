@@ -1,20 +1,20 @@
 use iter::IntoParallelRefIterator;
 use minifb::{Key, Window, WindowOptions};
-mod display_pipe_line;
+mod render_tools;
 mod models_3d;
 mod rust3d;
 mod virtual_space;
 use core::f64;
-use display_pipe_line::rendering_object::{Mesh, Vertex};
-use display_pipe_line::visualization_v3::coloring::Color;
-use display_pipe_line::visualization_v3::Camera;
+use render_tools::rendering_object::{Mesh, Vertex};
+use render_tools::visualization_v3::coloring::Color;
+use render_tools::visualization_v3::Camera;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rayon::*;
 use rust3d::transformation::rotate_z;
 use rust3d::{draw::*, transformation};
 use rust3d::{geometry::*, utillity};
-use std::sync::Arc;
+use std::sync::{Arc,Mutex};
 use std::time::Duration;
 use virtual_space::*;
 fn main() {
@@ -24,7 +24,7 @@ fn main() {
         "first test",
         None,
         Unit_scale::Millimeters,
-        Display_config::new(800, 600),
+        Display_config::new(3840 /3 ,2160/3),
     );
     // import a mesh...
     let mut mesh = Mesh::new(); // pointer holder of the mesh structure
@@ -55,18 +55,19 @@ fn main() {
     mesh.recompute_normals();
     ////////moved values////////////////////////////////////////////////////////
     // now the mesh and CPlane variables of above transfer the ownership to object of type Object3d.
-    let object = Object3d::new(0, Some(Arc::new(Displayable::Mesh(mesh))), plane, 0.5);
-    println!("{}", object);
+    let object = 
+    Arc::new(Mutex::new(Object3d::new(0, Some(Arc::new(Mutex::new(Displayable::Mesh(mesh)))), plane, 0.5)));
+    println!("{}", object.lock().ok().unwrap());
     // test to add other type of Object3d //////////////////////////////////////
     program.add_obj(object); // transfer ownership to program.
     let vert = vec![Vertex::new(6.28, 1.6, 81.0)];
     let normal = Vector3d::new(0.0, 0.0, 1.0);
-    let object2 = Object3d::new(
+    let object2 = Arc::new(Mutex::new(Object3d::new(
         0,
-        Some(Arc::new(Displayable::Vertex(vert))),
+        Some(Arc::new(Mutex::new(Displayable::Vertex(vert)))),
         CPlane::new(&origin, &normal),
         0.5,
-    );
+    )));
     program.add_obj(object2);
     println!("{}", program);
     ////Draw a grid in world Center ////////////////////////////////////////////
@@ -140,12 +141,12 @@ fn main() {
         world_plane.v = world_plane.v.rotate_around_axis(&world_plane.normal, -step);
         if anim_transp< 3.14 && !ramp {
                 anim_transp += step as f32;
-            if anim_transp > 3.0 {
+            if anim_transp > 3.1 {
                 ramp=!ramp;
             }
         }else {
             anim_transp -= step as f32;
-            if anim_transp < 0.1 {
+            if anim_transp < 0.05 {
                 ramp=!ramp;
             }
         } 

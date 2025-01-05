@@ -9,7 +9,7 @@ pub mod geometry {
     // Implementation of a Point3d structure
     // bound to Vector3d structure
     // for standard operator processing.
-    use crate::display_pipe_line::rendering_object::Vertex;
+    use crate::render_tools::rendering_object::Vertex;
     use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
 
     #[allow(non_snake_case)]
@@ -2178,7 +2178,7 @@ pub mod draw {
     }
 
     use super::geometry::Point3d;
-    use crate::{display_pipe_line::visualization_v3::coloring::Color, models_3d::FONT_5X7};
+    use crate::{render_tools::visualization_v3::coloring::Color, models_3d::FONT_5X7};
     use core::f64;
     use std::usize;
 
@@ -2271,8 +2271,8 @@ pub mod draw {
         }
         grid_points
     }
-    use crate::display_pipe_line::rendering_object::Vertex;
-    use crate::display_pipe_line::visualization_v3::Camera;
+    use crate::render_tools::rendering_object::Vertex;
+    use crate::render_tools::visualization_v3::Camera;
     /// Draw a Gimball from a CPlane and a scalar value.
     pub fn draw_plane_gimball_3d(
         mut buffer: &mut Vec<u32>,
@@ -2922,7 +2922,7 @@ mod test {
             }
         }
     }
-    use crate::display_pipe_line::visualization_v3::coloring::Color;
+    use crate::render_tools::visualization_v3::coloring::Color;
     #[test]
     fn test_color() {
         let red: u8 = 20;
@@ -3022,7 +3022,7 @@ mod test {
         }
     }
 
-    use crate::display_pipe_line::rendering_object::{Mesh, Triangle, Vertex};
+    use crate::render_tools::rendering_object::{Mesh, Triangle, Vertex};
     #[test]
     fn test_triangle_area() {
         // The following Triangle is flat in XY plane.
@@ -3153,7 +3153,7 @@ mod test {
             assert_eq!((7, 10), result);
         }
     }
-    use crate::display_pipe_line::rendering_object::*;
+    use crate::render_tools::rendering_object::*;
     #[test]
     fn test_ray_trace() {
         let obj = Mesh::import_obj_with_normals("./geometry/flatbox.obj")

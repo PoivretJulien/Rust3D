@@ -38,27 +38,31 @@
 //  - Before sending to display pipe line iter from LayerVisibility object and
 //    apply related parmeter in function.
 
-use crate::display_pipe_line::rendering_object::{Mesh, Vertex};
-use crate::display_pipe_line::visualization_v3::coloring::*;
+use crate::render_tools::rendering_object::{Mesh, Vertex};
+use crate::render_tools::visualization_v3::coloring::*;
 use crate::rust3d::geometry::*;
 use crate::rust3d::transformation::*;
 use chrono::Local;
+use std::borrow::BorrowMut;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::Mutex;
 ////////////////////////////////////////////////////////////////////////////////
+
+// Updated Virtual_space
 #[derive(Debug)]
 pub struct Virtual_space {
     pub project_name: String,
     pub file_path: Option<String>,
     pub unit_scale: Unit_scale,
     pub display: Display_config,
-    object_list: Vec<Object3d>, // array of Object3d.
+    object_list: Vec<Arc<Mutex<Object3d>>>, // Updated to Vec<Arc<Mutex<Object3d>>>
     pub layers: Vec<LayerVisibility>,
+    scene_state: VirtualSpaceState,
 }
+
 impl Virtual_space {
     /// Constructor of the main class.
-    /// define principal options for the
-    /// user interactive system.
     pub fn new(
         name: &str,
         file_path: Option<String>,
@@ -72,80 +76,92 @@ impl Virtual_space {
             display,
             object_list: Vec::new(),
             layers: Vec::new(),
+            scene_state: VirtualSpaceState::SceneNeedUpdate,
         }
     }
-    /// Add a new object on the stack.
-    pub fn add_obj(&mut self, object: Object3d) {
+
+    /// Add a new object to the list.
+    pub fn add_obj(&mut self, object: Arc<Mutex<Object3d>>) {
         self.object_list.push(object);
+        self.seekUpdate();
     }
-    /// Replace a displayable on same location object..
+
+    /// Replace the `Displayable` in place for a specific object.
     pub fn replace_displayable_in_place(
         &mut self,
         virtual_space_obj_index: usize,
         new_displayable_data: Displayable,
     ) {
-        // Get the object to be modified
-        let object = &mut self.object_list[virtual_space_obj_index];
-
-        // Push the current data to the undo stack if it exists
-        if let Some(current_data) = object.data.clone() {
-            Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
+        let mut flg_action = false;
+        if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
+            let mut object = object_arc.lock().unwrap();
+            // Push the current data to the undo stack if it exists
+            if let Some(current_data) = object.data.clone() {
+                object.undo_stack.push(current_data);
+            }
+            // Replace the current `data` with the new `Displayable`
+            object.data = Some(Arc::new(Mutex::new(new_displayable_data)));
+            object.update_date();
+            flg_action = true;
         }
-
-        // Replace the current `data` with the new `Displayable`
-        object.data = Some(Arc::new(new_displayable_data));
+        if flg_action {
+            self.seekUpdate();
+        }
     }
+
     pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-        let object = &mut self.object_list[virtual_space_obj_index];
-
-        if let Some(undo_data) = Arc::make_mut(&mut object.undo_stack).pop() {
-            if let Some(current_data) = object.data.clone() {
-                Arc::make_mut(&mut object.redo_stack).push((*current_data).clone());
+        let mut flg_action = false;
+        if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
+            let mut object = object_arc.lock().unwrap();
+            if let Some(undo_data) = object.undo_stack.pop() {
+                if let Some(current_data) = object.data.clone() {
+                    object.redo_stack.push(current_data);
+                }
+                // Restore the previous state
+                object.data = Some(undo_data);
+                object.update_date();
+                flg_action = true;
+            } else {
+                eprintln!("Nothing to undo... no change has occurred.");
             }
-
-            // Restore the previous state
-            object.data = Some(Arc::new(undo_data));
-        } else {
-            eprintln!("Nothing to undo... no change has occurred.");
+        }
+        if flg_action {
+            self.seekUpdate();
         }
     }
+
     pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-        let object = &mut self.object_list[virtual_space_obj_index];
-
-        if let Some(redo_data) = Arc::make_mut(&mut object.redo_stack).pop() {
-            if let Some(current_data) = object.data.clone() {
-                Arc::make_mut(&mut object.undo_stack).push((*current_data).clone());
+        let mut flg_action = false;
+        if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
+            let mut object = object_arc.lock().unwrap();
+            if let Some(redo_data) = object.redo_stack.pop() {
+                if let Some(current_data) = object.data.clone() {
+                    object.undo_stack.push(current_data);
+                }
+                // Restore the next state
+                object.data = Some(redo_data);
+                object.update_date();
+                flg_action = true;
+            } else {
+                eprintln!("Nothing to redo... no change has occurred.");
             }
-
-            // Restore the next state
-            object.data = Some(Arc::new(redo_data));
-        } else {
-            eprintln!("Nothing to redo... no change has occurred.");
+        }
+        if flg_action {
+            self.seekUpdate();
         }
     }
-    /// Clean the stack of Empty elements.
+
+    /// Clean the stack of empty elements.
     pub fn clean_stack(&mut self) {
-        self.object_list.retain(|obj| obj.data.is_none());
+        self.object_list
+            .retain(|obj| obj.lock().unwrap().data.is_some());
+        self.seekUpdate();
     }
 
-    // Other methods remain unchanged...
-
-    /// Add a layer visibility.
-    pub fn add_layer(&mut self, layer: LayerVisibility) {
-        self.layers.push(layer);
-    }
-
-    /// Toggle visibility for a specific layer.
-    pub fn toggle_layer_visibility(&mut self, layer_index: usize) {
-        if let Some(layer) = self.layers.get_mut(layer_index) {
-            layer.visibility = !layer.visibility;
-        }
-    }
-
-    /// Lock or unlock a specific layer.
-    pub fn toggle_layer_lock(&mut self, layer_index: usize) {
-        if let Some(layer) = self.layers.get_mut(layer_index) {
-            layer.lock = !layer.lock;
+    /// Update scene state.
+    pub fn seekUpdate(&mut self) {
+        if let VirtualSpaceState::SceneIsOk = self.scene_state {
+            self.scene_state = VirtualSpaceState::SceneNeedUpdate;
         }
     }
 }
@@ -155,59 +171,66 @@ impl fmt::Display for Virtual_space {
         let path = if let Some(path) = &self.file_path {
             format!("{0}", path)
         } else {
-            format!("None")
+            "None".to_string()
         };
         let unit_scale = self.unit_scale.to_string();
         let display_config = format!(
-            "height:{}, width:{}, ratio:{}, raytrace enabled:({}).",
+            "height: {}, width: {}, ratio: {}, raytrace enabled: ({})",
             self.display.display_resolution_height,
             self.display.display_resolution_width,
             self.display.display_ratio,
             self.display.raytrace
         );
+
+        // Display object list
         let mut obj_list = String::new();
-        obj_list.push_str(&format!("Contain ({}) Object3d: ", self.object_list.len()));
-        for i in 0..self.object_list.len() {
-            let data_display = match &self.object_list[i].data {
-                Some(disp) => disp.to_string(),
-                None => "None".to_string(),
-            };
-            obj_list.push_str(data_display.as_str());
-            obj_list.push_str(format!(" (index: {0}), ", i).as_str());
+        obj_list.push_str(&format!(
+            "Contains ({}) Object3d(s):\n",
+            self.object_list.len()
+        ));
+        for (i, object_arc) in self.object_list.iter().enumerate() {
+            let object = object_arc.lock().unwrap(); // Lock the mutex to access the object
+            obj_list.push_str(&format!("  Index {}: {}\n", i, object));
         }
+
+        // Display layers
         let mut layers_str = String::new();
-        if self.layers.len() == 0{
+        if self.layers.is_empty() {
             layers_str.push_str("No layers created yet.");
-        }else{
-        for (i, layer) in self.layers.iter().enumerate() {
-            layers_str.push_str(&format!(
-                "Layer {}: Visible: {}, Locked: {}, Color: {:?}\n",
-                i, layer.visibility, layer.lock, layer.color
-            ));
+        } else {
+            for (i, layer) in self.layers.iter().enumerate() {
+                layers_str.push_str(&format!(
+                    "  Layer {}: Visible: {}, Locked: {}, Color: {:?}\n",
+                    i, layer.visibility, layer.lock, layer.color
+                ));
             }
         }
+
+        let state = self.scene_state.to_string();
         write!(
             f,
-            "Virtual Space:
-                Project name: '{0}'
-                File path: {1}
-                Unit scale: {2}
-                Display Pipeline Config: {3}
-                Object3d List: {4}
-                layers List: {5}
-                ",
-            project_name, path, unit_scale, display_config, obj_list,layers_str
+            "Virtual Space {{
+    Project Name: '{}',
+    File Path: {},
+    Unit Scale: {},
+    Display Config: {},
+    Object3d List:
+    {}
+    Layers:
+    {}
+    State: {}
+}}",
+            project_name, path, unit_scale, display_config, obj_list, layers_str, state
         )
     }
 }
-////////////////////////////////////////////////////////////////////////////////
-/// Oject System.
+// Updated Object3d
 #[derive(Debug)]
 pub struct Object3d {
     pub origin: CPlane,
-    pub data: Option<Arc<Displayable>>, // if object is removed position is kept
-    undo_stack: Arc<Vec<Displayable>>,
-    redo_stack: Arc<Vec<Displayable>>,
+    pub data: Option<Arc<Mutex<Displayable>>>,
+    undo_stack: Vec<Arc<Mutex<Displayable>>>,
+    redo_stack: Vec<Arc<Mutex<Displayable>>>,
     pub local_scale_ratio: f64,
     pub id: u64,
     pub last_change_date: String,
@@ -217,7 +240,7 @@ impl Object3d {
     /// Create an object ready to be stacked
     pub fn new(
         id: u64,
-        data: Option<Arc<Displayable>>,
+        data: Option<Arc<Mutex<Displayable>>>,
         origin: CPlane,
         local_scale_ratio: f64,
     ) -> Self {
@@ -227,22 +250,24 @@ impl Object3d {
             origin,
             local_scale_ratio,
             last_change_date: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            undo_stack: Arc::new(Vec::new()),
-            redo_stack: Arc::new(Vec::new()),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
     }
+
     /// Update last change date time.
     pub fn update_date(&mut self) {
         self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     }
 }
+
 impl Clone for Object3d {
     fn clone(&self) -> Self {
         Self {
-            origin: self.origin.clone(),              // Deep copy origin
-            data: self.data.clone(),                  // Clone Arc (pointer)
-            undo_stack: Arc::clone(&self.undo_stack), // Clone Arc (pointer)
-            redo_stack: Arc::clone(&self.redo_stack), // Clone Arc (pointer)
+            origin: self.origin.clone(),
+            data: self.data.clone(),
+            undo_stack: self.undo_stack.clone(),
+            redo_stack: self.redo_stack.clone(),
             local_scale_ratio: self.local_scale_ratio,
             id: self.id,
             last_change_date: self.last_change_date.clone(),
@@ -254,7 +279,12 @@ impl fmt::Display for Object3d {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Format the `data` field
         let data_display = match &self.data {
-            Some(disp) => disp.to_string(),
+            Some(opt) => match opt.lock() {
+                Ok(dt) => dt.to_string(),
+                Err(err) => {
+                    format!("{err}")
+                }
+            },
             None => "None".to_string(),
         };
         // Format the undo and redo stacks
@@ -282,6 +312,23 @@ impl fmt::Display for Object3d {
         )
     }
 }
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+pub enum VirtualSpaceState {
+    SceneNeedUpdate,
+    SceneIsOk,
+}
+impl VirtualSpaceState {
+    pub fn to_string(&self) -> String {
+        match self {
+            VirtualSpaceState::SceneNeedUpdate => {
+                format!("SceneNeedUpdate")
+            }
+            VirtualSpaceState::SceneIsOk => format!("SceneIsOk"),
+        }
+    }
+}
+
 /// every thing that can be displayed for now
 /// Curve are basically a set of points.
 #[derive(Clone, Debug)]
@@ -362,6 +409,46 @@ struct LayerVisibility {
     color: Color,
     lock: bool,
 }
+#[derive(Debug, Clone)]
+pub struct DisplayPipeLine {
+    pub data_to_render: Vec<Arc<Mutex<Object3d>>>,
+}
+////////////////////////////////////////////////////////////////////////////////
+impl DisplayPipeLine {
+    pub fn new() -> Self {
+        Self {
+            data_to_render: Vec::new(),
+        }
+    }
+    pub fn data_pipe_entry(&mut self, rx_data: Vec<Arc<Mutex<Object3d>>>) {
+        // if there is no objects.
+        if self.data_to_render.len() == 0 {
+            self.data_to_render = rx_data;
+        } else {
+            // Update only the objects needed.
+            for (i, d) in self.data_to_render.iter_mut().enumerate() {
+                if let Some(mut a) = d.lock().ok() {
+                    if let Some(b) = rx_data[i].lock().ok() {
+                        if a.last_change_date != b.last_change_date {
+                            *a = b.clone(); // Deep Copy of the data structure.
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /// Acknoledge that data_to_render is up to date.
+    pub fn send_data_received_state(virtual_space: Arc<Mutex<Virtual_space>>) {
+        match virtual_space.lock() {
+            Ok(mut m) => {
+                m.scene_state = VirtualSpaceState::SceneIsOk; // this action is only possible there.
+            }
+            Err(err) => {
+                eprintln!("Cannot acknowledege scene update to \"SceneIsOk\" err:({err})");
+            }
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /*
@@ -431,7 +518,6 @@ pub mod runtime_concept {
 pub mod json {
     use serde::{Deserialize, Serialize};
     use std::fs;
-
     #[derive(Serialize, Deserialize, Debug)]
     pub struct Person {
         name: String,
