@@ -46,7 +46,7 @@ use crate::rust3d::{self, geometry::*};
 use chrono::Local;
 use core::f64;
 use minifb::{Key, Window, WindowOptions};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::borrow::BorrowMut;
 use std::fmt;
 use std::sync::Arc;
@@ -646,10 +646,11 @@ impl DisplayPipeLine {
                 0.5,   // Near clip plane
                 100.0, // Far clip plane
             );
-            window.set_target_fps(60); // limit to 60 fps.
+            window.set_target_fps(25); // limit to 60 fps.
             let mut z_angle = 0.0;
             let mut x_angle = 0.0;
             println!("\x1b[2J");
+            println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry.");
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 for pixel in buffer.iter_mut() {
                     *pixel = background_color; // Stet the bg color.
