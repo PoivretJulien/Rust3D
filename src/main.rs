@@ -40,8 +40,10 @@ fn main() {
     let construction_plane =CPlane::new_normal_x_oriented(&origin,&x_direction, &normal);
     // Create an Object3d can be (mesh,Vertex,Point3d,Vector3d).
     let object1 = Object3d::new(1,Displayable::Mesh(obj_mesh), construction_plane, 1.0);
-    // first use of the Mutex so it can be accessed without additional check.
-    vs.lock().unwrap().add_obj(object1);
+    // vs.lock().unwrap().add_obj(object1); // first use of the Mutex so it can be accessed without additional check.
+    if let Ok(mut mutex) = vs.lock() {// idiomatic way.
+        mutex.add_obj(object1);
+    }
     ////////////////////////////////////////////////////////////////////////////
     // Pass a copy of the visual space pointer.
     let display_conduit = DisplayPipeLine::new(vs.clone());
