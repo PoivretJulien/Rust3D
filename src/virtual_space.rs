@@ -87,7 +87,7 @@ impl Virtual_space {
     }
 
     /// Replace the `Displayable` in place for a specific object.
-    pub fn replace_displayable_in_place(
+    pub fn replace_displayable_in_place_deprecated(
         &mut self,
         virtual_space_obj_index: usize,
         new_displayable_data: Displayable,
@@ -95,6 +95,7 @@ impl Virtual_space {
         let mut flg_action = false;
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             let mut object = object_arc.lock().unwrap();
+
             // Push the current data to the undo stack if it exists
             if let Some(current_data) = object.data.clone() {
                 object.undo_stack.push(current_data);
@@ -109,7 +110,91 @@ impl Virtual_space {
         }
     }
 
+    /// Replace the `Displayable` in place for a specific object.
+    pub fn replace_displayable_in_place(
+        &mut self,
+        virtual_space_obj_index: usize,
+        new_displayable_data: Displayable,
+    ) {
+        let mut flg_action = false;
+        // Attempt to get the object at the specified index.
+        if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
+            // Try to lock the object. Handle potential poisoning gracefully.
+            match object_arc.lock() {
+                Ok(mut object) => {
+                    // Push the current data to the undo stack if it exists.
+                    if let Some(current_data) = object.data.take() {
+                        object.undo_stack.push(current_data);
+                    }
+
+                    // Replace the current `data` with the new `Displayable`.
+                    object.data = Some(Arc::new(Mutex::new(new_displayable_data)));
+
+                    // Update the object's timestamp.
+                    object.update_date();
+
+                    // Mark the virtual space as needing an update.
+                    flg_action = true;
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Failed to acquire lock on object at index {}: {:?}",
+                        virtual_space_obj_index, e
+                    );
+                }
+            }
+        } else {
+            eprintln!(
+                "Object index {} out of bounds. Cannot replace Displayable.",
+                virtual_space_obj_index
+            );
+        }
+        if flg_action {
+            self.seekUpdate();
+        }
+    }
+
     pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+        let mut flg_action = false;
+
+        // Check if the object exists at the specified index
+        if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
+            match object_arc.lock() {
+                Ok(mut object) => {
+                    // Attempt to pop the undo stack
+                    if let Some(undo_data) = object.undo_stack.pop() {
+                        // Save the current `data` to the redo stack if it exists
+                        if let Some(current_data) = object.data.take() {
+                            object.redo_stack.push(current_data);
+                        }
+                        // Restore the previous state from the undo stack
+                        object.data = Some(undo_data);
+                        object.update_date();
+                        flg_action = true;
+                    } else {
+                        eprintln!("Undo failed: No more data in the undo stack.");
+                    }
+                }
+                Err(_) => {
+                    eprintln!(
+                        "Error: Failed to lock the object at index {}. Mutex is poisoned.",
+                        virtual_space_obj_index
+                    );
+                }
+            }
+        } else {
+            eprintln!(
+                "Error: No object found at index {}.",
+                virtual_space_obj_index
+            );
+        }
+
+        // If a change was successfully made, trigger a scene update
+        if flg_action {
+            self.seekUpdate();
+        }
+    }
+    pub fn undo_displayable_in_place_deprecated(&mut self, virtual_space_obj_index: usize) {
         let mut flg_action = false;
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             let mut object = object_arc.lock().unwrap();
@@ -131,6 +216,45 @@ impl Virtual_space {
     }
 
     pub fn redo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
+        let mut flg_action = false;
+        // Check if the object exists at the specified index
+        if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
+            match object_arc.lock() {
+                Ok(mut object) => {
+                    // Attempt to pop the redo stack
+                    if let Some(redo_data) = object.redo_stack.pop() {
+                        // Save the current `data` to the undo stack if it exists
+                        if let Some(current_data) = object.data.take() {
+                            object.undo_stack.push(current_data);
+                        }
+                        // Restore the next state from the redo stack
+                        object.data = Some(redo_data);
+                        object.update_date();
+                        flg_action = true;
+                    } else {
+                        eprintln!("Redo failed: No more data in the redo stack.");
+                    }
+                }
+                Err(_) => {
+                    eprintln!(
+                        "Error: Failed to lock the object at index {}. Mutex is poisoned.",
+                        virtual_space_obj_index
+                    );
+                }
+            }
+        } else {
+            eprintln!(
+                "Error: No object found at index {}.",
+                virtual_space_obj_index
+            );
+        }
+
+        // If a change was successfully made, trigger a scene update
+        if flg_action {
+            self.seekUpdate();
+        }
+    }
+    pub fn redo_displayable_in_place_deprecated(&mut self, virtual_space_obj_index: usize) {
         let mut flg_action = false;
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             let mut object = object_arc.lock().unwrap();
