@@ -40,18 +40,14 @@
 
 use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::Camera;
-use crate::render_tools::visualization_v3::{self, coloring::*};
+use crate::render_tools::visualization_v3::coloring::*;
 use crate::rust3d::transformation;
-use crate::rust3d::{self, geometry::*};
-use chrono::Local;
+use crate::rust3d::geometry::*;
 use core::f64;
 use minifb::{Key, Window, WindowOptions};
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use std::borrow::BorrowMut;
 use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Updated Virtual_space
@@ -87,7 +83,7 @@ impl Virtual_space {
     /// Add a new object to the list.
     pub fn add_obj(&mut self, object: Object3d) {
         self.object_list.push(Arc::new(Mutex::new(object)));
-        self.seekUpdate();
+        self.scene_state = VirtualSpaceState::SceneNeedUpdate;
     }
 
     /// Replace the `Displayable` in place for a specific object.
@@ -96,7 +92,6 @@ impl Virtual_space {
         virtual_space_obj_index: usize,
         new_displayable_data: Displayable,
     ) {
-        let mut flg_action = false;
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             let mut object = object_arc.lock().unwrap();
 
@@ -107,10 +102,7 @@ impl Virtual_space {
             // Replace the current `data` with the new `Displayable`
             object.data = Some(Arc::new(Mutex::new(new_displayable_data)));
             object.update_date();
-            flg_action = true;
-        }
-        if flg_action {
-            self.seekUpdate();
+            self.scene_state = VirtualSpaceState::SceneNeedUpdate;
         }
     }
 
@@ -120,7 +112,6 @@ impl Virtual_space {
         virtual_space_obj_index: usize,
         new_displayable_data: Displayable,
     ) {
-        let mut flg_action = false;
         // Attempt to get the object at the specified index.
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             // Try to lock the object. Handle potential poisoning gracefully.
@@ -138,7 +129,7 @@ impl Virtual_space {
                     object.update_date();
 
                     // Mark the virtual space as needing an update.
-                    flg_action = true;
+                    self.scene_state = VirtualSpaceState::SceneNeedUpdate;
                 }
                 Err(e) => {
                     eprintln!(
@@ -153,14 +144,9 @@ impl Virtual_space {
                 virtual_space_obj_index
             );
         }
-        if flg_action {
-            self.seekUpdate();
-        }
     }
 
     pub fn undo_displayable_in_place(&mut self, virtual_space_obj_index: usize) {
-        let mut flg_action = false;
-
         // Check if the object exists at the specified index
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             match object_arc.lock() {
@@ -174,7 +160,7 @@ impl Virtual_space {
                         // Restore the previous state from the undo stack
                         object.data = Some(undo_data);
                         object.update_date();
-                        flg_action = true;
+                        self.scene_state = VirtualSpaceState::SceneNeedUpdate;
                     } else {
                         eprintln!("Undo failed: No more data in the undo stack.");
                     }
@@ -192,11 +178,6 @@ impl Virtual_space {
                 virtual_space_obj_index
             );
         }
-
-        // If a change was successfully made, trigger a scene update
-        if flg_action {
-            self.seekUpdate();
-        }
     }
     pub fn undo_displayable_in_place_deprecated(&mut self, virtual_space_obj_index: usize) {
         let mut flg_action = false;
@@ -209,13 +190,10 @@ impl Virtual_space {
                 // Restore the previous state
                 object.data = Some(undo_data);
                 object.update_date();
-                flg_action = true;
+                self.scene_state = VirtualSpaceState::SceneNeedUpdate;
             } else {
                 eprintln!("Nothing to undo... no change has occurred.");
             }
-        }
-        if flg_action {
-            self.seekUpdate();
         }
     }
 
@@ -234,7 +212,7 @@ impl Virtual_space {
                         // Restore the next state from the redo stack
                         object.data = Some(redo_data);
                         object.update_date();
-                        flg_action = true;
+                        self.scene_state = VirtualSpaceState::SceneNeedUpdate;
                     } else {
                         eprintln!("Redo failed: No more data in the redo stack.");
                     }
@@ -252,14 +230,8 @@ impl Virtual_space {
                 virtual_space_obj_index
             );
         }
-
-        // If a change was successfully made, trigger a scene update
-        if flg_action {
-            self.seekUpdate();
-        }
     }
     pub fn redo_displayable_in_place_deprecated(&mut self, virtual_space_obj_index: usize) {
-        let mut flg_action = false;
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             let mut object = object_arc.lock().unwrap();
             if let Some(redo_data) = object.redo_stack.pop() {
@@ -269,13 +241,10 @@ impl Virtual_space {
                 // Restore the next state
                 object.data = Some(redo_data);
                 object.update_date();
-                flg_action = true;
+                self.scene_state = VirtualSpaceState::SceneNeedUpdate;
             } else {
                 eprintln!("Nothing to redo... no change has occurred.");
             }
-        }
-        if flg_action {
-            self.seekUpdate();
         }
     }
 
@@ -283,14 +252,7 @@ impl Virtual_space {
     pub fn clean_stack(&mut self) {
         self.object_list
             .retain(|obj| obj.lock().unwrap().data.is_some());
-        self.seekUpdate();
-    }
-
-    /// Update scene state.
-    pub fn seekUpdate(&mut self) {
-        if let VirtualSpaceState::SceneIsOk = self.scene_state {
-            self.scene_state = VirtualSpaceState::SceneNeedUpdate;
-        }
+        self.scene_state = VirtualSpaceState::SceneNeedUpdate;
     }
 }
 impl fmt::Display for Virtual_space {
@@ -536,7 +498,13 @@ struct LayerVisibility {
     color: Color,
     lock: bool,
 }
-
+/*TODO:
+ * notes:
+ * for now start_display_pipeline use Object3d
+ * from virtual space instance it should not
+ * the function must render only object
+ * in data to render stack.
+ */
 #[derive(Debug, Clone)]
 pub struct DisplayPipeLine {
     pub data_to_render: Vec<Arc<Mutex<Object3d>>>,
@@ -554,19 +522,6 @@ impl DisplayPipeLine {
             data_to_render: Vec::new(),
             virtual_space: virtual_space_arc,
         }
-    }
-
-    /// Format pointer stack for display Pipe Line Thread input
-    /// by avoiding deep data copy but just passing pointers.
-    /// # Returns
-    /// a new Vec with Atomic References Counted pointer inside.
-    pub fn format_rx_data(data_input: &Vec<Arc<Mutex<Object3d>>>) -> Vec<Arc<Mutex<Object3d>>> {
-        data_input
-            .iter()
-            .map(|data| {
-                data.clone() // copy only the pointer on the returned vector stack.
-            })
-            .collect()
     }
 
     /// Feed display with rx reception data.
@@ -592,6 +547,19 @@ impl DisplayPipeLine {
         }
         // Acknowledege the received data.
         self.send_data_received_state();
+    }
+
+    /// Format pointer stack for display Pipe Line Thread input
+    /// by avoiding deep data copy but just passing pointers.
+    /// # Returns
+    /// a new Vec with Atomic References Counted pointer inside.
+    pub fn format_rx_data(data_input: &Vec<Arc<Mutex<Object3d>>>) -> Vec<Arc<Mutex<Object3d>>> {
+        data_input
+            .iter()
+            .map(|data| {
+                data.clone() // copy only the pointer on the returned vector stack.
+            })
+            .collect()
     }
 
     /// Acknoledge that data_to_render is up to date.
