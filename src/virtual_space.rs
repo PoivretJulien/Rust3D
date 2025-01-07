@@ -60,7 +60,7 @@ pub struct Virtual_space {
     object_list: Vec<Arc<Mutex<Object3d>>>, // Updated to Vec<Arc<Mutex<Object3d>>>
     pub layers: Vec<LayerVisibility>,
     scene_state: VirtualSpaceState,
-    uid_list:Vec<usize>,
+    uid_list:Mutex<Vec<usize>>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,20 +80,23 @@ impl Virtual_space {
             object_list: Vec::new(),
             layers: Vec::new(),
             scene_state: VirtualSpaceState::SceneNeedUpdate,
-            uid_list:vec![0],
+            uid_list:Mutex::new(vec![0]),
         }
     }
 
     /// Add a new object to the list.
     pub fn add_obj(&mut self, mut object:Object3d) {
         // Increment the last unique id list number by 1 and add it to the list.
-        self.uid_list.push(self.uid_list[self.uid_list.len()-1]+1usize);
+        if let Ok(mut m) = self.uid_list.lock(){ 
+        let new_id =m[m.len()-1] + 1usize; 
+        m.push(new_id);
         // Assign last unique id number to the object.
-        object.id = self.uid_list[self.uid_list.len()-1];
+        object.id = new_id;
         // push into the vector.
         self.object_list.push(Arc::new(Mutex::new(object)));
         // acknowledege.
         self.scene_state = VirtualSpaceState::SceneNeedUpdate;
+        }
     }
 
     /// Replace the `Displayable` in place for a specific object.
@@ -267,14 +270,15 @@ impl Virtual_space {
                      if m.data.is_none(){
                          // anti patern negate equality to remove the equality.
                          // Clean uid list.
-                         self.uid_list.retain(|id| *id != m.id);
+                         if let Ok(mut m2) = self.uid_list.lock(){
+                            m2.retain(|id| *id != m.id);
+                         }
                      }
                      m.data.is_some()
                 }else{
                     true
                 }
             });
-
         self.scene_state = VirtualSpaceState::SceneNeedUpdate;
     }
 }
