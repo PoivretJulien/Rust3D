@@ -687,8 +687,8 @@ impl DisplayPipeLine {
                     matrix[0], matrix[1], matrix[2]
                 );
                 // Get points.
-                if let Ok(mut torus) = m.object_list[0].lock() {
-                    if let Some(mut obj) = torus.data.clone() {
+                if let Ok(mesh) = m.object_list[0].lock() {
+                    if let Some(obj) = mesh.data.clone() {
                         if let Ok(mut m) = obj.lock() {
                             if let Displayable::Mesh(ref mut mesh) = *m {
                                 let transformed_point =
