@@ -39,18 +39,18 @@
 //    apply related parmeter in function.
 
 use crate::render_tools::rendering_object::{Mesh, Vertex};
-use crate::render_tools::visualization_v3::Camera;
 use crate::render_tools::visualization_v3::coloring::*;
-use crate::rust3d::transformation;
+use crate::render_tools::visualization_v3::Camera;
 use crate::rust3d::geometry::*;
+use crate::rust3d::transformation;
 use core::f64;
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
-////////////////////////////////////////////////////////////////////////////////
 
-// Updated Virtual_space
+// Updated Virtual_space.
+////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct Virtual_space {
     pub project_name: String,
@@ -60,8 +60,10 @@ pub struct Virtual_space {
     object_list: Vec<Arc<Mutex<Object3d>>>, // Updated to Vec<Arc<Mutex<Object3d>>>
     pub layers: Vec<LayerVisibility>,
     scene_state: VirtualSpaceState,
+    uid_list:Vec<usize>,
 }
 
+////////////////////////////////////////////////////////////////////////////////
 impl Virtual_space {
     /// Constructor of the main class.
     pub fn new(
@@ -78,11 +80,19 @@ impl Virtual_space {
             object_list: Vec::new(),
             layers: Vec::new(),
             scene_state: VirtualSpaceState::SceneNeedUpdate,
+            uid_list:vec![0],
         }
     }
+
     /// Add a new object to the list.
-    pub fn add_obj(&mut self, object: Object3d) {
+    pub fn add_obj(&mut self, mut object:Object3d) {
+        // Increment the last unique id list number by 1 and add it to the list.
+        self.uid_list.push(self.uid_list[self.uid_list.len()-1]+1usize);
+        // Assign last unique id number to the object.
+        object.id = self.uid_list[self.uid_list.len()-1];
+        // push into the vector.
         self.object_list.push(Arc::new(Mutex::new(object)));
+        // acknowledege.
         self.scene_state = VirtualSpaceState::SceneNeedUpdate;
     }
 
@@ -121,7 +131,6 @@ impl Virtual_space {
                     if let Some(current_data) = object.data.take() {
                         object.undo_stack.push(current_data);
                     }
-
                     // Replace the current `data` with the new `Displayable`.
                     object.data = Some(Arc::new(Mutex::new(new_displayable_data)));
 
@@ -179,6 +188,7 @@ impl Virtual_space {
             );
         }
     }
+
     pub fn undo_displayable_in_place_deprecated(&mut self, virtual_space_obj_index: usize) {
         let mut flg_action = false;
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
@@ -231,6 +241,7 @@ impl Virtual_space {
             );
         }
     }
+
     pub fn redo_displayable_in_place_deprecated(&mut self, virtual_space_obj_index: usize) {
         if let Some(object_arc) = self.object_list.get(virtual_space_obj_index) {
             let mut object = object_arc.lock().unwrap();
@@ -251,10 +262,23 @@ impl Virtual_space {
     /// Clean the stack of empty elements.
     pub fn clean_stack(&mut self) {
         self.object_list
-            .retain(|obj| obj.lock().unwrap().data.is_some());
+            .retain(|obj| {
+                if let Some(m) = obj.lock().ok(){
+                     if m.data.is_none(){
+                         // anti patern negate equality to remove the equality.
+                         // Clean uid list.
+                         self.uid_list.retain(|id| *id != m.id);
+                     }
+                     m.data.is_some()
+                }else{
+                    true
+                }
+            });
+
         self.scene_state = VirtualSpaceState::SceneNeedUpdate;
     }
 }
+
 impl fmt::Display for Virtual_space {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let project_name = format!("{}", self.project_name);
@@ -271,7 +295,6 @@ impl fmt::Display for Virtual_space {
             self.display.display_ratio,
             self.display.raytrace
         );
-
         // Display object list
         let mut obj_list = String::new();
         obj_list.push_str(&format!(
@@ -282,7 +305,6 @@ impl fmt::Display for Virtual_space {
             let object = object_arc.lock().unwrap(); // Lock the mutex to access the object
             obj_list.push_str(&format!("  Index {}: {}\n", i, object));
         }
-
         // Display layers
         let mut layers_str = String::new();
         if self.layers.is_empty() {
@@ -295,7 +317,6 @@ impl fmt::Display for Virtual_space {
                 ));
             }
         }
-
         let state = self.scene_state.to_string();
         write!(
             f,
@@ -314,6 +335,7 @@ impl fmt::Display for Virtual_space {
         )
     }
 }
+
 // Updated Object3d
 #[derive(Debug)]
 pub struct Object3d {
@@ -322,14 +344,15 @@ pub struct Object3d {
     undo_stack: Vec<Arc<Mutex<Displayable>>>,
     redo_stack: Vec<Arc<Mutex<Displayable>>>,
     pub local_scale_ratio: f64,
-    pub id: u64,
+    pub id: usize,
     pub last_change_date: String,
 }
 
 impl Object3d {
     /// Create an object ready to be stacked
-    pub fn new(id: u64, data: Displayable, origin: CPlane, local_scale_ratio: f64) -> Self {
+    pub fn new(data: Displayable, origin: CPlane, local_scale_ratio: f64) -> Self {
         let data = Some(Arc::new(Mutex::new(data)));
+        let id = 0;
         Self {
             id,
             data,
@@ -340,7 +363,6 @@ impl Object3d {
             redo_stack: Vec::new(),
         }
     }
-
     /// Update last change date time.
     pub fn update_date(&mut self) {
         self.last_change_date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -471,6 +493,7 @@ pub struct Display_config {
     // for visualization system.
     pub raytrace: bool,
 }
+
 impl Display_config {
     pub fn new(height: usize, width: usize, back_ground_color: u32) -> Self {
         Self {
@@ -498,13 +521,17 @@ struct LayerVisibility {
     color: Color,
     lock: bool,
 }
-/*TODO:
+/*
+ * TODO:
  * notes:
  * for now start_display_pipeline use Object3d
  * from virtual space instance it should not
  * the function must render only object
- * in data to render stack.
+ * from  data_to_render stack.
+ * ( the idea is that the next thread process 
+ * an update data for rendering. )
  */
+
 #[derive(Debug, Clone)]
 pub struct DisplayPipeLine {
     pub data_to_render: Vec<Arc<Mutex<Object3d>>>,
@@ -538,7 +565,7 @@ impl DisplayPipeLine {
             for (i, d) in self.data_to_render.iter_mut().enumerate() {
                 if let Some(mut a) = d.lock().ok() {
                     if let Some(b) = rx_data[i].lock().ok() {
-                        if a.last_change_date != b.last_change_date {
+                        if (a.last_change_date != b.last_change_date) && (a.id != b.id) {
                             *a = b.clone(); // Deep Copy of the data structure.
                         }
                     }
@@ -574,11 +601,12 @@ impl DisplayPipeLine {
             }
         }
     }
+
     /*
-     Start the conduit in a thread, init the fb resolution, the buffer memory space,
+     Start the conduit init the fb resolution, the buffer memory space,
      load/updtae the geometry if virtual state is "SceneNeedUpdate",then preprocess
-     transformation of the geometry from the user imput KEY and finally
-     if conduit need update from the previous loop  project points
+     transformation of the geometry from the user input KEY and finaly
+     if conduit need update from the previous loop, project points
      mutate and update the buffer to the screen.
     */
     pub fn start_display_pipeline(&mut self) {
@@ -623,7 +651,7 @@ impl DisplayPipeLine {
                 for pixel in buffer.iter_mut() {
                     *pixel = background_color; // Stet the bg color.
                 }
-                // catch user input keys.
+                // Catch user input keys.
                 if window.is_key_pressed(Key::Left, minifb::KeyRepeat::No) {
                     println!("\x1b[1;0H\x1b[2K\rkey Left pressed");
                     z_angle -= 25.0;
@@ -658,7 +686,7 @@ impl DisplayPipeLine {
                     "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
                     matrix[0], matrix[1], matrix[2]
                 );
-                // get points
+                // Get points.
                 if let Ok(mut torus) = m.object_list[0].lock() {
                     if let Some(mut obj) = torus.data.clone() {
                         if let Ok(mut m) = obj.lock() {
@@ -674,11 +702,11 @@ impl DisplayPipeLine {
                         }
                     }
                 }
-                ////////////////////////////////////////////////////////////////
+               ////////////////////////////////////////////////////////////////
                 // Update buffer.
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
-                    .unwrap();
+                    .unwrap(); 
             }
         };
     }
