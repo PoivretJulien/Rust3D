@@ -565,7 +565,7 @@ impl DisplayPipeLine {
             for (i, d) in self.data_to_render.iter_mut().enumerate() {
                 if let Some(mut a) = d.lock().ok() {
                     if let Some(b) = rx_data[i].lock().ok() {
-                        if (a.last_change_date != b.last_change_date) && (a.id != b.id) {
+                        if (a.last_change_date != b.last_change_date) && (a.id == b.id) {
                             *a = b.clone(); // Deep Copy of the data structure.
                         }
                     }
