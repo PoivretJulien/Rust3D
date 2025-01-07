@@ -50,6 +50,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 // Updated Virtual_space.
+// With true unique uuid
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub struct Virtual_space {
@@ -57,7 +58,7 @@ pub struct Virtual_space {
     pub file_path: Option<String>,
     pub unit_scale: Unit_scale,
     pub display: Display_config,
-    object_list: Vec<Arc<Mutex<Object3d>>>, // Updated to Vec<Arc<Mutex<Object3d>>>
+    object_list: Vec<Arc<Mutex<Object3d>>>, 
     pub layers: Vec<LayerVisibility>,
     scene_state: VirtualSpaceState,
     uid_list:Mutex<Vec<usize>>,
@@ -424,6 +425,7 @@ impl fmt::Display for Object3d {
         )
     }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
 pub enum VirtualSpaceState {
@@ -505,7 +507,7 @@ impl Display_config {
             display_resolution_width: width,
             display_ratio: (height as f64 / width as f64),
             back_ground_color: back_ground_color,
-            // create an identity matrix
+            // Create an identity matrix
             camera_position: [
                 [1.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
