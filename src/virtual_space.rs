@@ -41,7 +41,8 @@
 use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::geometry::*;
+use crate::rust3d::draw;
+use crate::rust3d::{self, geometry::*};
 use crate::rust3d::transformation;
 use core::f64;
 use minifb::{Key, Window, WindowOptions};
@@ -709,7 +710,17 @@ impl DisplayPipeLine {
                     }
                 }
                ////////////////////////////////////////////////////////////////
+              draw::draw_rounded_rectangle(&mut buffer,
+                    screen_width,
+                    screen_width/2-200,
+                    10,
+                    400,
+                    35,
+                    5, 
+                    Color::convert_rgba_color(0,0, 0,0.4,background_color),
+                    background_color);
                 // Update buffer.
+                draw::draw_text(&mut buffer, 800, 900, screen_width/2-150, 20, "Press Arrow Key to rotate", 2, 0);
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap(); 
@@ -821,50 +832,3 @@ pub mod json {
         println!("Deserialized struct: {:?}", person);
     }
 }
-
-/*
- *  Rust Raw Pointer base offset technic.
- *  ( Rust is tool not a toy )
- */
-mod raw_pointer_study {
-    pub fn raw_pointer() {
-        let mut array: [f32; 5] = [0.0; 5];
-
-        // Compute how many bytes in an f32 type.
-        let base = std::mem::size_of::<f32>();
-        println!("Size of an f32:({base}) bytes");
-        println!("Initial State of Array: {:?}", array);
-
-        // Then make a raw pointer on the first elements of the
-        // array and offset the memory block by an offset multiple
-        // of the array base elements
-        //                      (sized in bytes multiples as usize).
-
-        let ptr_on_array = &mut array as *mut f32; // make raw pointer.
-        let address = ptr_on_array as usize; //Extract address.
-
-        // then Mutate the raw pointer offset of your choice
-        // from the raw components available.
-        // for mutating the 3 elements (index 2):
-        unsafe {
-            *((address + (base * 2)) as *mut f32) = 9.999;
-        }
-        // for mutating the 4 elements index(3):
-        unsafe {
-            *ptr_on_array.offset(3) = 3.3333; 
-        }
-        // Print the result on console:
-        println!("Mutated state of the Array: {:?}",array);
-        /*
-         * This provide fast access on data without any safety measures
-         * it's equivalent of pure C where fast processing is paramount
-         * and the safety context carefully measured.
-         * it's a tool in the tools box. rust forbid nothing it's just 
-         * the way how to do it safely if you want to be stupid then you 
-         * should have your reason, it's a tool noting 
-         * less... nothing more... just right and sharp when it's required.
-         */
-    }
-}
-
-

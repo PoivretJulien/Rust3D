@@ -2178,19 +2178,19 @@ pub mod draw {
     }
 
     use super::geometry::Point3d;
-    use crate::{render_tools::visualization_v3::coloring::Color, models_3d::FONT_5X7};
+    use crate::{models_3d::FONT_5X7, render_tools::visualization_v3::coloring::Color};
     use core::f64;
     use std::usize;
 
     pub fn draw_text(
         buffer: &mut Vec<u32>,
-        height: &usize,
-        width: &usize,
-        x: &usize,
-        y: &usize,
+        height: usize,
+        width: usize,
+        x: usize,
+        y: usize,
         text: &str,
-        scale: &usize,
-        text_color: &u32,
+        scale: usize,
+        text_color: u32,
     ) {
         for (i, c) in text.chars().enumerate() {
             let index = match c {
@@ -2224,12 +2224,12 @@ pub mod draw {
                         let py = y + row * scale;
 
                         // Draw scaled pixel
-                        for dy in 0..(*scale) {
-                            for dx in 0..(*scale) {
+                        for dy in 0..scale {
+                            for dx in 0..scale {
                                 let sx = px + dx;
                                 let sy = py + dy;
-                                if sx < *width && sy < *height {
-                                    buffer[sy * width + sx] = *text_color; // White pixel
+                                if sx < width && sy < height {
+                                    buffer[sy * width + sx] = text_color; // White pixel
                                 }
                             }
                         }
@@ -2271,6 +2271,139 @@ pub mod draw {
         }
         grid_points
     }
+
+    pub fn draw_rounded_rectangle(
+        buffer: &mut Vec<u32>,
+        buffer_width: usize,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        radius: usize,
+        color: u32,
+        background_color: u32,
+    ) {
+        // Draw rounded corners with anti-aliasing
+        draw_circle_quarter_aa(
+            buffer,
+            buffer_width,
+            x + radius,
+            y + radius,
+            radius,
+            color,
+            background_color,
+            true,
+            true,
+        ); // Top-left
+        draw_circle_quarter_aa(
+            buffer,
+            buffer_width,
+            x + width - radius - 1,
+            y + radius,
+            radius,
+            color,
+            background_color,
+            false,
+            true,
+        ); // Top-right
+        draw_circle_quarter_aa(
+            buffer,
+            buffer_width,
+            x + radius,
+            y + height - radius - 1,
+            radius,
+            color,
+            background_color,
+            true,
+            false,
+        ); // Bottom-left
+        draw_circle_quarter_aa(
+            buffer,
+            buffer_width,
+            x + width - radius - 1,
+            y + height - radius - 1,
+            radius,
+            color,
+            background_color,
+            false,
+            false,
+        ); // Bottom-right
+
+        // Fill horizontal parts (top and bottom)
+        for dy in 0..radius {
+            for dx in (x + radius)..(x + width - radius) {
+                set_pixel(buffer, buffer_width, dx, y + dy, color); // Top part
+                set_pixel(buffer, buffer_width, dx, y + height - dy - 1, color);
+                // Bottom part
+            }
+        }
+
+        // Fill vertical middle part
+        for dy in (y + radius)..(y + height - radius) {
+            for dx in x..(x + width) {
+                set_pixel(buffer, buffer_width, dx, dy, color);
+            }
+        }
+    }
+
+    // Function to draw an anti-aliased quarter-circle for a specific corner
+    fn draw_circle_quarter_aa(
+        buffer: &mut Vec<u32>,
+        buffer_width: usize,
+        cx: usize,
+        cy: usize,
+        radius: usize,
+        color: u32,
+        background_color: u32,
+        is_left: bool,
+        is_top: bool,
+    ) {
+        for y in 0..=radius {
+            for x in 0..=radius {
+                let distance = ((x * x + y * y) as f64).sqrt(); // Euclidean distance
+                let dist_to_edge = radius as f64 - distance;
+
+                if dist_to_edge >= 0.0 {
+                    // Inside the circle
+                    let px = if is_left { cx - x } else { cx + x };
+                    let py = if is_top { cy - y } else { cy + y };
+                    set_pixel(buffer, buffer_width, px, py, color);
+                } else if dist_to_edge > -1.0 {
+                    // Edge pixel: blend color
+                    let alpha = 1.0 + dist_to_edge; // alpha ranges from 0 to 1
+                    let px = if is_left { cx - x } else { cx + x };
+                    let py = if is_top { cy - y } else { cy + y };
+                    let blended_color = blend_colors(color, background_color, alpha);
+                    set_pixel(buffer, buffer_width, px, py, blended_color);
+                }
+            }
+        }
+    }
+
+    // Function to blend two colors based on alpha
+    fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
+        let fg_r = ((foreground >> 16) & 0xFF) as f64;
+        let fg_g = ((foreground >> 8) & 0xFF) as f64;
+        let fg_b = (foreground & 0xFF) as f64;
+
+        let bg_r = ((background >> 16) & 0xFF) as f64;
+        let bg_g = ((background >> 8) & 0xFF) as f64;
+        let bg_b = (background & 0xFF) as f64;
+
+        let r = (alpha * fg_r + (1.0 - alpha) * bg_r) as u32;
+        let g = (alpha * fg_g + (1.0 - alpha) * bg_g) as u32;
+        let b = (alpha * fg_b + (1.0 - alpha) * bg_b) as u32;
+
+        (0xFF << 24) | (r << 16) | (g << 8) | b // ARGB format
+    }
+
+    // Function to safely set a pixel in the buffer
+    fn set_pixel(buffer: &mut Vec<u32>, buffer_width: usize, x: usize, y: usize, color: u32) {
+        if x < buffer_width && y < buffer.len() / buffer_width {
+            buffer[y * buffer_width + x] = color;
+        }
+    }
+
     use crate::render_tools::rendering_object::Vertex;
     use crate::render_tools::visualization_v3::Camera;
     /// Draw a Gimball from a CPlane and a scalar value.
@@ -2322,7 +2455,7 @@ pub mod draw {
             (Vertex::new(0.000, -0.000, 0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
             (Vertex::new(0.250, 0.000, -0.000) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
         ];
-        // mutate the static data of triangles points on the CPlane location. 
+        // mutate the static data of triangles points on the CPlane location.
         arrow_x.iter_mut().for_each(|vertex| {
             *vertex = plane
                 .point_on_plane(vertex.x, vertex.y, vertex.z)
