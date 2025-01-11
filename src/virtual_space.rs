@@ -42,8 +42,8 @@ use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
 use crate::rust3d::draw;
-use crate::rust3d::{self, geometry::*};
 use crate::rust3d::transformation;
+use crate::rust3d::{self, geometry::*};
 use core::f64;
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
@@ -59,10 +59,10 @@ pub struct Virtual_space {
     pub file_path: Option<String>,
     pub unit_scale: Unit_scale,
     pub display: Display_config,
-    object_list: Vec<Arc<Mutex<Object3d>>>, 
+    object_list: Vec<Arc<Mutex<Object3d>>>,
     pub layers: Vec<LayerVisibility>,
     scene_state: VirtualSpaceState,
-    uid_list:Mutex<Vec<usize>>,
+    uid_list: Mutex<Vec<usize>>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,22 +82,22 @@ impl Virtual_space {
             object_list: Vec::new(),
             layers: Vec::new(),
             scene_state: VirtualSpaceState::SceneNeedUpdate,
-            uid_list:Mutex::new(vec![0]),
+            uid_list: Mutex::new(vec![0]),
         }
     }
 
     /// Add a new object to the list.
-    pub fn add_obj(&mut self, mut object:Object3d) {
+    pub fn add_obj(&mut self, mut object: Object3d) {
         // Increment the last unique id list number by 1 and add it to the list.
-        if let Ok(mut m) = self.uid_list.lock(){ 
-        let new_id =m[m.len()-1] + 1usize; 
-        m.push(new_id);
-        // Assign last unique id number to the object.
-        object.id = new_id;
-        // push into the vector.
-        self.object_list.push(Arc::new(Mutex::new(object)));
-        // acknowledege.
-        self.scene_state = VirtualSpaceState::SceneNeedUpdate;
+        if let Ok(mut m) = self.uid_list.lock() {
+            let new_id = m[m.len() - 1] + 1usize;
+            m.push(new_id);
+            // Assign last unique id number to the object.
+            object.id = new_id;
+            // push into the vector.
+            self.object_list.push(Arc::new(Mutex::new(object)));
+            // acknowledege.
+            self.scene_state = VirtualSpaceState::SceneNeedUpdate;
         }
     }
 
@@ -266,21 +266,20 @@ impl Virtual_space {
 
     /// Clean the stack of empty elements.
     pub fn clean_stack(&mut self) {
-        self.object_list
-            .retain(|obj| {
-                if let Some(m) = obj.lock().ok(){
-                     if m.data.is_none(){
-                         // anti patern negate equality to remove the equality.
-                         // Clean uid list.
-                         if let Ok(mut m2) = self.uid_list.lock(){
-                            m2.retain(|id| *id != m.id);
-                         }
-                     }
-                     m.data.is_some()
-                }else{
-                    true
+        self.object_list.retain(|obj| {
+            if let Some(m) = obj.lock().ok() {
+                if m.data.is_none() {
+                    // anti patern negate equality to remove the equality.
+                    // Clean uid list.
+                    if let Ok(mut m2) = self.uid_list.lock() {
+                        m2.retain(|id| *id != m.id);
+                    }
                 }
-            });
+                m.data.is_some()
+            } else {
+                true
+            }
+        });
         self.scene_state = VirtualSpaceState::SceneNeedUpdate;
     }
 }
@@ -535,7 +534,7 @@ struct LayerVisibility {
  * from virtual space instance it should not
  * the function must render only object
  * from  data_to_render stack.
- * ( the idea is that the next thread process 
+ * ( the idea is that the next thread process
  * an update data for rendering. )
  */
 
@@ -709,21 +708,43 @@ impl DisplayPipeLine {
                         }
                     }
                 }
-               ////////////////////////////////////////////////////////////////
-              draw::draw_rounded_rectangle(&mut buffer,
+                ////////////////////////////////////////////////////////////////
+                draw::draw_rectangle(
+                    &mut buffer,
                     screen_width,
-                    screen_width/2-200,
+                    screen_height,
+                    0,
+                    770,
+                    900,
+                    30,
+                    Color::convert_rgba_color(0, 0, 0, 1.0, background_color),
+                );
+                ////////////////////////////////////////////////////////////////
+                draw::draw_rounded_rectangle(
+                    &mut buffer,
+                    screen_width,
+                    screen_width / 2 - 200,
                     10,
                     400,
                     35,
-                    5, 
-                    Color::convert_rgba_color(0,0, 0,0.4,background_color),
-                    background_color);
+                    5,
+                    Color::convert_rgba_color(0, 0, 0, 0.4, background_color),
+                    background_color,
+                );
                 // Update buffer.
-                draw::draw_text(&mut buffer, 800, 900, screen_width/2-150, 20, "Press Arrow Key to rotate", 2, 0);
+                draw::draw_text(
+                    &mut buffer,
+                    800,
+                    900,
+                    screen_width / 2 - 150,
+                    20,
+                    "Press Arrow Key to rotate",
+                    2,
+                    0,
+                );
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
-                    .unwrap(); 
+                    .unwrap();
             }
         };
     }

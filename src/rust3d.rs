@@ -2240,11 +2240,9 @@ pub mod draw {
     }
 
     /*
-     * Draw a contextual Grid representing the gradual depth in
-     * a static place in world Coordinates
-     * ( providing relative orientation to world when every
-     *  thing will spin or move while in conception phase
-     *  or visual evaluation phase ).
+     * Draw a contextual Grid graphing a unit system intervals.
+     * (the origin point is in the middle of the grid holding
+     * positive and negative domain on each relative sides.)
      */
     use super::geometry::CPlane;
     pub fn draw_3d_grid(
@@ -2272,6 +2270,28 @@ pub mod draw {
         grid_points
     }
 
+    /// Draw a very basic rectangle.
+    pub fn draw_rectangle(
+        buffer: &mut Vec<u32>,
+        buffer_width: usize,
+        buffer_height: usize,
+        position_x: usize,
+        position_y: usize,
+        width: usize,
+        height: usize,
+        color: u32,
+    ) {
+        for y in position_y..position_y + height {
+            for x in position_x..position_x + width {
+                if x < buffer_width && y < buffer_height {
+                    // Ensure within bounds
+                    buffer[y * buffer_width + x] = color;
+                }
+            }
+        }
+    }
+
+    /// Draw a rectangle with rounded corner.
     pub fn draw_rounded_rectangle(
         buffer: &mut Vec<u32>,
         buffer_width: usize,
@@ -2448,8 +2468,8 @@ pub mod draw {
                 );
             }
         }
-        //Draw triangles arrows on CPlane (uvn)
-        //below are unit triangles points from normalized basis system.
+        // Draw triangles arrows on CPlane (uvn)
+        // below are unit triangles points from normalized basis system.
         let mut arrow_x = vec![
             (Vertex::new(0.000, 0.000, -0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
             (Vertex::new(0.000, -0.000, 0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
@@ -2574,7 +2594,7 @@ pub mod draw {
         ///////////////////////////////////////////////////////////////////////////////////////
     }
 
-    /// Draw a circle.
+    /// Describe a circle With Point 3d.
     pub fn draw_3d_circle(origin: Point3d, radius: f64, step: f64) -> Vec<Point3d> {
         let mut increm = 0.0f64;
         let mut circle_pts = Vec::new();
@@ -2696,6 +2716,7 @@ pub mod draw {
             dx,
         })
     }
+
     pub fn draw_triangle_optimized(
         buffer: &mut Vec<u32>,
         width: usize,
