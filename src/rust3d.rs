@@ -2283,8 +2283,8 @@ pub mod draw {
     ) {
         for y in position_y..position_y + height {
             for x in position_x..position_x + width {
+                // Ensure rectangle is in the buffer space.
                 if x < buffer_width && y < buffer_height {
-                    // Ensure within bounds
                     buffer[y * buffer_width + x] = color;
                 }
             }
