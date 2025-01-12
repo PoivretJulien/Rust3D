@@ -3064,7 +3064,7 @@ mod test {
         let point = Point3d::new(7.812578, 4.543698, 23.058283);
         let direction = Vector3d::new(-1.398849, 0.106953, -0.982613);
         let plane_origin = Point3d::new(-8.015905, -1.866453, 5.80651);
-        let plane_normal = Vector3d::new(0.65694, -0.31293, 0.685934);
+        let mut plane_normal = Vector3d::new(0.65694, -0.31293, 0.685934);
         let plane = CPlane::new(&plane_origin, &plane_normal);
         let expected_result = Point3d::new(-9.583205, 5.873738, 10.838721);
         // assert_eq!(expected_result,intersect_line_with_plane(&point, &direction, &plane).unwrap());
@@ -3073,7 +3073,30 @@ mod test {
                 assert!(true);
             } else {
                 assert!(false);
+                assert_eq!(result_point,expected_result);
             }
+        }else{
+           assert!(false);
+        }
+    }
+    #[test]
+    fn test_ray_trace_v_b() {
+        use super::intersection::*;
+        let point = Point3d::new(15.417647, 4.098069, 11.565836);
+        let direction = Vector3d::new(-6.509447, -2.89155, -3.065556);
+        let plane_origin = Point3d::new(-5.598372, -15.314516, -6.014116);
+        let mut plane_normal = Vector3d::new(0.887628, 0.298853, 0.350434);     //plane_normal = -plane_normal;
+        let plane = CPlane::new(&plane_origin, &plane_normal);
+        let expected_result = Point3d::new(-10.410072, -7.374817, -0.597459);
+        // assert_eq!(expected_result,intersect_line_with_plane(&point, &direction, &plane).unwrap());
+        if let Some(result_point) = intersect_ray_with_plane(&point, &direction, &plane) {
+            if (result_point - expected_result).Length().abs() < 1e-4 {
+                assert!(true);
+            } else {
+                assert_eq!(result_point,expected_result);
+            }
+        }else{
+           assert!(false);
         }
     }
     use crate::render_tools::visualization_v3::coloring::Color;
