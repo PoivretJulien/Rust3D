@@ -316,6 +316,37 @@ pub mod geometry {
             }
         }
 
+        // the 3 following methods are alias for keeping
+        // habits from other 3d Api.
+
+        /// Same as unitize
+        pub fn magnitude(&self) -> f64 {
+            (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt()
+        }
+
+        /// Normalize the point as a vector
+        /// (equivalent to unitize_b for Vector3d)
+        /// this remove ambiguity when point 3d is use as vector
+        /// ( to avoid sqrt penalty on magnetude creation when using Vector3d )
+        /// - it's recommended to use Vertex for that.
+        pub fn normalize(&self) -> Self {
+            let mag = self.magnitude();
+            if mag > std::f64::EPSILON {
+                Vector3d::new(self.X / mag, self.Y / mag, self.Z / mag)
+            } else {
+                Vector3d::new(0.0, 0.0, 0.0)
+            }
+        }
+
+        /// Compute the cross product of two vectors
+        pub fn cross(&self, other: &Vector3d) -> Self {
+            Vector3d::new(
+                self.Y * other.Z - self.Z * other.Y,
+                self.Z * other.X - self.X * other.Z,
+                self.X * other.Y - self.Y * other.X,
+            )
+        }
+
         /// Test if a vector point to the direction of an other vector.
         /// # Arguments
         /// - ref &self,
@@ -3073,10 +3104,10 @@ mod test {
                 assert!(true);
             } else {
                 assert!(false);
-                assert_eq!(result_point,expected_result);
+                assert_eq!(result_point, expected_result);
             }
-        }else{
-           assert!(false);
+        } else {
+            assert!(false);
         }
     }
     #[test]
@@ -3085,7 +3116,7 @@ mod test {
         let point = Point3d::new(15.417647, 4.098069, 11.565836);
         let direction = Vector3d::new(-6.509447, -2.89155, -3.065556);
         let plane_origin = Point3d::new(-5.598372, -15.314516, -6.014116);
-        let mut plane_normal = Vector3d::new(0.887628, 0.298853, 0.350434);     //plane_normal = -plane_normal;
+        let mut plane_normal = Vector3d::new(0.887628, 0.298853, 0.350434); //plane_normal = -plane_normal;
         let plane = CPlane::new(&plane_origin, &plane_normal);
         let expected_result = Point3d::new(-10.410072, -7.374817, -0.597459);
         // assert_eq!(expected_result,intersect_line_with_plane(&point, &direction, &plane).unwrap());
@@ -3093,10 +3124,10 @@ mod test {
             if (result_point - expected_result).Length().abs() < 1e-4 {
                 assert!(true);
             } else {
-                assert_eq!(result_point,expected_result);
+                assert_eq!(result_point, expected_result);
             }
-        }else{
-           assert!(false);
+        } else {
+            assert!(false);
         }
     }
     use crate::render_tools::visualization_v3::coloring::Color;
