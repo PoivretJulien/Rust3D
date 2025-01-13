@@ -2403,7 +2403,8 @@ pub mod draw {
             }
         }
     }
-    /// experimental aa does not work great...
+
+    /// experimental 
     pub fn draw_anti_aliased_disc(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2415,19 +2416,28 @@ pub mod draw {
         bg_color: u32,
     ) {
         let radius_squared = radius * radius;
-        for y in 0..cy + radius as usize + 10{
-            for x in 0..cx + radius as usize + 10 {
+        const AA_T:usize = 150;
+        for y in (cy-radius as usize - AA_T)..(cy + radius as usize + AA_T){
+            for x in (cx-radius as usize - AA_T)..(cx + radius as usize + AA_T) {
                 // Calculate the distance of the pixel from the circle center
                 let dx = x as f64 - cx as f64;
                 let dy = y as f64 - cy as f64;
                 let distance_squared = dx * dx + dy * dy;
 
-                if distance_squared <= radius_squared {
+                if distance_squared <= radius_squared + (AA_T as f64) {
                     // Calculate the distance from the exact edge for anti-aliasing
                     let distance = distance_squared.sqrt();
                     let alpha = 1.0 - (distance - radius).clamp(0.0, 1.0);
                     // Blend the pixel color with the background
                     let blended_color = blend_colors(color, bg_color, alpha);
+                    //println!("{distance}");
+                    /*
+                    if alpha< 1.0{
+                        println!("Alpha test -> {alpha}");
+                    }*/
+                    if alpha == 0.0 {
+                        continue;
+                    }
                     // Write the blended color to the buffer
                     if x < width && y < height {
                         buffer[y * width + x] = blended_color;
@@ -2437,7 +2447,7 @@ pub mod draw {
         }
     }
 
-    /// experimental aa does not work great...
+    /// experimental 
     pub fn draw_anti_aliased_circle(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2455,15 +2465,16 @@ pub mod draw {
         let r_outer_squared = r_outer * r_outer;
         let r_inner_squared = r_inner * r_inner;
 
-        for y in 0..cy + radius as usize + 10 {
-            for x in 0..cx + radius as usize + 10 {
+        const AA_T:usize = 80;
+        for y in (cy-radius as usize - AA_T)..(cy + radius as usize + AA_T) {
+            for x in (cx-radius as usize - AA_T)..(cx + radius as usize + AA_T) {
                 // Calculate the distance of the pixel from the circle center
                 let dx = x as f64 - cx as f64;
                 let dy = y as f64 - cy as f64;
                 let distance_squared = dx * dx + dy * dy;
 
                 // Check if the pixel is within the ring (between inner and outer radii)
-                if distance_squared <= r_outer_squared && distance_squared >= r_inner_squared {
+                if distance_squared <= (r_outer_squared + AA_T as f64) && distance_squared >= (r_inner_squared - AA_T as f64) {
                     // Calculate the distance from the exact edge for anti-aliasing
                     let distance = distance_squared.sqrt();
                     let alpha = if distance > r_outer {
@@ -2478,6 +2489,9 @@ pub mod draw {
 
                     // Blend the pixel color with the background
                     //let bg_color = 0x000000; // Black background
+                    if alpha == 0.0 {
+                        continue;
+                    } 
                     let blended_color = blend_colors(color, bg_color, alpha);
 
                     // Write the blended color to the buffer

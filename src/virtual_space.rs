@@ -709,27 +709,29 @@ impl DisplayPipeLine {
                     }
                 }
 
-////////////////////////////////////////////////////////////////
-                draw::draw_anti_aliased_disc(&mut buffer,
+                ////////////////////////////////////////////////////////////////
+                draw::draw_anti_aliased_disc(
+                    &mut buffer,
                     screen_width,
                     screen_height,
-                    screen_width - (screen_width/4),
-                    screen_height/4+60, 
+                    screen_width - (screen_width / 4),
+                    screen_height / 4 + 60,
                     30.0,
-                    Color::convert_rgb_color(43,26,105),
-                    background_color
-                    );
-////////////////////////////////////////////////////////////////
-                draw::draw_anti_aliased_circle(&mut buffer,
+                    Color::convert_rgb_color(43, 26, 105),
+                    background_color,
+                );
+                ////////////////////////////////////////////////////////////////
+                draw::draw_anti_aliased_circle(
+                    &mut buffer,
                     screen_width,
                     screen_height,
-                    screen_width-(screen_width/4),
-                    screen_height/4, 
+                    screen_width - (screen_width / 4),
+                    screen_height / 4,
                     30.0,
-                    1.0, 
-                    Color::convert_rgb_color(43,26,105),
-                    background_color
-                    );
+                    3.0,
+                    Color::convert_rgb_color(43, 26, 105),
+                    background_color,
+                );
                 ////////////////////////////////////////////////////////////////
                 draw::draw_rectangle(
                     &mut buffer,
