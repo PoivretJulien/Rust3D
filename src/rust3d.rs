@@ -2415,23 +2415,17 @@ pub mod draw {
         bg_color: u32,
     ) {
         let radius_squared = radius * radius;
-        for y in 0..cy + radius as usize + 3 {
-            for x in 0..cx + radius as usize + 3 {
+        for y in 0..cy + radius as usize + 10{
+            for x in 0..cx + radius as usize + 10 {
                 // Calculate the distance of the pixel from the circle center
                 let dx = x as f64 - cx as f64;
                 let dy = y as f64 - cy as f64;
                 let distance_squared = dx * dx + dy * dy;
 
-                // Check if the pixel is within the ring (between inner and outer radii)
                 if distance_squared <= radius_squared {
                     // Calculate the distance from the exact edge for anti-aliasing
                     let distance = distance_squared.sqrt();
-                    let alpha = if distance > radius {
-                        // Outer edge fade
-                        1.0 - (distance - radius + 30.0).clamp(0.0, 1.0)
-                    } else {
-                        1.0 // Fully opaque within the ring
-                    };
+                    let alpha = 1.0 - (distance - radius).clamp(0.0, 1.0);
                     // Blend the pixel color with the background
                     let blended_color = blend_colors(color, bg_color, alpha);
                     // Write the blended color to the buffer
@@ -2461,8 +2455,8 @@ pub mod draw {
         let r_outer_squared = r_outer * r_outer;
         let r_inner_squared = r_inner * r_inner;
 
-        for y in 0..cy + radius as usize + 3 {
-            for x in 0..cx + radius as usize + 3 {
+        for y in 0..cy + radius as usize + 10 {
+            for x in 0..cx + radius as usize + 10 {
                 // Calculate the distance of the pixel from the circle center
                 let dx = x as f64 - cx as f64;
                 let dy = y as f64 - cy as f64;
