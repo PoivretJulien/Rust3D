@@ -2368,6 +2368,7 @@ pub mod draw {
             true,
             false,
         ); // Bottom-left
+
         draw_circle_quarter_aa(
             buffer,
             buffer_width,
@@ -2383,16 +2384,113 @@ pub mod draw {
         // Fill horizontal parts (top and bottom)
         for dy in 0..radius {
             for dx in (x + radius)..(x + width - radius) {
-                set_pixel(buffer, buffer_width, dx, y + dy, color); // Top part
-                set_pixel(buffer, buffer_width, dx, y + height - dy - 1, color);
-                // Bottom part
+                if x < buffer_width && y < buffer.len() / buffer_width {
+                    buffer[(y + dy) * buffer_width + dx] = color;
+                }
+                if x < buffer_width && y < buffer.len() / buffer_width {
+                    buffer[(y + height - dy - 1) * buffer_width + dx] = color;
+                } // Bottom part
             }
         }
 
         // Fill vertical middle part
         for dy in (y + radius)..(y + height - radius) {
             for dx in x..(x + width) {
-                set_pixel(buffer, buffer_width, dx, dy, color);
+                //set_pixel(buffer, buffer_width, dx, dy, color);
+                if x < buffer_width && y < buffer.len() / buffer_width {
+                    buffer[dy * buffer_width + dx] = color;
+                }
+            }
+        }
+    }
+    /// experimental aa does not work great...
+    pub fn draw_anti_aliased_disc(
+        buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        cx: usize,
+        cy: usize,
+        radius: f64,
+        color: u32,
+        bg_color: u32,
+    ) {
+        let radius_squared = radius * radius;
+        for y in 0..cy + radius as usize + 3 {
+            for x in 0..cx + radius as usize + 3 {
+                // Calculate the distance of the pixel from the circle center
+                let dx = x as f64 - cx as f64;
+                let dy = y as f64 - cy as f64;
+                let distance_squared = dx * dx + dy * dy;
+
+                // Check if the pixel is within the ring (between inner and outer radii)
+                if distance_squared <= radius_squared {
+                    // Calculate the distance from the exact edge for anti-aliasing
+                    let distance = distance_squared.sqrt();
+                    let alpha = if distance > radius {
+                        // Outer edge fade
+                        1.0 - (distance - radius + 30.0).clamp(0.0, 1.0)
+                    } else {
+                        1.0 // Fully opaque within the ring
+                    };
+                    // Blend the pixel color with the background
+                    let blended_color = blend_colors(color, bg_color, alpha);
+                    // Write the blended color to the buffer
+                    if x < width && y < height {
+                        buffer[y * width + x] = blended_color;
+                    }
+                }
+            }
+        }
+    }
+
+    /// experimental aa does not work great...
+    pub fn draw_anti_aliased_circle(
+        buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        cx: usize,
+        cy: usize,
+        radius: f64,
+        thickness: f64,
+        color: u32,
+        bg_color: u32,
+    ) {
+        let r_outer = radius;
+        let r_inner = radius - thickness;
+
+        let r_outer_squared = r_outer * r_outer;
+        let r_inner_squared = r_inner * r_inner;
+
+        for y in 0..cy + radius as usize + 3 {
+            for x in 0..cx + radius as usize + 3 {
+                // Calculate the distance of the pixel from the circle center
+                let dx = x as f64 - cx as f64;
+                let dy = y as f64 - cy as f64;
+                let distance_squared = dx * dx + dy * dy;
+
+                // Check if the pixel is within the ring (between inner and outer radii)
+                if distance_squared <= r_outer_squared && distance_squared >= r_inner_squared {
+                    // Calculate the distance from the exact edge for anti-aliasing
+                    let distance = distance_squared.sqrt();
+                    let alpha = if distance > r_outer {
+                        // Outer edge fade
+                        1.0 - (distance - r_outer).clamp(0.0, 1.0)
+                    } else if distance < r_inner {
+                        // Inner edge fade
+                        1.0 - (r_inner - distance).clamp(0.0, 1.0)
+                    } else {
+                        1.0 // Fully opaque within the ring
+                    };
+
+                    // Blend the pixel color with the background
+                    //let bg_color = 0x000000; // Black background
+                    let blended_color = blend_colors(color, bg_color, alpha);
+
+                    // Write the blended color to the buffer
+                    if x < width && y < height {
+                        buffer[y * width + x] = blended_color;
+                    }
+                }
             }
         }
     }
@@ -2418,14 +2516,18 @@ pub mod draw {
                     // Inside the circle
                     let px = if is_left { cx - x } else { cx + x };
                     let py = if is_top { cy - y } else { cy + y };
-                    set_pixel(buffer, buffer_width, px, py, color);
+                    if x < buffer_width && y < buffer.len() / buffer_width {
+                        buffer[py * buffer_width + px] = color;
+                    }
                 } else if dist_to_edge > -1.0 {
                     // Edge pixel: blend color
                     let alpha = 1.0 + dist_to_edge; // alpha ranges from 0 to 1
                     let px = if is_left { cx - x } else { cx + x };
                     let py = if is_top { cy - y } else { cy + y };
-                    let blended_color = blend_colors(color, background_color, alpha);
-                    set_pixel(buffer, buffer_width, px, py, blended_color);
+                    if x < buffer_width && y < buffer.len() / buffer_width {
+                        buffer[py * buffer_width + px] =
+                            blend_colors(color, background_color, alpha);
+                    }
                 }
             }
         }
@@ -2446,13 +2548,6 @@ pub mod draw {
         let b = (alpha * fg_b + (1.0 - alpha) * bg_b) as u32;
 
         (0xFF << 24) | (r << 16) | (g << 8) | b // ARGB format
-    }
-
-    // Function to safely set a pixel in the buffer
-    fn set_pixel(buffer: &mut Vec<u32>, buffer_width: usize, x: usize, y: usize, color: u32) {
-        if x < buffer_width && y < buffer.len() / buffer_width {
-            buffer[y * buffer_width + x] = color;
-        }
     }
 
     use crate::render_tools::rendering_object::Vertex;
