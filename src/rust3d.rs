@@ -2442,7 +2442,21 @@ pub mod draw {
         }
     }
 
-    // not test work in progress.
+    /// Draw a circle with anti-aliasing and minimal computing evaluations.
+    /// # Arguments 
+    /// antialiasing_factor is a an offset value in pixel where the color is 
+    /// blended with the background color for smoother transition.  
+    /// anti aliased factor add pixel to the bouduary circle if circle
+    /// radius + aa_offset is out of the screen the app just not draw the
+    /// circle function tested and working.
+    /// notes:
+    /// an unified draw module with global alpaha system and layers 
+    /// object will be added in a future for now im discovring technics 
+    /// and try to build functional and quality functions without an 
+    /// extended contextual implementation this will come next 
+    /// for now im just learning and build prototype without a clear global 
+    /// oversight... so this draw module is a draft for a future clean module.
+    /// with a global thinking.
     pub fn draw_circle(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2470,8 +2484,8 @@ pub mod draw {
         let faa_offset = aa_offset as f64;
         // Define the boundary (x,y) limit of circle computation.
         let boundary_points_array = [
-            (center_x - radius_aa, center_y + radius_aa),
-            (center_x + radius_aa, center_y - radius_aa),
+            (center_x - radius_aa, center_y - radius_aa),
+            (center_x + radius_aa, center_y + radius_aa),
         ];
         ///////////////////////////////////////////////////////
         // Compute only square containing the circle.
@@ -2515,7 +2529,7 @@ pub mod draw {
         }
     }
 
-    /// experimental
+    /// experimental deprecated.
     pub fn draw_anti_aliased_circle(
         buffer: &mut Vec<u32>,
         width: usize,

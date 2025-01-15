@@ -708,14 +708,23 @@ impl DisplayPipeLine {
                         }
                     }
                 }
-
+                draw::draw_circle(&mut buffer,
+                    screen_width, 
+                    screen_height,
+                    32,
+                    32,
+                    30, 
+                    1,
+                    Color::convert_rgb_color(226, 0,32),
+                    background_color,
+                    2);
                 ////////////////////////////////////////////////////////////////
                 draw::draw_anti_aliased_disc(
                     &mut buffer,
                     screen_width,
                     screen_height,
-                    screen_width - (screen_width / 4),
-                    screen_height / 4 + 60,
+                    200,
+                    200,
                     30.0,
                     Color::convert_rgb_color(43, 26, 105),
                     background_color,
