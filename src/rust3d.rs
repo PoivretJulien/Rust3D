@@ -2404,7 +2404,8 @@ pub mod draw {
             }
         }
     }
-       /// Experimental. 
+
+    /// Experimental.
     pub fn draw_anti_aliased_disc(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2416,15 +2417,14 @@ pub mod draw {
         bg_color: u32,
     ) {
         let radius_squared = radius * radius;
-        const AA_T:usize = 100;
-        for y in (cy-radius as usize - AA_T)..(cy + radius as usize + AA_T){
-            for x in (cx-radius as usize - AA_T)..(cx + radius as usize + AA_T) {
+        const AA_T: usize = 100;
+        for y in (cy - radius as usize - AA_T)..(cy + radius as usize + AA_T) {
+            for x in (cx - radius as usize - AA_T)..(cx + radius as usize + AA_T) {
                 // Calculate the distance of the pixel from the circle center
                 let dx = x as f64 - cx as f64;
                 let dy = y as f64 - cy as f64;
                 let distance_squared = dx * dx + dy * dy;
-
-                if distance_squared <= radius_squared + (AA_T as f64) {
+                if distance_squared <= (radius_squared + (AA_T as f64)) {
                     // Calculate the distance from the exact edge for anti-aliasing
                     let distance = distance_squared.sqrt();
                     let alpha = 1.0 - (distance - radius).clamp(0.0, 1.0);
@@ -2434,7 +2434,7 @@ pub mod draw {
                     }
                     let blended_color = blend_colors(color, bg_color, alpha);
                     // Write the blended color to the buffer
-                    if x < width && y < height {
+                    if (x - AA_T) < width && (y - AA_T) < height {
                         buffer[y * width + x] = blended_color;
                     }
                 }
@@ -2442,7 +2442,80 @@ pub mod draw {
         }
     }
 
-    /// experimental 
+    // not test work in progress.
+    pub fn draw_circle(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        screen_height: usize,
+        center_x: usize,
+        center_y: usize,
+        radius: usize,
+        thickness: usize,
+        color: u32,
+        screen_background_color: u32,
+        antialiasing_factor: usize,
+    ) {
+        // Compute base components.
+        ///////////////////////////////////////////////////////
+        let aa_offset = if antialiasing_factor > 0 {
+            1 * antialiasing_factor
+        } else {
+            1
+        };
+        // Define drawing boundary square area of the circle
+        // to minimize computation.
+        let radius_aa = radius + aa_offset;
+        let inner_threshold = (radius - thickness - aa_offset) as f64;
+        let fradius = radius as f64;
+        let faa_offset = aa_offset as f64;
+        // Define the boundary (x,y) limit of circle computation.
+        let boundary_points_array = [
+            (center_x - radius_aa, center_y + radius_aa),
+            (center_x + radius_aa, center_y - radius_aa),
+        ];
+        ///////////////////////////////////////////////////////
+        // Compute only square containing the circle.
+        for y in (boundary_points_array[0].1)..=boundary_points_array[1].1 {
+            for x in (boundary_points_array[0].0)..=(boundary_points_array[1].0) {
+                // Compute Dx and Dy.
+                let dx = (center_x as isize) - (x as isize);
+                let dy = (center_y as isize) - (y as isize);
+                let squared_ditance = ((dx * dx) + (dy * dy)) as f64;
+                // Compute Alpha Value for outer range from radius.
+                let alpha_out = 1.0
+                    - utillity::remap(
+                        (0.0, faa_offset),
+                        (0.0, 1.0),
+                        squared_ditance.sqrt() - fradius,
+                    )
+                    .clamp(0.0, 1.0);
+                // Compute Alpha Value from inner range from radius.
+                let alpha_in = utillity::remap(
+                    (0.0, faa_offset),
+                    (0.0, 1.0),
+                    squared_ditance.sqrt() - inner_threshold,
+                )
+                .clamp(0.0, 1.0);
+                // Evaluate circle border from alpha_in and alpha_out conditions.
+                if (alpha_out > 0.0) && (alpha_in > 0.0) {
+                    let alpha = if alpha_out < 1.0 {
+                        alpha_out
+                    } else if alpha_in < 1.0 {
+                        alpha_in
+                    } else {
+                        alpha_in // (alpha is 1.0 in that case)
+                    };
+                    let blended_color = blend_colors(color, screen_background_color, alpha);
+                    // Write the blended color to the buffer
+                    if (x < screen_width) && (y < screen_height) {
+                        buffer[y * screen_width + x] = blended_color;
+                    }
+                }
+            }
+        }
+    }
+
+    /// experimental
     pub fn draw_anti_aliased_circle(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2460,16 +2533,18 @@ pub mod draw {
         let r_outer_squared = r_outer * r_outer;
         let r_inner_squared = r_inner * r_inner;
 
-        const AA_T:usize = 100;
-        for y in (cy-radius as usize - AA_T)..(cy + radius as usize + AA_T) {
-            for x in (cx-radius as usize - AA_T)..(cx + radius as usize + AA_T) {
+        const AA_T: usize = 100;
+        for y in (cy - radius as usize - AA_T)..(cy + radius as usize + AA_T) {
+            for x in (cx - radius as usize - AA_T)..(cx + radius as usize + AA_T) {
                 // Calculate the distance of the pixel from the circle center
                 let dx = x as f64 - cx as f64;
                 let dy = y as f64 - cy as f64;
                 let distance_squared = dx * dx + dy * dy;
 
                 // Check if the pixel is within the ring (between inner and outer radii)
-                if distance_squared <= (r_outer_squared + AA_T as f64) && distance_squared >= (r_inner_squared - AA_T as f64) {
+                if distance_squared <= (r_outer_squared + AA_T as f64)
+                    && distance_squared >= (r_inner_squared - AA_T as f64)
+                {
                     // Calculate the distance from the exact edge for anti-aliasing
                     let distance = distance_squared.sqrt();
                     let alpha = if distance > r_outer {
@@ -2486,7 +2561,7 @@ pub mod draw {
                     //let bg_color = 0x000000; // Black background
                     if alpha == 0.0 {
                         continue;
-                    } 
+                    }
                     let blended_color = blend_colors(color, bg_color, alpha);
 
                     // Write the blended color to the buffer
@@ -2740,18 +2815,24 @@ pub mod draw {
 
     // A 2D point with (x, y)
     #[derive(Debug, Clone, Copy)]
-    pub struct Point2D {
+    pub struct Point2d {
         pub x: f64,
         pub y: f64,
+    }
+
+    impl Point2d {
+        pub fn new(x: f64, y: f64) -> Self {
+            Self { x, y }
+        }
     }
 
     pub fn draw_triangle_2d_v2(
         buffer: &mut Vec<u32>,
         width: usize,
         height: usize,
-        p0: &Point2D,
-        p1: &Point2D,
-        p2: &Point2D,
+        p0: &Point2d,
+        p1: &Point2d,
+        p2: &Point2d,
         color: u32,
     ) {
         // Sort vertices by y-coordinate
@@ -2786,9 +2867,10 @@ pub mod draw {
             }
         }
     }
+
     pub fn rasterize_edge(
-        edge_start: &Point2D,
-        edge_end: &Point2D,
+        edge_start: &Point2d,
+        edge_end: &Point2d,
         scanline_x: &mut Vec<Vec<usize>>,
     ) {
         let mut x0 = edge_start.x as isize;
@@ -2828,16 +2910,13 @@ pub mod draw {
         pub dx: f64, // Increment in x per scanline
     }
 
-    fn build_edges(p0: &Point2D, p1: &Point2D) -> Option<Edge> {
+    fn build_edges(p0: &Point2d, p1: &Point2d) -> Option<Edge> {
         let (top, bottom) = if p0.y < p1.y { (p0, p1) } else { (p1, p0) };
-
         let dy = bottom.y - top.y;
         if dy == 0.0 {
             return None; // Horizontal line, skip
         }
-
         let dx = (bottom.x - top.x) / dy; // Slope (dx/dy)
-
         Some(Edge {
             y_min: top.y as usize,
             y_max: bottom.y as usize,
@@ -2850,9 +2929,9 @@ pub mod draw {
         buffer: &mut Vec<u32>,
         width: usize,
         height: usize,
-        p0: &Point2D,
-        p1: &Point2D,
-        p2: &Point2D,
+        p0: &Point2d,
+        p1: &Point2d,
+        p2: &Point2d,
         color: u32,
     ) {
         // Sort vertices by y-coordinate
