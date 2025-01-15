@@ -733,6 +733,18 @@ impl DisplayPipeLine {
                     10,
                 );
                 ////////////////////////////////////////////////////////////////
+                draw::draw_disc(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    screen_width / 4,
+                    screen_height / 2,
+                    30,
+                    Color::convert_rgb_color(0, 179, 255),
+                    background_color,
+                    100,
+                );
+                ////////////////////////////////////////////////////////////////
                 draw::draw_anti_aliased_disc(
                     &mut buffer,
                     screen_width,
