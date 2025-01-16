@@ -435,6 +435,7 @@ pub mod geometry {
             self.Length < tolerance
         }
 
+        /// Deprecated use project on Cplane instead
         /// Project a vector on an infinite plane.
         /// # Arguments
         ///   takes plane as an array of two coplanar vectors from a same origin 3d point
