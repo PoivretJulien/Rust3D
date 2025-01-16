@@ -652,7 +652,7 @@ pub mod geometry {
                 v,
             }
         }
-
+        /// Construtor from input copy ideal for inline declaration but inputs are consumed.
         pub fn new_(origin: Point3d, normal: Vector3d) -> Self {
             let normalized_normal = normal.unitize_b();
             // Find a vector that is not parallel to the normal
@@ -1782,6 +1782,7 @@ pub mod transformation {
     use super::geometry::Coordinate3d;
     use super::geometry::Point3d;
     use rayon::prelude::*;
+
     // first basic Euler transformation.////////////////////////////////
     /// Rotate the point from X world axis (Euler rotation).
     /// # Arguments
@@ -2131,6 +2132,7 @@ pub mod transformation {
         }
         result
     }
+    /// Create a 4x3 matix to scale input points relative to a center point
     pub fn scaling_matrix_from_center_4x3<T: Coordinate3d>(
         center: T,
         scale_x: f64,
@@ -2183,7 +2185,7 @@ pub mod transformation {
             .collect()
     }
 
-    /// Deprecated. use vector on Cplane instea.
+    /// Deprecated. use Vector3d method to project on Cplane instead.
     /// Project a 3d point on a 4 Point3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
@@ -2212,21 +2214,22 @@ pub mod transformation {
 */
 //TODO: the Draw method of a NurbsCurve must be in draw module.
 pub mod draw {
-    // Bresenham's line algorithm.
-    // Draw a line between two 2d points on screen.
-    // it's a clever algorithm dynamically plotting
-    // the distance between two points.
-    // - Bresenham's algorithm compute at each loop the direction (x,y)
-    //   of the next 2d point to plot and so, draw a line in
-    //   a (x,y) space and efficiently create the illusion of
-    //   a 3d line moving or rotating
-    //   (if created with a 3d point projected in 2d).
     use super::geometry::Point3d;
     use crate::rust3d::utillity::{self, ilerp};
     use crate::{models_3d::FONT_5X7, render_tools::visualization_v3::coloring::Color};
     use core::f64;
     use std::usize;
 
+    /// Draw a line very fast without antialiasing.
+    /// Bresenham's line algorithm.
+    /// Draw a line between two 2d points on screen.
+    /// it's a clever algorithm dynamically plotting
+    /// the distance between two points.
+    /// - Bresenham's algorithm compute at each loop the direction (x,y)
+    ///   of the next 2d point to plot and so, draw a line in
+    ///   a (x,y) space and efficiently create the illusion of
+    ///   a 3d line moving or rotating
+    ///   (if created with a 3d point projected in 2d).
     pub fn draw_line(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2353,6 +2356,8 @@ pub mod draw {
         }
     }
 
+    /// Draw a very basic text for bsic feedback infrormation 
+    /// not all characters are implemented.
     pub fn draw_text(
         buffer: &mut Vec<u32>,
         height: usize,
@@ -2410,11 +2415,9 @@ pub mod draw {
         }
     }
 
-    /*
-     * Draw a contextual Grid graphing a unit system intervals.
-     * (the origin point is in the middle of the grid holding
-     * positive and negative domain on each relative sides.)
-     */
+    /// Draw a contextual Grid graphing a unit system intervals.
+    /// (the origin point is in the middle of the grid holding
+    /// positive and negative domain on each relative sides.)
     use super::geometry::CPlane;
     pub fn draw_3d_grid(
         plane: &CPlane,
@@ -2441,7 +2444,7 @@ pub mod draw {
         grid_points
     }
 
-    /// Draw a very basic rectangle.
+    /// Draw a very basic rectangle very fast.
     pub fn draw_rectangle(
         buffer: &mut Vec<u32>,
         buffer_width: usize,
@@ -2462,7 +2465,7 @@ pub mod draw {
         }
     }
 
-    /// Draw a rectangle with rounded corner.
+    /// Draw a more advanced rectangle with antialiased rounded corner.
     pub fn draw_rounded_rectangle(
         buffer: &mut Vec<u32>,
         buffer_width: usize,
@@ -2545,15 +2548,7 @@ pub mod draw {
     /// blended with the background color for smoother transition.  
     /// anti aliased factor add pixel to the bouduary circle
     /// note: if circle (radius + aa_offset) is out of the screen the 
-    /// app just not draw the circle function tested and working.
-    /// notes:
-    /// an unified draw module with global alpaha system and layers
-    /// object will be added in a futur for now im discovering technics
-    /// and try to build functional and quality functions without an
-    /// extended contextual implementation this will come next
-    /// for now im just learning and build prototype without a clear global
-    /// oversight yet... so this draw module is a draft for a future clean module.
-    /// with a global thinking an experiences.
+    /// app just not draw the circle. 
     pub fn draw_circle(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2624,7 +2619,14 @@ pub mod draw {
             }
         }
     }
-
+    /// Draw a full disc with anti aliasing for smooth visual effects.
+    /// anti aliasing factor is a border transition added to the radius 
+    /// where pixel color is blended to the background color.
+    /// note:
+    /// if radius + aa factor 
+    /// (which represend the offset of the radius in pixel to compute transition) 
+    /// exceed the buffer frame coordinate screen resilotion the disc is just 
+    /// not rendered.
     pub fn draw_disc(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2681,7 +2683,7 @@ pub mod draw {
         }
     }
 
-    // Function to draw an anti-aliased quarter-circle for a specific corner
+    // private Function to draw an anti-aliased quarter-circle for a specific corner
     fn draw_circle_quarter_aa(
         buffer: &mut Vec<u32>,
         buffer_width: usize,
@@ -2718,7 +2720,7 @@ pub mod draw {
         }
     }
 
-    // Function to blend two colors based on alpha
+    //private function to blend two colors based on alpha
     fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
         let fg_r = ((foreground >> 16) & 0xFF) as f64;
         let fg_g = ((foreground >> 8) & 0xFF) as f64;
@@ -2737,6 +2739,7 @@ pub mod draw {
 
     use crate::render_tools::rendering_object::Vertex;
     use crate::render_tools::visualization_v3::Camera;
+
     /// Draw a Gimball from a CPlane and a scalar value.
     pub fn draw_plane_gimball_3d(
         mut buffer: &mut Vec<u32>,
@@ -2905,7 +2908,8 @@ pub mod draw {
         ///////////////////////////////////////////////////////////////////////////////////////
     }
 
-    /// Describe a circle With Point 3d.
+    /// Describe a circle With Point 3d (this not draw the circle on buffer a function will be
+    /// added soon for that.)
     pub fn draw_3d_circle(origin: Point3d, radius: f64, step: f64) -> Vec<Point3d> {
         let mut increm = 0.0f64;
         let mut circle_pts = Vec::new();
@@ -2932,8 +2936,9 @@ pub mod draw {
             Self { x, y }
         }
     }
-
-    pub fn draw_triangle_2d_v2(
+    // below are private function for other methods 
+    // they will be api public whit better integration.
+    fn draw_triangle_2d_v2(
         buffer: &mut Vec<u32>,
         width: usize,
         height: usize,
@@ -3032,6 +3037,7 @@ pub mod draw {
         })
     }
 
+    /// Draw triangles from 3 vector2d points
     pub fn draw_triangle_optimized(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -3103,7 +3109,7 @@ pub mod draw {
 
 pub mod utillity {
     use core::f64;
-    //Rust have already builtin function.
+    // Rust have already builtin function.
     pub fn degree_to_radians(input_angle_in_degre: &f64) -> f64 {
         (*input_angle_in_degre) * (f64::consts::PI * 2.0) / 360.0
     }
@@ -3111,7 +3117,7 @@ pub mod utillity {
         (*input_angle_in_radians) * 360.0 / (f64::consts::PI * 2.0)
     }
 
-    ///The famous Quake3 Arena algorithm.
+    /// The famous Quake3 Arena algorithm.
     pub fn fast_inverse_square_root(x: f32) -> f32 {
         let threehalfs: f32 = 1.5;
 
@@ -3165,6 +3171,13 @@ pub mod utillity {
     }
 }
 
+
+/*
+ *   Unit Test integration for main structural components as far as i can 
+ *   Every thing graphical is cumbersome to evalutate.
+ *   but essential components will always be there since
+ *   they are always crafted with love.
+ */
 #[cfg(test)]
 mod test {
     use super::geometry::*;
