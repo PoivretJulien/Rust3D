@@ -246,11 +246,11 @@ pub mod geometry {
             self.Length = (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt();
         }
 
-        /// static way to compute vector length.
+        /// Static way to compute vector length.
         /// # Arguments
         /// x:f 64, y:f 64, z:f 64
         /// # Returns
-        /// return a f 64 length distance.
+        /// Return a f 64 length distance.
         pub fn compute_length(x: f64, y: f64, z: f64) -> f64 {
             (x * x + y * y + z * z).sqrt()
         }
@@ -353,7 +353,7 @@ pub mod geometry {
         /// - other_vector:Vector3d (other vector to compare with),
         /// - threshold :f64
         /// (threshold should be closer to one for getting more precision. like: 0.99991)
-        /// #Returns
+        /// # Returns
         /// - true if looking in same direction or false if looking in other direction
         ///   (always from threshold value).
         pub fn is_same_direction(&self, other_vector: &Vector3d, threshold: f64) -> bool {
@@ -1996,7 +1996,7 @@ pub mod transformation {
         ]
     }
 
-    /// Combine multiple transformation matrices into one...
+    /// Combine multiple transformation matrix into one...
     /// since transformation order is not commutative order history must be kept
     /// so a function call from stack queue is required use the macro vec! for that.
     pub fn combine_matrices(matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
@@ -2132,6 +2132,7 @@ pub mod transformation {
         }
         result
     }
+
     /// Create a 4x3 matix to scale input points relative to a center point
     pub fn scaling_matrix_from_center_4x3<T: Coordinate3d>(
         center: T,
@@ -2156,6 +2157,7 @@ pub mod transformation {
             [0.0, 0.0, scale_z, translation_z], // Row 3: scale_z and translation_z
         ]
     }
+
     /// Apply a 4x3 transformation matrix to a vector of points
     pub fn transform_points_4x3<T: Coordinate3d + Send + Sync>(
         transform_matrix: &[[f64; 4]; 3],
@@ -2185,8 +2187,8 @@ pub mod transformation {
             .collect()
     }
 
-    /// Deprecated. use Vector3d method to project on Cplane instead.
-    /// Project a 3d point on a 4 Point3d plane (from the plane Vector Normal)
+    /// Deprecated. use Vector3d method to project on CPlane instead.
+    /// Project a 3d point on a 4 defined Point3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
         let plane = [
@@ -2206,6 +2208,7 @@ pub mod transformation {
         }
     }
 }
+
 /*
  *- Draw are all objects that are manelly related to the 2d Screen
     projected space, some are 3d object but they involve buffer rasterization
@@ -2215,7 +2218,7 @@ pub mod transformation {
 //TODO: the Draw method of a NurbsCurve must be in draw module.
 pub mod draw {
     use super::geometry::Point3d;
-    use crate::rust3d::utillity::{self, ilerp};
+    use crate::rust3d::utillity;
     use crate::{models_3d::FONT_5X7, render_tools::visualization_v3::coloring::Color};
     use core::f64;
     use std::usize;
@@ -2327,9 +2330,9 @@ pub mod draw {
         // Handle the first endpoint
         let xend = x0.round();
         let yend = y0 + gradient * (xend - x0);
-        let xgap = 1.0 - ((x0 + 0.5).fract());
+        //let xgap = 1.0 - ((x0 + 0.5).fract());
         let xpxl1 = xend as usize;
-        let ypxl1 = yend.floor() as usize;
+        //let ypxl1 = yend.floor() as usize;
 
         let mut intery = yend + gradient;
 
