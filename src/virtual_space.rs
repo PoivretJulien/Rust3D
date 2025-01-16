@@ -762,7 +762,6 @@ impl DisplayPipeLine {
                     35,
                     5,
                     Color::convert_rgba_color(0, 0, 0, 0.4, background_color),
-                    background_color,
                 );
                 draw::draw_anti_aliased_line(
                     &mut buffer,

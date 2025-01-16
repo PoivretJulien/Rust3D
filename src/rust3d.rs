@@ -2470,7 +2470,6 @@ pub mod draw {
         height: usize,
         radius: usize,
         color: u32,
-        background_color: u32,
     ) {
         // Draw rounded corners with anti-aliasing
         draw_circle_quarter_aa(
@@ -2480,7 +2479,6 @@ pub mod draw {
             y + radius,
             radius,
             color,
-            background_color,
             true,
             true,
         ); // Top-left
@@ -2491,7 +2489,6 @@ pub mod draw {
             y + radius,
             radius,
             color,
-            background_color,
             false,
             true,
         ); // Top-right
@@ -2502,7 +2499,6 @@ pub mod draw {
             y + height - radius - 1,
             radius,
             color,
-            background_color,
             true,
             false,
         ); // Bottom-left
@@ -2514,7 +2510,6 @@ pub mod draw {
             y + height - radius - 1,
             radius,
             color,
-            background_color,
             false,
             false,
         ); // Bottom-right
@@ -2692,7 +2687,6 @@ pub mod draw {
         cy: usize,
         radius: usize,
         color: u32,
-        background_color: u32,
         is_left: bool,
         is_top: bool,
     ) {
@@ -2715,7 +2709,7 @@ pub mod draw {
                     let py = if is_top { cy - y } else { cy + y };
                     if x < buffer_width && y < buffer.len() / buffer_width {
                         buffer[py * buffer_width + px] =
-                            blend_colors(color, background_color, alpha);
+                            blend_colors(color, buffer[y * buffer_width + x], alpha);
                     }
                 }
             }
