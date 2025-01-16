@@ -761,7 +761,7 @@ impl DisplayPipeLine {
                     770,
                     900,
                     30,
-                    Color::convert_rgba_color(0, 0, 0, 1.0, background_color),
+                    Color::convert_rgb_color(0, 0, 0),
                 );
                 ////////////////////////////////////////////////////////////////
                 draw::draw_rounded_rectangle(
@@ -772,7 +772,7 @@ impl DisplayPipeLine {
                     400,
                     35,
                     5,
-                    Color::convert_rgba_color(0, 0, 0, 0.4, background_color),
+                    Color::convert_rgb_color(0, 0, 0),
                 );
                 draw::draw_anti_aliased_line(
                     &mut buffer,

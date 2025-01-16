@@ -2279,6 +2279,7 @@ pub mod draw {
     }
 
     /// Draws an anti-aliased line with thickness
+    /// based on Xiaolin Wu's algorithm
     pub fn draw_anti_aliased_line(
         buffer: &mut Vec<u32>,
         screen_width: usize,
