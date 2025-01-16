@@ -763,7 +763,7 @@ impl DisplayPipeLine {
                     screen_width - (screen_width / 4),
                     screen_height / 4,
                     30.0,
-                    2.0,
+                    1.0,
                     Color::convert_rgb_color(43, 26, 105),
                     background_color,
                 );

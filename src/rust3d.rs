@@ -31,7 +31,7 @@ pub mod geometry {
             Self { X: x, Y: y, Z: z }
         }
 
-        /// Test if a point is on a plane.
+        /// Test if a point is on a plane define by 4 corners points.
         pub fn is_on_plane(&self, plane: &[Point3d; 4]) -> bool {
             let normal =
                 Vector3d::cross_product(&((*plane)[1] - (*plane)[0]), &((*plane)[3] - (*plane)[0]));
@@ -364,7 +364,7 @@ pub mod geometry {
             }
         }
 
-        /// return the angle between two vectors
+        /// Return the angle between two vectors
         pub fn compute_angle(vector_a: &Vector3d, vector_b: &Vector3d) -> f64 {
             f64::acos(
                 ((*vector_a) * (*vector_b))
@@ -429,7 +429,8 @@ pub mod geometry {
 
             (v_perpendicular * cos_theta) + v_rotated_perpendicular + v_parallel
         }
-        /// Checks if a vector is (approximately) zero
+
+        /// Checks if a vector is (approximately) zero.
         pub fn is_zero(&self, tolerance: f64) -> bool {
             self.Length < tolerance
         }
@@ -452,17 +453,29 @@ pub mod geometry {
                 None
             }
         }
+
+        /// Project a vector on a CPlane.
+        /// # Arguments
+        ///   a CPlane as infinite plane representation.
+        /// # Returns
+        ///   a projected vector on the CPlane.
+        pub fn project_on_cplane(&self, plane: &CPlane) -> Vector3d {
+            (*self) - (plane.normal * ((*self) * plane.normal))
+        }
+
         #[inline(always)]
         /// Return a standardized output.
         pub fn to_vertex(self) -> Vertex {
             Vertex::new(self.X, self.Y, self.Z)
         }
+
         #[inline(always)]
         /// Return a standardized output.
         pub fn to_tuple(self) -> (f64, f64, f64) {
             (self.X, self.Y, self.Z)
         }
     }
+
     impl Neg for Vector3d {
         type Output = Self;
         fn neg(self) -> Self::Output {
@@ -474,6 +487,7 @@ pub mod geometry {
             }
         }
     }
+
     impl Mul for Vector3d {
         type Output = f64;
         fn mul(self, vector: Vector3d) -> f64 {
@@ -492,6 +506,13 @@ pub mod geometry {
         type Output = Self;
         fn add(self, vector: Vector3d) -> Self {
             Vector3d::new(self.X + vector.X, self.Y + vector.Y, self.Z + vector.Z)
+        }
+    }
+
+    impl Add<Point3d> for Vector3d {
+        type Output = Point3d;
+        fn add(self, point: Point3d) -> Self::Output {
+            Point3d::new(self.X + point.X, self.Y + point.Y, self.Z + point.Z)
         }
     }
 
@@ -524,7 +545,8 @@ pub mod geometry {
         }
     }
 
-    // Point3d, Vector3d, Vertex are bound to Coordinate3d.
+    /// Point3d, Vector3d, Vertex are bound to Coordinate3d.
+    /// act as an interface for some functions.
     pub trait Coordinate3d {
         type Output;
         fn new(x: f64, y: f64, z: f64) -> Self::Output;
@@ -551,6 +573,7 @@ pub mod geometry {
             (self.X, self.Y, self.Z)
         }
     }
+
     impl Coordinate3d for Vector3d {
         type Output = Vector3d;
         fn new(x: f64, y: f64, z: f64) -> Self {
@@ -574,6 +597,7 @@ pub mod geometry {
             (self.X, self.Y, self.Z)
         }
     }
+
     impl Coordinate3d for Vertex {
         type Output = Vertex;
         fn new(x: f64, y: f64, z: f64) -> Self {
@@ -592,6 +616,11 @@ pub mod geometry {
             (self.x, self.y, self.z)
         }
     }
+
+    /// Construction Plane tools set.
+    /// - a full set of tools, for establishing a
+    ///   reliable local coordinate system
+    ///   from minimal input components.
     #[derive(Debug, Clone, Copy)]
     pub struct CPlane {
         pub origin: Point3d,
@@ -617,6 +646,24 @@ pub mod geometry {
 
             Self {
                 origin: Point3d::new((*origin).X, (*origin).Y, (*origin).Z),
+                normal: normalized_normal,
+                u,
+                v,
+            }
+        }
+
+        pub fn new_(origin: Point3d, normal: Vector3d) -> Self {
+            let normalized_normal = normal.unitize_b();
+            // Find a vector that is not parallel to the normal
+            let mut arbitrary_vector = Vector3d::new(1.0, 0.0, 0.0);
+            if normal.X.abs() > 0.99 {
+                arbitrary_vector = Vector3d::new(0.0, 1.0, 0.0);
+            }
+            // Compute two orthogonal vectors on the plane using the cross product
+            let u = Vector3d::cross_product(&normalized_normal, &arbitrary_vector).unitize_b();
+            let v = Vector3d::cross_product(&normalized_normal, &u).unitize_b();
+            Self {
+                origin: Point3d::new(origin.X, origin.Y, origin.Z),
                 normal: normalized_normal,
                 u,
                 v,
@@ -739,6 +786,13 @@ pub mod geometry {
             write!(f, "CPlane: {0},{1},{2},{3}", origin, u, v, w)
         }
     }
+
+    /// Early implementation of an NurbsCurve.
+    /// only basic functions like radius, curvature, degree and t evaluation
+    /// are working ( cannot join curves  
+    /// weight and knot system are partially implemented ).
+    /// (i need to finish my evaluation system for going deeper conveniently)
+    #[derive(Debug, Clone)]
     pub struct NurbsCurve {
         pub control_points: Vec<Point3d>,
         pub degree: usize,
@@ -747,7 +801,7 @@ pub mod geometry {
     }
 
     impl NurbsCurve {
-        /// Constructor for a NURBS curve
+        /// Constructor for a NURBS curve.
         pub fn new(control_points: Vec<Point3d>, degree: usize) -> Self {
             let n = control_points.len(); // Number of control points
             let num_knots = n + degree + 1; // Number of knots
@@ -778,7 +832,8 @@ pub mod geometry {
                 weights,
             }
         }
-        /// Compute the curvature of the NURBS curve at parameter t
+
+        /// Compute the curvature of the NURBS curve at t parameter.
         pub fn curvature(&self, t: f64) -> f64 {
             let first_derivative = self.numerical_first_derivative(t, 1e-5);
             let second_derivative = self.numerical_second_derivative(t, 1e-5);
@@ -792,6 +847,7 @@ pub mod geometry {
                 cross_product_magnitude / first_derivative_magnitude.powi(3)
             }
         }
+        /// Provide the radius of the oscultating circle at a t parameter.
         pub fn radius_of_curvature(&self, t: f64) -> f64 {
             let curvature = self.curvature(t);
             if curvature == 0.0 {
@@ -800,6 +856,7 @@ pub mod geometry {
                 1.0 / curvature
             }
         }
+
         /// Evaluate a NURBS curve at parameter t using the De Boor algorithm
         pub fn evaluate(&self, t: f64) -> Point3d {
             let p = self.degree;
@@ -865,7 +922,7 @@ pub mod geometry {
             n // Default case
         }
 
-        ///!!!!!! not working yet !!!!!!!!!!!!!! private method
+        ///!!!!!! not working yet !!!!!!!!!!!!!! private method DONOT USE Patial implementation.
         /// Evaluate a NURBS curve at parameter `t` and return both the point and tangent vector
         fn evaluate_with_tangent(&self, t: f64) -> Option<(Point3d, Vector3d)> {
             let p = self.degree;
@@ -971,7 +1028,8 @@ pub mod geometry {
 
             Some((point, tangent))
         }
-        /// !!! not finished yet !!! private method.
+
+        /// !!! not finished yet !!! private method. do not use partial implementation.
         /// Evaluate a NURBS curve at parameter `t` and return:
         /// - The evaluated point
         /// - The tangent vector (1st derivative)
@@ -1125,7 +1183,7 @@ pub mod geometry {
         }
 
         /// Describe the path by a list of Point3d.
-        pub fn draw(&self, step_resolution: f64) -> Vec<Point3d> {
+        pub fn describe_path(&self, step_resolution: f64) -> Vec<Point3d> {
             if step_resolution == 0.0 {
                 panic!("Step resolution cannot be 0.0.")
             }
@@ -1137,6 +1195,8 @@ pub mod geometry {
             }
             curve_points
         }
+
+        /// working for now that the one to use.
         pub fn numerical_first_derivative(&self, t: f64, h: f64) -> Point3d {
             let pt_plus_h = self.evaluate(t + h);
             let pt_minus_h = self.evaluate(t - h);
@@ -1146,6 +1206,7 @@ pub mod geometry {
                 (pt_plus_h.Z - pt_minus_h.Z) / (2.0 * h),
             )
         }
+        /// working for now that the one to use.
         pub fn numerical_second_derivative(&self, t: f64, h: f64) -> Point3d {
             let pt_plus_h = self.evaluate(t + h);
             let pt = self.evaluate(t);
@@ -1156,7 +1217,7 @@ pub mod geometry {
                 (pt_plus_h.Z - 2.0 * pt.Z + pt_minus_h.Z) / (h * h),
             )
         }
-        /// Constructor like with OpenNurbs
+        /// Constructor like with OpenNurbs Lib.
         pub fn new_rh(control_points: Vec<Point3d>, degree: usize) -> Self {
             let n = control_points.len(); // Number of control points
             let num_knots = n + degree + 1; // Number of knots = control points + degree + 1
@@ -1230,6 +1291,7 @@ pub mod geometry {
             (self.X, self.Y)
         }
     }
+
     impl fmt::Display for Vector2d {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(f, "Vector2d{{x:{0},y:{1}}}", self.X, self.Y)
@@ -1473,6 +1535,7 @@ pub mod geometry {
 
 pub mod intersection {
     use super::geometry::{CPlane, Point3d, Vector3d};
+    /// - early function deprecated.
     /// Compute intersection of two point projected by two vectors
     /// # Arguments
     /// p1 first points (Point3d), d1 first direction (Vector3d)
@@ -1488,7 +1551,7 @@ pub mod intersection {
     ) -> Option<Point3d> {
         let cross_d1_d2 = Vector3d::cross_product(d1, d2);
         let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
-        if (f64::abs(denom) == 0f64) && !Vector3d::are_coplanar_a(d1, d2) {
+        if !Vector3d::are_coplanar_a(d1, d2) {
             None // if lines never intersect.
         } else {
             let diff = *p2 - *p1; // Make vector delta.
@@ -2118,6 +2181,8 @@ pub mod transformation {
             })
             .collect()
     }
+
+    /// Deprecated. use vector on Cplane instea.
     /// Project a 3d point on a 4 Point3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
         // Make a plane vectors from inputs points.
@@ -3290,6 +3355,23 @@ mod test {
                 assert!(false);
             }
         }
+    }
+    #[test]
+    fn project_vector_on_cplane() {
+        let origin = Point3d::new(9.35028, 4.160783, -12.513656);
+        let normal = Vector3d::new(-0.607828, -0.292475, -0.738244);
+        let plane = CPlane::new(&origin, &normal);
+        let vector = Vector3d::new(-1.883283, 2.49779, -6.130442);
+        let expected_result = Point3d::new(10.469624, 8.103378, -14.997222);
+        ////////////////////////////////////////////////////////////////////////
+        // assert_eq!(expected_result,origin + vector.project_on_cplane(&plane));
+        let result = origin + vector.project_on_cplane(&plane);
+        if (result - expected_result).Length() <= 1e-5 {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+        ////////////////////////////////////////////////////////////////////////
     }
 
     #[test]
