@@ -1017,6 +1017,36 @@ pub mod visualization_v3 {
                 (blended_r << 16) | (blended_g << 8) | blended_b
             }
         }
+
+        /// for further research on color banding effect on 28bit display color depth.
+        fn apply_dithering(buffer: &mut [u32], width: usize, height: usize) {
+            for y in 0..height {
+                for x in 0..width {
+                    let old_pixel = buffer[y * width + x];
+                    let new_pixel = find_closest_palette_color(old_pixel);
+                    buffer[y * width + x] = new_pixel;
+                    let quant_error = old_pixel - new_pixel;
+
+                    if x + 1 < width {
+                        buffer[y * width + x + 1] += quant_error * 7 / 16;
+                    }
+                    if x > 0 && y + 1 < height {
+                        buffer[(y + 1) * width + x - 1] += quant_error * 3 / 16;
+                    }
+                    if y + 1 < height {
+                        buffer[(y + 1) * width + x] += quant_error * 5 / 16;
+                    }
+                    if x + 1 < width && y + 1 < height {
+                        buffer[(y + 1) * width + x + 1] += quant_error * 1 / 16;
+                    }
+                }
+            }
+        }
+
+        fn find_closest_palette_color(pixel: u32) -> u32 {
+            // Implement your palette mapping logic here
+            pixel
+        }
     }
 }
 /*
@@ -1027,7 +1057,7 @@ pub mod visualization_v3 {
  *   - triangles contain only index id of the vertex.
  *   - and normal vectors
  */
-pub mod rendering_object{
+pub mod rendering_object {
     use crate::rust3d::geometry::{Point3d, Vector3d};
     use dashmap::DashMap;
     use iter::{IntoParallelRefMutIterator, ParallelIterator};
@@ -1388,7 +1418,6 @@ pub mod rendering_object{
                 None // Line intersection but not a ray intersection
             }
         }
-        
     }
     use std::path::Path;
     /// A mesh containing vertices and triangles.
@@ -1405,7 +1434,7 @@ pub mod rendering_object{
                 triangles: Vec::new(),
             }
         }
-        pub fn new_with_data(vertices:Vec<Vertex>,triangles:Vec<Triangle>) -> Self {
+        pub fn new_with_data(vertices: Vec<Vertex>, triangles: Vec<Triangle>) -> Self {
             Mesh {
                 vertices,
                 triangles,
@@ -2026,7 +2055,7 @@ pub mod rendering_object{
         }
     }
     /////////////////////////////////////////////////////////////////////////
-    // Ray are base on Vertex so camera for ray is also base on vertex it's 
+    // Ray are base on Vertex so camera for ray is also base on vertex it's
     // DIsplay related then Vertex are so used.
     pub struct Camera {
         position: Vertex,  // Camera position
@@ -2131,5 +2160,3 @@ pub mod rendering_object{
 
 use crate::virtual_space::*;
 use std::sync::Arc;
-
-
