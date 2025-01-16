@@ -2220,6 +2220,11 @@ pub mod draw {
     //   a (x,y) space and efficiently create the illusion of
     //   a 3d line moving or rotating
     //   (if created with a 3d point projected in 2d).
+    use super::geometry::Point3d;
+    use crate::rust3d::utillity::{self, ilerp};
+    use crate::{models_3d::FONT_5X7, render_tools::visualization_v3::coloring::Color};
+    use core::f64;
+    use std::usize;
 
     pub fn draw_line(
         buffer: &mut Vec<u32>,
@@ -2273,11 +2278,78 @@ pub mod draw {
         }
     }
 
-    use super::geometry::Point3d;
-    use crate::rust3d::utillity::{self, ilerp};
-    use crate::{models_3d::FONT_5X7, render_tools::visualization_v3::coloring::Color};
-    use core::f64;
-    use std::usize;
+    /// Draws an anti-aliased line with thickness
+    pub fn draw_anti_aliased_line(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        screen_height: usize,
+        x0: usize,
+        y0: usize,
+        x1: usize,
+        y1: usize,
+        thickness: f64,
+        color: u32,
+    ) {
+        let mut plot = |x: usize, y: usize, intensity: f64| {
+            if x < screen_width && y < screen_height {
+                let idx = y * screen_width + x;
+                let base_color = buffer[idx]; // buffer[y * screen_width +x]
+                let blended_color = blend_colors(color, base_color, intensity);
+                buffer[idx] = blended_color;
+            }
+        };
+
+        // Convert integer coordinates to floating-point for internal calculations
+        let (x0, y0, x1, y1) = (x0 as f64, y0 as f64, x1 as f64, y1 as f64);
+
+        let steep = (y1 - y0).abs() > (x1 - x0).abs();
+
+        let (mut x0, mut y0, mut x1, mut y1) = if steep {
+            (y0, x0, y1, x1) // Swap x and y for steep lines
+        } else {
+            (x0, y0, x1, y1)
+        };
+
+        if x0 > x1 {
+            (x0, x1) = (x1, x0);
+            (y0, y1) = (y1, y0);
+        }
+
+        let dx = x1 - x0;
+        let dy = y1 - y0;
+        let gradient = if dx == 0.0 { 1.0 } else { dy / dx };
+
+        // Handle the first endpoint
+        let xend = x0.round();
+        let yend = y0 + gradient * (xend - x0);
+        let xgap = 1.0 - ((x0 + 0.5).fract());
+        let xpxl1 = xend as usize;
+        let ypxl1 = yend.floor() as usize;
+
+        let mut intery = yend + gradient;
+
+        // Draw the line with thickness
+        let half_thickness = thickness / 2.0;
+        for x in (xpxl1 as usize)..=(x1.round() as usize) {
+            // For each point on the centerline, draw a perpendicular "strip" of pixels
+            for offset in -(half_thickness.ceil() as i32)..=(half_thickness.ceil() as i32) {
+                let distance = (offset as f64).abs(); // Distance from the centerline
+                let intensity = if distance <= half_thickness {
+                    1.0 - (distance / half_thickness) // Linear falloff
+                } else {
+                    0.0
+                };
+
+                if steep {
+                    plot(intery.floor() as usize + offset as usize, x, intensity);
+                } else {
+                    plot(x, intery.floor() as usize + offset as usize, intensity);
+                }
+            }
+
+            intery += gradient;
+        }
+    }
 
     pub fn draw_text(
         buffer: &mut Vec<u32>,
@@ -2470,43 +2542,6 @@ pub mod draw {
         }
     }
 
-    /// Experimental.
-    pub fn draw_anti_aliased_disc(
-        buffer: &mut Vec<u32>,
-        width: usize,
-        height: usize,
-        cx: usize,
-        cy: usize,
-        radius: f64,
-        color: u32,
-        bg_color: u32,
-    ) {
-        let radius_squared = radius * radius;
-        const AA_T: usize = 100;
-        for y in (cy - radius as usize - AA_T)..(cy + radius as usize + AA_T) {
-            for x in (cx - radius as usize - AA_T)..(cx + radius as usize + AA_T) {
-                // Calculate the distance of the pixel from the circle center
-                let dx = x as f64 - cx as f64;
-                let dy = y as f64 - cy as f64;
-                let distance_squared = dx * dx + dy * dy;
-                if distance_squared <= (radius_squared + (AA_T as f64)) {
-                    // Calculate the distance from the exact edge for anti-aliasing
-                    let distance = distance_squared.sqrt();
-                    let alpha = 1.0 - (distance - radius).clamp(0.0, 1.0);
-                    // Blend the pixel color with the background
-                    if alpha <= 0.0 {
-                        continue;
-                    }
-                    let blended_color = blend_colors(color, bg_color, alpha);
-                    // Write the blended color to the buffer
-                    if (x - AA_T) < width && (y - AA_T) < height {
-                        buffer[y * width + x] = blended_color;
-                    }
-                }
-            }
-        }
-    }
-
     /// Draw a circle with anti-aliasing and minimal computing evaluations.
     /// # Arguments
     /// antialiasing_factor is a an offset value in pixel where the color is
@@ -2531,7 +2566,6 @@ pub mod draw {
         radius: usize,
         thickness: usize,
         color: u32,
-        screen_background_color: u32,
         antialiasing_factor: usize,
     ) {
         // Compute base components.
@@ -2584,7 +2618,7 @@ pub mod draw {
                     } else {
                         alpha_in // (alpha is 1.0 in that case)
                     };
-                    let blended_color = blend_colors(color, screen_background_color, alpha);
+                    let blended_color = blend_colors(color, buffer[y * screen_width + x], alpha);
                     // Write the blended color to the buffer
                     if (x < screen_width) && (y < screen_height) {
                         buffer[y * screen_width + x] = blended_color;
@@ -2593,6 +2627,7 @@ pub mod draw {
             }
         }
     }
+
     pub fn draw_disc(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2601,7 +2636,6 @@ pub mod draw {
         center_y: usize,
         radius: usize,
         color: u32,
-        screen_background_color: u32,
         antialiasing_factor: usize,
     ) {
         // Compute base components.
@@ -2639,67 +2673,11 @@ pub mod draw {
                     .clamp(0.0, 1.0);
                 // Evaluate circle border from alpha_out value conditions.
                 if alpha_out > 0.0 {
-                    let blended_color = blend_colors(color, screen_background_color, alpha_out);
+                    let blended_color =
+                        blend_colors(color, buffer[y * screen_width + x], alpha_out);
                     // Write the blended color to the buffer
                     if (x < screen_width) && (y < screen_height) {
                         buffer[y * screen_width + x] = blended_color;
-                    }
-                }
-            }
-        }
-    }
-    /// experimental deprecated.
-    pub fn draw_anti_aliased_circle(
-        buffer: &mut Vec<u32>,
-        width: usize,
-        height: usize,
-        cx: usize,
-        cy: usize,
-        radius: f64,
-        thickness: f64,
-        color: u32,
-        bg_color: u32,
-    ) {
-        let r_outer = radius;
-        let r_inner = radius - thickness;
-
-        let r_outer_squared = r_outer * r_outer;
-        let r_inner_squared = r_inner * r_inner;
-
-        const AA_T: usize = 100;
-        for y in (cy - radius as usize - AA_T)..(cy + radius as usize + AA_T) {
-            for x in (cx - radius as usize - AA_T)..(cx + radius as usize + AA_T) {
-                // Calculate the distance of the pixel from the circle center
-                let dx = x as f64 - cx as f64;
-                let dy = y as f64 - cy as f64;
-                let distance_squared = dx * dx + dy * dy;
-
-                // Check if the pixel is within the ring (between inner and outer radii)
-                if distance_squared <= (r_outer_squared + AA_T as f64)
-                    && distance_squared >= (r_inner_squared - AA_T as f64)
-                {
-                    // Calculate the distance from the exact edge for anti-aliasing
-                    let distance = distance_squared.sqrt();
-                    let alpha = if distance > r_outer {
-                        // Outer edge fade
-                        1.0 - (distance - r_outer).clamp(0.0, 1.0)
-                    } else if distance < r_inner {
-                        // Inner edge fade
-                        1.0 - (r_inner - distance).clamp(0.0, 1.0)
-                    } else {
-                        1.0 // Fully opaque within the ring
-                    };
-
-                    // Blend the pixel color with the background
-                    //let bg_color = 0x000000; // Black background
-                    if alpha == 0.0 {
-                        continue;
-                    }
-                    let blended_color = blend_colors(color, bg_color, alpha);
-
-                    // Write the blended color to the buffer
-                    if x < width && y < height {
-                        buffer[y * width + x] = blended_color;
                     }
                 }
             }

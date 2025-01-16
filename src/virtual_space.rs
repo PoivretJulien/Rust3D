@@ -717,19 +717,17 @@ impl DisplayPipeLine {
                     30,
                     1,
                     Color::convert_rgb_color(226, 0, 32),
-                    background_color,
                     1,
                 );
                 draw::draw_circle(
                     &mut buffer,
                     screen_width,
                     screen_height,
-                    screen_width / 2,
-                    screen_height / 2,
+                    (screen_width / 4) * 3,
+                    (screen_height / 4) * 3,
                     30,
                     1,
                     Color::convert_rgb_color(255, 0, 255),
-                    background_color,
                     10,
                 );
                 ////////////////////////////////////////////////////////////////
@@ -741,31 +739,7 @@ impl DisplayPipeLine {
                     screen_height / 2,
                     30,
                     Color::convert_rgb_color(0, 179, 255),
-                    background_color,
                     100,
-                );
-                ////////////////////////////////////////////////////////////////
-                draw::draw_anti_aliased_disc(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    200,
-                    200,
-                    30.0,
-                    Color::convert_rgb_color(43, 26, 105),
-                    background_color,
-                );
-                ////////////////////////////////////////////////////////////////
-                draw::draw_anti_aliased_circle(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    screen_width - (screen_width / 4),
-                    screen_height / 4,
-                    30.0,
-                    1.0,
-                    Color::convert_rgb_color(43, 26, 105),
-                    background_color,
                 );
                 ////////////////////////////////////////////////////////////////
                 draw::draw_rectangle(
@@ -790,6 +764,18 @@ impl DisplayPipeLine {
                     Color::convert_rgba_color(0, 0, 0, 0.4, background_color),
                     background_color,
                 );
+                draw::draw_anti_aliased_line(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    150,
+                    5,
+                    200,
+                    200,
+                    1.0,
+                    Color::convert_rgb_color(255, 0, 255),
+                );
+
                 // Update buffer.
                 draw::draw_text(
                     &mut buffer,
