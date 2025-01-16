@@ -742,6 +742,17 @@ impl DisplayPipeLine {
                     100,
                 );
                 ////////////////////////////////////////////////////////////////
+                draw::draw_disc(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    (screen_width / 4)*3,
+                    (screen_height / 4)*2,
+                    30,
+                    Color::convert_rgb_color(153, 117, 255),
+                    1,
+                );
+                ////////////////////////////////////////////////////////////////
                 draw::draw_rectangle(
                     &mut buffer,
                     screen_width,
