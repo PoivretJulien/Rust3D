@@ -2359,7 +2359,42 @@ pub mod draw {
         }
     }
 
-    /// Draw a very basic text for bsic feedback infrormation 
+    pub fn draw_anti_aliased_point(
+        buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        x: usize,
+        y: usize,
+        color: u32,
+    ) {
+        let x = x as f64;
+        let y = y as f64;
+        let x_floor = x.floor();
+        let y_floor = y.floor();
+
+        let x_frac = x - x_floor;
+        let y_frac = y - y_floor;
+
+        let x0 = x_floor as isize;
+        let y0 = y_floor as isize;
+        let x1 = x0 + 1;
+        let y1 = y0 + 1;
+
+        let weights = [
+            ((1.0 - x_frac) * (1.0 - y_frac), x0, y0),
+            (x_frac * (1.0 - y_frac), x1, y0),
+            ((1.0 - x_frac) * y_frac, x0, y1),
+            (x_frac * y_frac, x1, y1),
+        ];
+        for &(weight, xi, yi) in &weights {
+            if xi >= 0 && (xi as usize) < width && yi >= 0 && (yi as usize) < height {
+                let index = (yi as usize * width + xi as usize) as usize;
+                buffer[index] = blend_colors(color, buffer[index], weight);
+            }
+        }
+    }
+
+    /// Draw a very basic text for bsic feedback infrormation
     /// not all characters are implemented.
     pub fn draw_text(
         buffer: &mut Vec<u32>,
@@ -2550,8 +2585,8 @@ pub mod draw {
     /// antialiasing_factor is a an offset value in pixel where the color is
     /// blended with the background color for smoother transition.  
     /// anti aliased factor add pixel to the bouduary circle
-    /// note: if circle (radius + aa_offset) is out of the screen the 
-    /// app just not draw the circle. 
+    /// note: if circle (radius + aa_offset) is out of the screen the
+    /// app just not draw the circle.
     pub fn draw_circle(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2623,12 +2658,12 @@ pub mod draw {
         }
     }
     /// Draw a full disc with anti aliasing for smooth visual effects.
-    /// anti aliasing factor is a border transition added to the radius 
+    /// anti aliasing factor is a border transition added to the radius
     /// where pixel color is blended to the background color.
     /// note:
-    /// if radius + aa factor 
-    /// (which represend the offset of the radius in pixel to compute transition) 
-    /// exceed the buffer frame coordinate screen resilotion the disc is just 
+    /// if radius + aa factor
+    /// (which represend the offset of the radius in pixel to compute transition)
+    /// exceed the buffer frame coordinate screen resilotion the disc is just
     /// not rendered.
     pub fn draw_disc(
         buffer: &mut Vec<u32>,
@@ -2939,7 +2974,7 @@ pub mod draw {
             Self { x, y }
         }
     }
-    // below are private function for other methods 
+    // below are private function for other methods
     // they will be api public whit better integration.
     fn draw_triangle_2d_v2(
         buffer: &mut Vec<u32>,
@@ -3174,9 +3209,8 @@ pub mod utillity {
     }
 }
 
-
 /*
- *   Unit Test integration for main structural components as far as i can 
+ *   Unit Test integration for main structural components as far as i can
  *   Every thing graphical is cumbersome to evalutate.
  *   but essential components will always be there since
  *   they are always crafted with love.
