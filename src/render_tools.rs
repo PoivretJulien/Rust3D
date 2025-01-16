@@ -1020,42 +1020,24 @@ pub mod visualization_v3 {
             /// Convert a 32bit color to a 24 bit rounded u32 displayable color.
             /// this should avoid color banding artifact on 24 bits color display.
             pub fn find_closest24bits_color(color: u32) -> u32 {
-                let r = ((((color >> 16) & 0xFF) as f32).round() as i32).clamp(0, 255) as u8;
-                let g = ((((color >> 8) & 0xFF) as f32).round() as i32).clamp(0, 255) as u8;
-                let b = (((color & 0xFF) as f32).round() as i32).clamp(0, 255) as u8;
-                (r << 16) as u32 | (g << 8) as u32 | b as u32
+                let r = ((((color >> 16) & 0xFF) as f32).round() as i32).clamp(0, 255) as u32;
+                let g = ((((color >> 8) & 0xFF) as f32).round() as i32).clamp(0, 255) as u32;
+                let b = (((color & 0xFF) as f32).round() as i32).clamp(0, 255) as u32;
+                (r << 16)  | (g << 8) | b 
             }
 
             /// Convert to 24 bit space.
-            pub fn convert_to_24_bit_space_(color: u32) -> (u8, u8, u8) {
+            pub fn convert_to_24_bit_space(color: u32) -> (u8, u8, u8) {
                 let r = ((((color >> 16) & 0xFF) as f32).round() as i32).clamp(0, 255) as u8;
                 let g = ((((color >> 8) & 0xFF) as f32).round() as i32).clamp(0, 255) as u8;
                 let b = (((color & 0xFF) as f32).round() as i32).clamp(0, 255) as u8;
                 (r, g, b)
             }
 
-            /// This should avoid color banding effect on 28 bit display color depth.
-            /// (i will test it tomorow)
-            pub fn apply_dithering(buffer: &mut [u32], width: usize, height: usize) {
-                for y in 0..height {
-                    for x in 0..width {
-                        let old_pixel = buffer[y * width + x];
-                        let new_pixel = Self::find_closest24bits_color(old_pixel);
-                        buffer[y * width + x] = new_pixel;
-                        let quant_error = old_pixel - new_pixel;
-
-                        if x + 1 < width {
-                            buffer[y * width + x + 1] += quant_error * 7 / 16;
-                        }
-                        if x > 0 && y + 1 < height {
-                            buffer[(y + 1) * width + x - 1] += quant_error * 3 / 16;
-                        }
-                        if y + 1 < height {
-                            buffer[(y + 1) * width + x] += quant_error * 5 / 16;
-                        }
-                        if x + 1 < width && y + 1 < height {
-                            buffer[(y + 1) * width + x + 1] += quant_error * 1 / 16;
-                        }
+            pub fn buffer_filter_24bit_display_color(buffer: &mut Vec<u32>,screen_width: usize,screen_height:usize){
+                for y in 0..screen_height {
+                    for x in 0..screen_width {
+                     buffer[y * screen_width + x] = Self::find_closest24bits_color(buffer[y * screen_width + x]);
                     }
                 }
             }

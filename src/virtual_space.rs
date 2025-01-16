@@ -797,6 +797,7 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
+                Color::buffer_filter_24bit_display_color(&mut buffer, screen_width, screen_height);
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();
