@@ -2541,17 +2541,17 @@ pub mod draw {
     /// # Arguments
     /// antialiasing_factor is a an offset value in pixel where the color is
     /// blended with the background color for smoother transition.  
-    /// anti aliased factor add pixel to the bouduary circle if circle
-    /// radius + aa_offset is out of the screen the app just not draw the
-    /// circle function tested and working.
+    /// anti aliased factor add pixel to the bouduary circle
+    /// note: if circle (radius + aa_offset) is out of the screen the 
+    /// app just not draw the circle function tested and working.
     /// notes:
     /// an unified draw module with global alpaha system and layers
-    /// object will be added in a future for now im discovring technics
+    /// object will be added in a futur for now im discovering technics
     /// and try to build functional and quality functions without an
     /// extended contextual implementation this will come next
     /// for now im just learning and build prototype without a clear global
-    /// oversight... so this draw module is a draft for a future clean module.
-    /// with a global thinking.
+    /// oversight yet... so this draw module is a draft for a future clean module.
+    /// with a global thinking an experiences.
     pub fn draw_circle(
         buffer: &mut Vec<u32>,
         screen_width: usize,
