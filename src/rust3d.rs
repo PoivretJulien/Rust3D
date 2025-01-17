@@ -2359,36 +2359,49 @@ pub mod draw {
         }
     }
 
+    // 
     pub fn draw_anti_aliased_point(
         buffer: &mut Vec<u32>,
         width: usize,
         height: usize,
         x: usize,
         y: usize,
+        aa_offset:f64,
         color: u32,
     ) {
-        let x = x as f64;
-        let y = y as f64;
-        let x_floor = x.floor();
-        let y_floor = y.floor();
+        // Convert usize to f64 for fractional weight evaluation.
+        let x_floor = x as f64;
+        let y_floor = y as f64;
+        let x = x as f64 + aa_offset;
+        let y = y as f64 + aa_offset;
 
+        // Define the fractional part.        
         let x_frac = x - x_floor;
         let y_frac = y - y_floor;
 
+        // Determine the surrounding pixel positions
         let x0 = x_floor as isize;
         let y0 = y_floor as isize;
         let x1 = x0 + 1;
         let y1 = y0 + 1;
 
+        // Define the weights for blending based on 
+        // the area covrage of the point to the pixel 
+        // centers (weight,offset x,offset y). 
         let weights = [
-            ((1.0 - x_frac) * (1.0 - y_frac), x0, y0),
-            (x_frac * (1.0 - y_frac), x1, y0),
-            ((1.0 - x_frac) * y_frac, x0, y1),
-            (x_frac * y_frac, x1, y1),
+            ((1.0 - x_frac) * (1.0 - y_frac), x0, y0), // Top-left pixel
+            (x_frac * (1.0 - y_frac), x1, y0), // Top-right pixel
+            ((1.0 - x_frac) * y_frac, x0, y1), // Bottom-left pixel
+            (x_frac * y_frac, x1, y1), // Bottom-right pixel
         ];
+
+        // Iterate over each surrounding pixel and apply the blended color
         for &(weight, xi, yi) in &weights {
+             // Ensure the pixel is within the image boundaries
             if xi >= 0 && (xi as usize) < width && yi >= 0 && (yi as usize) < height {
+                // Calculate the index in the buffer
                 let index = (yi as usize * width + xi as usize) as usize;
+                // Blend the current pixel color with the new color based on the calculated weight
                 buffer[index] = blend_colors(color, buffer[index], weight);
             }
         }
