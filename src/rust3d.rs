@@ -2285,88 +2285,91 @@ pub mod draw {
         }
     }
 
-    /// Draws an anti-aliased line with thickness
-    /// based on Xiaolin Wu's algorithm
+    /// Draws an anti-aliased line with a specified thickness on a pixel buffer
+    /// using an adaptation of Xiaolin Wu's line algorithm.
     pub fn draw_anti_aliased_line(
-        buffer: &mut Vec<u32>,
-        screen_width: usize,
-        screen_height: usize,
-        x0: usize,
-        y0: usize,
-        x1: usize,
-        y1: usize,
-        thickness: f64,
-        color: u32,
+        buffer: &mut Vec<u32>, // Mutable reference to the pixel buffer
+        screen_width: usize,   // Width of the screen or image in pixels
+        screen_height: usize,  // Height of the screen or image in pixels
+        x0: usize,             // Starting x-coordinate of the line
+        y0: usize,             // Starting y-coordinate of the line
+        x1: usize,             // Ending x-coordinate of the line
+        y1: usize,             // Ending y-coordinate of the line
+        thickness: f64,        // Desired thickness of the line
+        color: u32,            // Color of the line in ARGB format
     ) {
+        // Closure to plot a pixel with a given intensity
         let mut plot = |x: usize, y: usize, intensity: f64| {
+            // Ensure the pixel is within the screen boundaries
             if x < screen_width && y < screen_height {
-                let idx = y * screen_width + x;
-                let base_color = buffer[idx]; // buffer[y * screen_width +x]
-                let blended_color = blend_colors(color, base_color, intensity);
-                buffer[idx] = blended_color;
+                let idx = y * screen_width + x; // Calculate the buffer index
+                let base_color = buffer[idx]; // Get the current pixel color
+                let blended_color = blend_colors(color, base_color, intensity); // Blend colors
+                buffer[idx] = blended_color; // Update the pixel color in the buffer
             }
         };
 
-        // Convert integer coordinates to floating-point for internal calculations
+        // Convert integer coordinates to floating-point for precise calculations
         let (x0, y0, x1, y1) = (x0 as f64, y0 as f64, x1 as f64, y1 as f64);
 
+        // Determine if the line is steep (i.e., slope > 1)
         let steep = (y1 - y0).abs() > (x1 - x0).abs();
 
+        // If the line is steep, swap the x and y coordinates
         let (mut x0, mut y0, mut x1, mut y1) = if steep {
-            (y0, x0, y1, x1) // Swap x and y for steep lines
+            (y0, x0, y1, x1)
         } else {
             (x0, y0, x1, y1)
         };
 
+        // Ensure the line is drawn from left to right
         if x0 > x1 {
             (x0, x1) = (x1, x0);
             (y0, y1) = (y1, y0);
         }
 
-        let dx = x1 - x0;
-        let dy = y1 - y0;
-        let gradient = if dx == 0.0 { 1.0 } else { dy / dx };
+        let dx = x1 - x0; // Difference in x-coordinates
+        let dy = y1 - y0; // Difference in y-coordinates
+        let gradient = if dx == 0.0 { 1.0 } else { dy / dx }; // Calculate the gradient
 
         // Handle the first endpoint
-        let xend = x0.round();
-        let yend = y0 + gradient * (xend - x0);
-        //let xgap = 1.0 - ((x0 + 0.5).fract());
-        let xpxl1 = xend as usize;
-        //let ypxl1 = yend.floor() as usize;
+        let xend = x0.round(); // Round x0 to the nearest integer
+        let yend = y0 + gradient * (xend - x0); // Calculate the corresponding y
+        let xpxl1 = xend as usize; // Integer part of xend
 
-        let mut intery = yend + gradient;
+        let mut intery = yend + gradient; // Initialize the y-intercept for the main loop
 
-        // Draw the line with thickness
+        // Draw the line with the specified thickness
         let half_thickness = thickness / 2.0;
-        for x in (xpxl1 as usize)..=(x1.round() as usize) {
+        for x in xpxl1..=(x1.round() as usize) {
             // For each point on the centerline, draw a perpendicular "strip" of pixels
             for offset in -(half_thickness.ceil() as i32)..=(half_thickness.ceil() as i32) {
                 let distance = (offset as f64).abs(); // Distance from the centerline
                 let intensity = if distance <= half_thickness {
-                    1.0 - (distance / half_thickness) // Linear falloff
+                    1.0 - (distance / half_thickness) // Linear falloff for intensity
                 } else {
                     0.0
                 };
-
                 if steep {
+                    // If the line is steep, plot transposed coordinates
                     plot(intery.floor() as usize + offset as usize, x, intensity);
                 } else {
+                    // Otherwise, plot normal coordinates
                     plot(x, intery.floor() as usize + offset as usize, intensity);
                 }
             }
-
-            intery += gradient;
+            intery += gradient; // Increment the y-intercept
         }
     }
-
-    // 
+    
+    //
     pub fn draw_anti_aliased_point(
         buffer: &mut Vec<u32>,
         width: usize,
         height: usize,
         x: usize,
         y: usize,
-        aa_offset:f64,
+        aa_offset: f64,
         color: u32,
     ) {
         // Convert usize to f64 for fractional weight evaluation.
@@ -2375,7 +2378,7 @@ pub mod draw {
         let x = x as f64 + aa_offset;
         let y = y as f64 + aa_offset;
 
-        // Define the fractional part.        
+        // Define the fractional part.
         let x_frac = x - x_floor;
         let y_frac = y - y_floor;
 
@@ -2385,19 +2388,19 @@ pub mod draw {
         let x1 = x0 + 1;
         let y1 = y0 + 1;
 
-        // Define the weights for blending based on 
-        // the area covrage of the point to the pixel 
-        // centers (weight,offset x,offset y). 
+        // Define the weights for blending based on
+        // the area covrage of the point to the pixel
+        // centers (weight,offset x,offset y).
         let weights = [
             ((1.0 - x_frac) * (1.0 - y_frac), x0, y0), // Top-left pixel
-            (x_frac * (1.0 - y_frac), x1, y0), // Top-right pixel
-            ((1.0 - x_frac) * y_frac, x0, y1), // Bottom-left pixel
-            (x_frac * y_frac, x1, y1), // Bottom-right pixel
+            (x_frac * (1.0 - y_frac), x1, y0),         // Top-right pixel
+            ((1.0 - x_frac) * y_frac, x0, y1),         // Bottom-left pixel
+            (x_frac * y_frac, x1, y1),                 // Bottom-right pixel
         ];
 
         // Iterate over each surrounding pixel and apply the blended color
         for &(weight, xi, yi) in &weights {
-             // Ensure the pixel is within the image boundaries
+            // Ensure the pixel is within the image boundaries
             if xi >= 0 && (xi as usize) < width && yi >= 0 && (yi as usize) < height {
                 // Calculate the index in the buffer
                 let index = (yi as usize * width + xi as usize) as usize;
