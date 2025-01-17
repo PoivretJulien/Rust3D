@@ -1,3 +1,6 @@
+- Update are personal and does not mean a working code, this repository is public but not intended to be public !
+
+
 ------------------------------------------------------------------------------------------
 - A 3D library representing a Point3d and basic Vector3d operations coded in Rust for basic and 
 fast 3D computation with a convenient 'micro 3D engine' allowing graphical representation of the virtual space.
