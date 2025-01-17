@@ -610,12 +610,36 @@ impl DisplayPipeLine {
 
     /*
      Start the conduit init the fb resolution, the buffer memory space,
-     load/updtae the geometry if virtual state is "SceneNeedUpdate",then preprocess
+     load/update the geometry if virtual state is "SceneNeedUpdate",then preprocess
      transformation of the geometry from the user input KEY and finaly
      if conduit need update from the previous loop, project points
      mutate and update the buffer to the screen.
     */
     pub fn start_display_pipeline(&mut self) {
+        // Draw a sine path... for test.
+        let mut sine_path: Vec<(isize,isize)> = Vec::new();
+        let step = 0.005f32;
+        let mut ct = 000;
+        let mut v = 0.0f32;
+        let mut d : Vec<f32> = Vec::new();
+        const SCALAR:f32 = 50.0;
+        const XOFFSET:isize = 100;
+        const YOFFSET:isize = 300;
+        while ct <= 3000 {
+             v += step;
+             d.push((f32::sin(v) * SCALAR));
+             sine_path.push(((v*SCALAR) as isize + XOFFSET, (f32::sin(v) * SCALAR) as isize + YOFFSET ));
+             ct+=1;
+        }
+        // println!("{:?}",d);
+        // panic!();
+
+        // minifb must be lunch in the main thread (i was not aware about that) so the overall
+        // runtime will be simply flipped:
+        // - a thread will be allocated for virtualspace (where geometric interactions will be
+        // computed )
+        // -  the main thread will take care of the display pipe line with mini fb.
+        // i'm focusing on graphical tools for now and try to learn some techniques.
         let thread_data = self.virtual_space.clone();
         if let Ok(m) = &thread_data.lock() {
             let windows_name = m.project_name.clone();
@@ -648,7 +672,7 @@ impl DisplayPipeLine {
                 0.5,   // Near clip plane
                 100.0, // Far clip plane
             );
-            window.set_target_fps(25); // limit to 60 fps.
+            window.set_target_fps(25); // limit to 25 fps max.
             let mut z_angle = 0.0;
             let mut x_angle = 0.0;
             println!("\x1b[2J");
@@ -774,6 +798,7 @@ impl DisplayPipeLine {
                     5,
                     Color::convert_rgb_color(104, 104, 104),
                 );
+                draw::draw_line(&mut buffer, screen_width, (160,15), (210,410), Color::convert_rgb_color(255, 0, 255));
                 draw::draw_anti_aliased_line(
                     &mut buffer,
                     screen_width,
@@ -781,8 +806,8 @@ impl DisplayPipeLine {
                     150,
                     5,
                     200,
-                    200,
-                    1.0,
+                    400,
+                    3.0,
                     Color::convert_rgb_color(255, 0, 255),
                 );
 
@@ -797,7 +822,12 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
-                // Color::buffer_filter_24bit_display_color(&mut buffer, screen_width, screen_height);
+                for (x,y) in sine_path.iter(){
+                    // without antialiasing
+                    buffer[(*y as usize + 50 as usize)*screen_width+ (*x as usize)] = Color::convert_rgb_color(255, 241, 0);
+                    // with antialiasing.
+                    draw::draw_anti_aliased_point(&mut buffer, screen_width, screen_height, *x as usize, *y as usize, 0.8, Color::convert_rgb_color(255, 241, 0));
+                }
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();
