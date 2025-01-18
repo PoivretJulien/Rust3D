@@ -2365,8 +2365,8 @@ pub mod draw {
                 let dist = frac_x - (x as f64);
                 buffer[y * screen_width + x] =
                     blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
-                buffer[(y + 1) * screen_width + x] =
-                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+                buffer[y  * screen_width + x+1] =
+                    blend_colors(color, buffer[y  * screen_width + x+1], dist);
             }
         }
     }
@@ -2434,9 +2434,9 @@ pub mod draw {
                             buffer[y * screen_width + (x_offset as usize)],
                             1.0 - dist,
                         );
-                        buffer[(y + 1) * screen_width + (x_offset as usize)] = blend_colors(
+                        buffer[y  * screen_width + (x_offset as usize + 1)] = blend_colors(
                             color,
-                            buffer[(y + 1) * screen_width + (x_offset as usize)],
+                            buffer[y* screen_width + (x_offset as usize)+1],
                             dist,
                         );
                     }

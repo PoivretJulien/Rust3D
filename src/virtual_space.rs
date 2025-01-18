@@ -796,7 +796,7 @@ impl DisplayPipeLine {
                         ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                         (pos.0 as f64, pos.1 as f64),
                         0x0,
-                        1,
+                        2,
                     );
                     draw::draw_thick_line_experimental(
                         &mut buffer,
