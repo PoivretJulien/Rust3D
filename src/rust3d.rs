@@ -2365,11 +2365,12 @@ pub mod draw {
                 let dist = frac_x - (x as f64);
                 buffer[y * screen_width + x] =
                     blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
-                buffer[y  * screen_width + x+1] =
-                    blend_colors(color, buffer[y  * screen_width + x+1], dist);
+                buffer[y * screen_width + x + 1] =
+                    blend_colors(color, buffer[y * screen_width + x + 1], dist);
             }
         }
     }
+
     pub fn exercise_draw_line_thick(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2397,7 +2398,7 @@ pub mod draw {
 
                 for offset in -(half_thickness as isize)..=(half_thickness as isize) {
                     let y_offset = y as isize + offset;
-                    if y_offset >= 0 && (y_offset as usize) < buffer.len() / screen_width {
+                    if y_offset >= 0 && (y_offset as usize + 1) < buffer.len() / screen_width {
                         buffer[(y_offset as usize) * screen_width + x] = blend_colors(
                             color,
                             buffer[(y_offset as usize) * screen_width + x],
@@ -2434,9 +2435,9 @@ pub mod draw {
                             buffer[y * screen_width + (x_offset as usize)],
                             1.0 - dist,
                         );
-                        buffer[y  * screen_width + (x_offset as usize + 1)] = blend_colors(
+                        buffer[y * screen_width + (x_offset as usize + 1)] = blend_colors(
                             color,
-                            buffer[y* screen_width + (x_offset as usize)+1],
+                            buffer[y * screen_width + (x_offset as usize) + 1],
                             dist,
                         );
                     }
@@ -2472,10 +2473,12 @@ pub mod draw {
                 let x = frac_x as usize;
                 let y = frac_y as usize;
                 let dist = frac_y - (y as f64);
-                buffer[y * screen_width + x] =
-                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
-                buffer[(y + 1) * screen_width + x] =
-                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+                if x < screen_width && (y + 1 < (buffer.len() / screen_width)) {
+                    buffer[y * screen_width + x] =
+                        blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                    buffer[(y + 1) * screen_width + x] =
+                        blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+                }
             }
         } else {
             if pt2.1 < pt1.1 {
