@@ -790,14 +790,25 @@ impl DisplayPipeLine {
                 );
                 ////////////////////////////////////////////////////////////////
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
-                    draw::exercise_draw_line_thick(
-                        &mut buffer,
-                        screen_width,
-                        ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
-                        (pos.0 as f64, pos.1 as f64),
-                        Color::convert_rgb_color(0, 104, 255),
-                        2,
-                    );
+                    if window.get_mouse_down(MouseButton::Left) {
+                        draw::exercise_draw_line_thick(
+                            &mut buffer,
+                            screen_width,
+                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
+                            (pos.0 as f64, pos.1 as f64),
+                            Color::convert_rgb_color(255, 217, 0),
+                            2,
+                        );
+                    } else {
+                        draw::exercise_draw_line_thick(
+                            &mut buffer,
+                            screen_width,
+                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
+                            (pos.0 as f64, pos.1 as f64),
+                            Color::convert_rgb_color(0, 104, 255),
+                            2,
+                        );
+                    }
                     draw::draw_thick_line_experimental(
                         &mut buffer,
                         screen_width,
@@ -811,8 +822,8 @@ impl DisplayPipeLine {
                         &mut buffer,
                         screen_width,
                         screen_height,
-                        (145,90),
-                   (pos.0 as isize, pos.1 as isize),
+                        (145, 90),
+                        (pos.0 as isize, pos.1 as isize),
                         Color::convert_rgb_color(255, 0, 255),
                         3,
                     );
