@@ -623,7 +623,7 @@ impl DisplayPipeLine {
         let mut v = 0.0f32;
         const SCALAR: f32 = 50.0;
         const XOFFSET: isize = 100;
-        const YOFFSET: isize = 300;
+        const YOFFSET: isize = 400;
         while ct <= 6000 {
             v += step;
             sine_path.push((
