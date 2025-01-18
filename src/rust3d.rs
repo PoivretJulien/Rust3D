@@ -2284,8 +2284,152 @@ pub mod draw {
             }
         }
     }
+    pub fn exercise_draw_line_bcp(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        mut pt1: (f64, f64),
+        mut pt2: (f64, f64),
+        color: u32,
+    ) {
+        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
+            if pt2.0 < pt1.0 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            /*
+            // Compute overlap for the first point.
+            let overlap = 1.0 - ((pt1.0+0.5) - (pt1.0 + 0.5).round());
+            let diststart = pt1.1 - pt1.1.round();
+            buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)] =
+                    blend_colors(color,
+                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
+                        (1.0 - diststart) * overlap
+                        );
+            buffer[((pt1.1 as usize) + 1) * screen_width + ((pt1.0 + 0.5) as usize)] =
+                    blend_colors(color,
+                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
+                         diststart * overlap
+                        );
 
-    // try to implement aa for this methods 
+            // Compute overlap for the first point.
+            let overlap = 1.0 - ((pt2.0-0.5) - (pt2.0 - 0.5).round());
+            let distend = pt2.1 - pt2.1.round();
+            buffer[((pt2.1 + 0.5) as usize) * screen_width + (pt1.0 as usize)] =
+                    blend_colors(color,
+                        buffer[((pt2.1 + 0.5) as usize) * screen_width + (pt1.0 as usize)],
+                        (1.0 - distend) * overlap
+                        );
+            buffer[((pt2.1 as usize) + 1) * screen_width + ((pt2.0 + 0.5) as usize)] =
+                    blend_colors(color,
+                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
+                         distend * overlap
+                        );
+            */
+            //////////////////////////////////
+            // avoid division by zero for
+            // defining the slope ration m.
+            let m = if dx != 0.0 {
+                dy / dx // compute the slope.
+            } else {
+                dy / 1.0 // slope if dx == 0.
+            };
+            //////////////////////////////////
+            for i in 0..(dx as usize) {
+                let frac_x = pt1.0 + (i as f64);
+                let frac_y = pt1.1 + (i as f64) * m;
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_y - (y as f64);
+                buffer[y * screen_width + x] =
+                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+            }
+        } else {
+            if pt2.1 < pt1.1 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            let m = if dx != 0.0 {
+                dx / dy // compute the slope.
+            } else {
+                dx / 1.0 // slope if dx == 0.
+            };
+            for i in 0..(dy as usize) {
+                let frac_x = pt1.0 + (i as f64) * m;
+                let frac_y = pt1.1 + (i as f64);
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_x - (x as f64);
+                buffer[y * screen_width + x] =
+                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+            }
+        }
+    }
+
+    pub fn exercise_draw_line(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        mut pt1: (f64, f64),
+        mut pt2: (f64, f64),
+        color: u32,
+    ) {
+        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
+            if pt2.0 < pt1.0 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            //////////////////////////////////
+            // avoid division by zero for
+            // defining the slope ration m.
+            let m = if dx != 0.0 {
+                dy / dx // compute the slope.
+            } else {
+                dy / 1.0 // slope if dx == 0.
+            };
+            //////////////////////////////////
+            for i in 0..(dx as usize) {
+                let frac_x = pt1.0 + (i as f64);
+                let frac_y = pt1.1 + (i as f64) * m;
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_y - (y as f64);
+                buffer[y * screen_width + x] =
+                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+            }
+        } else {
+            if pt2.1 < pt1.1 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            let m = if dx != 0.0 {
+                dx / dy // compute the slope.
+            } else {
+                dx / 1.0 // slope if dx == 0.
+            };
+            for i in 0..(dy as usize) {
+                let frac_x = pt1.0 + (i as f64) * m;
+                let frac_y = pt1.1 + (i as f64);
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_x - (x as f64);
+                buffer[y * screen_width + x] =
+                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+            }
+        }
+    }
+
+    // try to implement aa for this methods
     // not sure of the benefit.
     pub fn draw_thick_line_experimental(
         buffer: &mut Vec<u32>,
@@ -2316,12 +2460,28 @@ pub mod draw {
                 if dx > dy {
                     // Line is more horizontal; vary y-coordinate
                     if y + t >= 0 && y + t < height as isize {
-                        draw_anti_aliased_point(buffer, width, height, x as usize, (y+t) as usize, 0.6, color);
+                        draw_anti_aliased_point(
+                            buffer,
+                            width,
+                            height,
+                            x as usize,
+                            (y + t) as usize,
+                            0.6,
+                            color,
+                        );
                     }
                 } else {
                     // Line is more vertical; vary x-coordinate
                     if x + t >= 0 && x + t < width as isize {
-                        draw_anti_aliased_point(buffer, width, height, (x+t) as usize, y as usize, 0.6, color);
+                        draw_anti_aliased_point(
+                            buffer,
+                            width,
+                            height,
+                            (x + t) as usize,
+                            y as usize,
+                            0.6,
+                            color,
+                        );
                     }
                 }
             }
@@ -2395,7 +2555,7 @@ pub mod draw {
 
     /// Draws an anti-aliased line with a specified thickness on a pixel buffer
     /// using an adaptation of Xiaolin Wu's line algorithm.
-    pub fn draw_anti_aliased_line_deprecated(
+    pub fn draw_anti_aliased_line(
         buffer: &mut Vec<u32>, // Mutable reference to the pixel buffer
         screen_width: usize,   // Width of the screen or image in pixels
         screen_height: usize,  // Height of the screen or image in pixels

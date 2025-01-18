@@ -45,7 +45,7 @@ use crate::rust3d::draw;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
 use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -619,7 +619,7 @@ impl DisplayPipeLine {
         // Draw a sine path... for test.
         let mut sine_path: Vec<(isize, isize)> = Vec::new();
         let step = 0.005f32;
-        let mut ct = 000;
+        let mut ct = 0;
         let mut v = 0.0f32;
         const SCALAR: f32 = 50.0;
         const XOFFSET: isize = 100;
@@ -799,37 +799,38 @@ impl DisplayPipeLine {
                     5,
                     Color::convert_rgb_color(104, 104, 104),
                 );
-                draw::draw_thick_line_experimental(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    (170, 25),
-                    (220, 420),
-                    Color::convert_rgb_color(255, 0, 255),
-                    3,
-                );
-                draw::draw_line(
-                    &mut buffer,
-                    screen_width,
-                    (160, 15),
-                    (210, 410),
-                    Color::convert_rgb_color(255, 0, 255),
-                );
-                draw::draw_thick_line(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    (150, 5),
-                    (200, 400),
-                    Color::convert_rgb_color(255, 0, 255),
-                    3,
-                );
-
+                if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
+                    draw::exercise_draw_line(
+                        &mut buffer,
+                        screen_width,
+                        ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
+                        (pos.0 as f64, pos.1 as f64),
+                        0x0,
+                    );
+                    draw::draw_thick_line_experimental(
+                        &mut buffer,
+                        screen_width,
+                        screen_height,
+                        (170, 25),
+                        (pos.0 as isize, pos.1 as isize),
+                        Color::convert_rgb_color(255, 0, 255),
+                        2,
+                    );
+                    draw::draw_thick_line(
+                        &mut buffer,
+                        screen_width,
+                        screen_height,
+                        (145,90),
+                   (pos.0 as isize, pos.1 as isize),
+                        Color::convert_rgb_color(255, 0, 255),
+                        3,
+                    );
+                }
                 // Update buffer.
                 draw::draw_text(
                     &mut buffer,
-                    800,
-                    900,
+                    screen_height,
+                    screen_width,
                     screen_width / 2 - 150,
                     20,
                     "Press Arrow Key to rotate",
