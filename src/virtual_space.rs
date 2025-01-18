@@ -795,7 +795,7 @@ impl DisplayPipeLine {
                         screen_width,
                         ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                         (pos.0 as f64, pos.1 as f64),
-                        0x0,
+                        Color::convert_rgb_color(0, 104, 255),
                         2,
                     );
                     draw::draw_thick_line_experimental(
