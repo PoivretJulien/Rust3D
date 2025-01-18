@@ -609,11 +609,11 @@ impl DisplayPipeLine {
     }
 
     /*
-     Start the conduit init the fb resolution, the buffer memory space,
-     load/update the geometry if virtual state is "SceneNeedUpdate",then preprocess
-     transformation of the geometry from the user input KEY and finaly
-     if conduit need update from the previous loop, project points
-     mutate and update the buffer to the screen.
+       Start the conduit init the fb resolution, the buffer memory space,
+       load/update the geometry if virtual state is "SceneNeedUpdate",then preprocess
+       transformation of the geometry from the user input KEY and finaly
+       if conduit need update from the previous loop, project points
+       mutate and update the buffer to the screen.
     */
     pub fn start_display_pipeline(&mut self) {
         // Draw a sine path... for test.
@@ -790,25 +790,6 @@ impl DisplayPipeLine {
                 );
                 ////////////////////////////////////////////////////////////////
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
-                    if window.get_mouse_down(MouseButton::Left) {
-                        draw::exercise_draw_line_thick(
-                            &mut buffer,
-                            screen_width,
-                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
-                            (pos.0 as f64, pos.1 as f64),
-                            Color::convert_rgb_color(255, 217, 0),
-                            2,
-                        );
-                    } else {
-                        draw::exercise_draw_line_thick(
-                            &mut buffer,
-                            screen_width,
-                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
-                            (pos.0 as f64, pos.1 as f64),
-                            Color::convert_rgb_color(0, 104, 255),
-                            2,
-                        );
-                    }
                     draw::draw_thick_line_experimental(
                         &mut buffer,
                         screen_width,
@@ -827,6 +808,25 @@ impl DisplayPipeLine {
                         Color::convert_rgb_color(255, 0, 255),
                         3,
                     );
+                    if window.get_mouse_down(MouseButton::Left) {
+                        draw::draw_aa_line_with_thickness(
+                            &mut buffer,
+                            screen_width,
+                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
+                            (pos.0 as f64, pos.1 as f64),
+                            Color::convert_rgb_color(255, 217, 0),
+                            2,
+                        );
+                    } else {
+                        draw::draw_aa_line_with_thickness(
+                            &mut buffer,
+                            screen_width,
+                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
+                            (pos.0 as f64, pos.1 as f64),
+                            Color::convert_rgb_color(0, 104, 255),
+                            2,
+                        );
+                    }
                 }
                 draw::draw_rounded_rectangle(
                     &mut buffer,
@@ -850,10 +850,10 @@ impl DisplayPipeLine {
                     0,
                 );
                 for (x, y) in sine_path.iter() {
-                    // without antialiasing
+                    // Without antialiasing
                     buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
                         Color::convert_rgb_color(255, 241, 0);
-                    // with antialiasing.
+                    // With antialiasing.
                     draw::draw_anti_aliased_point(
                         &mut buffer,
                         screen_width,

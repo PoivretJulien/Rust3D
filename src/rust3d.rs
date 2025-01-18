@@ -2284,94 +2284,9 @@ pub mod draw {
             }
         }
     }
-    pub fn exercise_draw_line_bcp(
-        buffer: &mut Vec<u32>,
-        screen_width: usize,
-        mut pt1: (f64, f64),
-        mut pt2: (f64, f64),
-        color: u32,
-    ) {
-        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
-            if pt2.0 < pt1.0 {
-                (pt1, pt2) = (pt2, pt1);
-            }
-            let dx = pt2.0 - pt1.0;
-            let dy = pt2.1 - pt1.1;
-            /*
-            // Compute overlap for the first point.
-            let overlap = 1.0 - ((pt1.0+0.5) - (pt1.0 + 0.5).round());
-            let diststart = pt1.1 - pt1.1.round();
-            buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)] =
-                    blend_colors(color,
-                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
-                        (1.0 - diststart) * overlap
-                        );
-            buffer[((pt1.1 as usize) + 1) * screen_width + ((pt1.0 + 0.5) as usize)] =
-                    blend_colors(color,
-                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
-                         diststart * overlap
-                        );
 
-            // Compute overlap for the first point.
-            let overlap = 1.0 - ((pt2.0-0.5) - (pt2.0 - 0.5).round());
-            let distend = pt2.1 - pt2.1.round();
-            buffer[((pt2.1 + 0.5) as usize) * screen_width + (pt1.0 as usize)] =
-                    blend_colors(color,
-                        buffer[((pt2.1 + 0.5) as usize) * screen_width + (pt1.0 as usize)],
-                        (1.0 - distend) * overlap
-                        );
-            buffer[((pt2.1 as usize) + 1) * screen_width + ((pt2.0 + 0.5) as usize)] =
-                    blend_colors(color,
-                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
-                         distend * overlap
-                        );
-            */
-            //////////////////////////////////
-            // avoid division by zero for
-            // defining the slope ration m.
-            let m = if dx != 0.0 {
-                dy / dx // compute the slope.
-            } else {
-                dy / 1.0 // slope if dx == 0.
-            };
-            //////////////////////////////////
-            for i in 0..(dx as usize) {
-                let frac_x = pt1.0 + (i as f64);
-                let frac_y = pt1.1 + (i as f64) * m;
-                let x = frac_x as usize;
-                let y = frac_y as usize;
-                let dist = frac_y - (y as f64);
-                buffer[y * screen_width + x] =
-                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
-                buffer[(y + 1) * screen_width + x] =
-                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
-            }
-        } else {
-            if pt2.1 < pt1.1 {
-                (pt1, pt2) = (pt2, pt1);
-            }
-            let dx = pt2.0 - pt1.0;
-            let dy = pt2.1 - pt1.1;
-            let m = if dy != 0.0 {
-                dx / dy // compute the slope.
-            } else {
-                dx / 1.0 // slope if dx == 0.
-            };
-            for i in 0..(dy as usize) {
-                let frac_x = pt1.0 + (i as f64) * m;
-                let frac_y = pt1.1 + (i as f64);
-                let x = frac_x as usize;
-                let y = frac_y as usize;
-                let dist = frac_x - (x as f64);
-                buffer[y * screen_width + x] =
-                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
-                buffer[y * screen_width + x + 1] =
-                    blend_colors(color, buffer[y * screen_width + x + 1], dist);
-            }
-        }
-    }
-
-    pub fn exercise_draw_line_thick(
+    /// Draw a good quality antialiased line with thickness.
+    pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
         mut pt1: (f64, f64),
@@ -2445,7 +2360,9 @@ pub mod draw {
             }
         }
     }
-    pub fn exercise_draw_line(
+
+    /// A good function for drawing clean anti-aliased line without thickness.
+    pub fn draw_aa_line(
         buffer: &mut Vec<u32>,
         screen_width: usize,
         mut pt1: (f64, f64),
@@ -2505,208 +2422,8 @@ pub mod draw {
         }
     }
 
-    // try to implement aa for this methods
-    // not sure of the benefit.
-    pub fn draw_thick_line_experimental(
-        buffer: &mut Vec<u32>,
-        width: usize,
-        height: usize,
-        start: (isize, isize),
-        end: (isize, isize),
-        color: u32,
-        thickness: usize,
-    ) {
-        let (x0, y0) = start;
-        let (x1, y1) = end;
-        let dx = (x1 - x0).abs();
-        let dy = (y1 - y0).abs();
-        let sx = if x0 < x1 { 1 } else { -1 };
-        let sy = if y0 < y1 { 1 } else { -1 };
-        let mut err = dx - dy;
-        let mut x = x0;
-        let mut y = y0;
-        let half_thickness = (thickness / 2) as isize;
-        loop {
-            // Draw the central line pixel
-            if x >= 0 && x < width as isize && y >= 0 && y < height as isize {
-                buffer[y as usize * width + x as usize] = color;
-            }
-            // Draw additional pixels to achieve the desired thickness
-            for t in -half_thickness..=half_thickness {
-                if dx > dy {
-                    // Line is more horizontal; vary y-coordinate
-                    if y + t >= 0 && y + t < height as isize {
-                        draw_anti_aliased_point(
-                            buffer,
-                            width,
-                            height,
-                            x as usize,
-                            (y + t) as usize,
-                            0.6,
-                            color,
-                        );
-                    }
-                } else {
-                    // Line is more vertical; vary x-coordinate
-                    if x + t >= 0 && x + t < width as isize {
-                        draw_anti_aliased_point(
-                            buffer,
-                            width,
-                            height,
-                            (x + t) as usize,
-                            y as usize,
-                            0.6,
-                            color,
-                        );
-                    }
-                }
-            }
-            if x == x1 && y == y1 {
-                break;
-            }
-            let e2 = 2 * err;
-            if e2 > -dy {
-                err -= dy;
-                x += sx;
-            }
-            if e2 < dx {
-                err += dx;
-                y += sy;
-            }
-        }
-    }
-
-    pub fn draw_thick_line(
-        buffer: &mut Vec<u32>,
-        width: usize,
-        height: usize,
-        start: (isize, isize),
-        end: (isize, isize),
-        color: u32,
-        thickness: usize,
-    ) {
-        let (x0, y0) = start;
-        let (x1, y1) = end;
-        let dx = (x1 - x0).abs();
-        let dy = (y1 - y0).abs();
-        let sx = if x0 < x1 { 1 } else { -1 };
-        let sy = if y0 < y1 { 1 } else { -1 };
-        let mut err = dx - dy;
-        let mut x = x0;
-        let mut y = y0;
-        let half_thickness = (thickness / 2) as isize;
-        loop {
-            // Draw the central line pixel
-            if x >= 0 && x < width as isize && y >= 0 && y < height as isize {
-                buffer[y as usize * width + x as usize] = color;
-            }
-            // Draw additional pixels to achieve the desired thickness
-            for t in -half_thickness..=half_thickness {
-                if dx > dy {
-                    // Line is more horizontal; vary y-coordinate
-                    if y + t >= 0 && y + t < height as isize {
-                        buffer[(y + t) as usize * width + x as usize] = color;
-                    }
-                } else {
-                    // Line is more vertical; vary x-coordinate
-                    if x + t >= 0 && x + t < width as isize {
-                        buffer[y as usize * width + (x + t) as usize] = color;
-                    }
-                }
-            }
-            if x == x1 && y == y1 {
-                break;
-            }
-            let e2 = 2 * err;
-            if e2 > -dy {
-                err -= dy;
-                x += sx;
-            }
-            if e2 < dx {
-                err += dx;
-                y += sy;
-            }
-        }
-    }
-
-    /// Draws an anti-aliased line with a specified thickness on a pixel buffer
-    /// using an adaptation of Xiaolin Wu's line algorithm.
-    pub fn draw_anti_aliased_line(
-        buffer: &mut Vec<u32>, // Mutable reference to the pixel buffer
-        screen_width: usize,   // Width of the screen or image in pixels
-        screen_height: usize,  // Height of the screen or image in pixels
-        x0: usize,             // Starting x-coordinate of the line
-        y0: usize,             // Starting y-coordinate of the line
-        x1: usize,             // Ending x-coordinate of the line
-        y1: usize,             // Ending y-coordinate of the line
-        thickness: f64,        // Desired thickness of the line
-        color: u32,            // Color of the line in ARGB format
-    ) {
-        // Closure to plot a pixel with a given intensity
-        let mut plot = |x: usize, y: usize, intensity: f64| {
-            // Ensure the pixel is within the screen boundaries
-            if x < screen_width && y < screen_height {
-                let idx = y * screen_width + x; // Calculate the buffer index
-                let base_color = buffer[idx]; // Get the current pixel color
-                let blended_color = blend_colors(color, base_color, intensity); // Blend colors
-                buffer[idx] = blended_color; // Update the pixel color in the buffer
-            }
-        };
-
-        // Convert integer coordinates to floating-point for precise calculations
-        let (x0, y0, x1, y1) = (x0 as f64, y0 as f64, x1 as f64, y1 as f64);
-
-        // Determine if the line is steep (i.e., slope > 1)
-        let steep = (y1 - y0).abs() > (x1 - x0).abs();
-
-        // If the line is steep, swap the x and y coordinates
-        let (mut x0, mut y0, mut x1, mut y1) = if steep {
-            (y0, x0, y1, x1)
-        } else {
-            (x0, y0, x1, y1)
-        };
-
-        // Ensure the line is drawn from left to right
-        if x0 > x1 {
-            (x0, x1) = (x1, x0);
-            (y0, y1) = (y1, y0);
-        }
-
-        let dx = x1 - x0; // Difference in x-coordinates
-        let dy = y1 - y0; // Difference in y-coordinates
-        let gradient = if dx == 0.0 { 1.0 } else { dy / dx }; // Calculate the gradient
-
-        // Handle the first endpoint
-        let xend = x0.round(); // Round x0 to the nearest integer
-        let yend = y0 + gradient * (xend - x0); // Calculate the corresponding y
-        let xpxl1 = xend as usize; // Integer part of xend
-
-        let mut intery = yend + gradient; // Initialize the y-intercept for the main loop
-
-        // Draw the line with the specified thickness
-        let half_thickness = thickness / 2.0;
-        for x in xpxl1..=(x1.round() as usize) {
-            // For each point on the centerline, draw a perpendicular "strip" of pixels
-            for offset in -(half_thickness.ceil() as i32)..=(half_thickness.ceil() as i32) {
-                let distance = (offset as f64).abs(); // Distance from the centerline
-                let intensity = if distance <= half_thickness {
-                    1.0 - (distance / half_thickness) // Linear falloff for intensity
-                } else {
-                    0.0
-                };
-                if steep {
-                    // If the line is steep, plot transposed coordinates
-                    plot(intery.floor() as usize + offset as usize, x, intensity);
-                } else {
-                    // Otherwise, plot normal coordinates
-                    plot(x, intery.floor() as usize + offset as usize, intensity);
-                }
-            }
-            intery += gradient; // Increment the y-intercept
-        }
-    }
-
-    // this aa doesn't work very well for strait lines
+    /// Draw an antialiased point designed for iteration from list
+    /// 0.8 as aa_offset work well.
     pub fn draw_anti_aliased_point(
         buffer: &mut Vec<u32>,
         width: usize,
@@ -2754,8 +2471,8 @@ pub mod draw {
         }
     }
 
-    /// Draw a very basic text for bsic feedback infrormation
-    /// not all characters are implemented.
+    /// Draw a very basic text for bsic feedback infrormations
+    /// caution ! not all characters are implemented yet (see the list just bellow).
     pub fn draw_text(
         buffer: &mut Vec<u32>,
         height: usize,
@@ -3501,6 +3218,298 @@ pub mod draw {
             for edge in active_edges.iter_mut() {
                 edge.x += edge.dx;
             }
+        }
+    }
+    ////////////////bcp//////scratch codes//////////////////////////////////
+    ////////////////bcp//////scratch codes//////////////////////////////////
+    ////////////////bcp//////scratch codes//////////////////////////////////
+    ////////////////bcp//////scratch codes//////////////////////////////////
+    ////////////////bcp//////scratch codes//////////////////////////////////
+    pub fn _exercise_draw_line_bcp(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        mut pt1: (f64, f64),
+        mut pt2: (f64, f64),
+        color: u32,
+    ) {
+        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
+            if pt2.0 < pt1.0 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            /*
+            // Compute overlap for the first point.
+            let overlap = 1.0 - ((pt1.0+0.5) - (pt1.0 + 0.5).round());
+            let diststart = pt1.1 - pt1.1.round();
+            buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)] =
+                    blend_colors(color,
+                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
+                        (1.0 - diststart) * overlap
+                        );
+            buffer[((pt1.1 as usize) + 1) * screen_width + ((pt1.0 + 0.5) as usize)] =
+                    blend_colors(color,
+                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
+                         diststart * overlap
+                        );
+
+            // Compute overlap for the first point.
+            let overlap = 1.0 - ((pt2.0-0.5) - (pt2.0 - 0.5).round());
+            let distend = pt2.1 - pt2.1.round();
+            buffer[((pt2.1 + 0.5) as usize) * screen_width + (pt1.0 as usize)] =
+                    blend_colors(color,
+                        buffer[((pt2.1 + 0.5) as usize) * screen_width + (pt1.0 as usize)],
+                        (1.0 - distend) * overlap
+                        );
+            buffer[((pt2.1 as usize) + 1) * screen_width + ((pt2.0 + 0.5) as usize)] =
+                    blend_colors(color,
+                        buffer[(pt1.1 as usize) * screen_width + ((pt1.0 + 0.5) as usize)],
+                         distend * overlap
+                        );
+            */
+            //////////////////////////////////
+            // avoid division by zero for
+            // defining the slope ration m.
+            let m = if dx != 0.0 {
+                dy / dx // compute the slope.
+            } else {
+                dy / 1.0 // slope if dx == 0.
+            };
+            //////////////////////////////////
+            for i in 0..(dx as usize) {
+                let frac_x = pt1.0 + (i as f64);
+                let frac_y = pt1.1 + (i as f64) * m;
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_y - (y as f64);
+                buffer[y * screen_width + x] =
+                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+            }
+        } else {
+            if pt2.1 < pt1.1 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            let m = if dy != 0.0 {
+                dx / dy // compute the slope.
+            } else {
+                dx / 1.0 // slope if dx == 0.
+            };
+            for i in 0..(dy as usize) {
+                let frac_x = pt1.0 + (i as f64) * m;
+                let frac_y = pt1.1 + (i as f64);
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_x - (x as f64);
+                buffer[y * screen_width + x] =
+                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                buffer[y * screen_width + x + 1] =
+                    blend_colors(color, buffer[y * screen_width + x + 1], dist);
+            }
+        }
+    }
+
+    // try to implement aa for this methods
+    // not sure of the benefit.
+    pub fn draw_thick_line_experimental(
+        buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        start: (isize, isize),
+        end: (isize, isize),
+        color: u32,
+        thickness: usize,
+    ) {
+        let (x0, y0) = start;
+        let (x1, y1) = end;
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = dx - dy;
+        let mut x = x0;
+        let mut y = y0;
+        let half_thickness = (thickness / 2) as isize;
+        loop {
+            // Draw the central line pixel
+            if x >= 0 && x < width as isize && y >= 0 && y < height as isize {
+                buffer[y as usize * width + x as usize] = color;
+            }
+            // Draw additional pixels to achieve the desired thickness
+            for t in -half_thickness..=half_thickness {
+                if dx > dy {
+                    // Line is more horizontal; vary y-coordinate
+                    if y + t >= 0 && y + t < height as isize {
+                        draw_anti_aliased_point(
+                            buffer,
+                            width,
+                            height,
+                            x as usize,
+                            (y + t) as usize,
+                            0.6,
+                            color,
+                        );
+                    }
+                } else {
+                    // Line is more vertical; vary x-coordinate
+                    if x + t >= 0 && x + t < width as isize {
+                        draw_anti_aliased_point(
+                            buffer,
+                            width,
+                            height,
+                            (x + t) as usize,
+                            y as usize,
+                            0.6,
+                            color,
+                        );
+                    }
+                }
+            }
+            if x == x1 && y == y1 {
+                break;
+            }
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    pub fn draw_thick_line(
+        buffer: &mut Vec<u32>,
+        width: usize,
+        height: usize,
+        start: (isize, isize),
+        end: (isize, isize),
+        color: u32,
+        thickness: usize,
+    ) {
+        let (x0, y0) = start;
+        let (x1, y1) = end;
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = dx - dy;
+        let mut x = x0;
+        let mut y = y0;
+        let half_thickness = (thickness / 2) as isize;
+        loop {
+            // Draw the central line pixel
+            if x >= 0 && x < width as isize && y >= 0 && y < height as isize {
+                buffer[y as usize * width + x as usize] = color;
+            }
+            // Draw additional pixels to achieve the desired thickness
+            for t in -half_thickness..=half_thickness {
+                if dx > dy {
+                    // Line is more horizontal; vary y-coordinate
+                    if y + t >= 0 && y + t < height as isize {
+                        buffer[(y + t) as usize * width + x as usize] = color;
+                    }
+                } else {
+                    // Line is more vertical; vary x-coordinate
+                    if x + t >= 0 && x + t < width as isize {
+                        buffer[y as usize * width + (x + t) as usize] = color;
+                    }
+                }
+            }
+            if x == x1 && y == y1 {
+                break;
+            }
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    /// Draws an anti-aliased line with a specified thickness on a pixel buffer
+    /// using an adaptation of Xiaolin Wu's line algorithm.
+    pub fn draw_anti_aliased_line(
+        buffer: &mut Vec<u32>, // Mutable reference to the pixel buffer
+        screen_width: usize,   // Width of the screen or image in pixels
+        screen_height: usize,  // Height of the screen or image in pixels
+        x0: usize,             // Starting x-coordinate of the line
+        y0: usize,             // Starting y-coordinate of the line
+        x1: usize,             // Ending x-coordinate of the line
+        y1: usize,             // Ending y-coordinate of the line
+        thickness: f64,        // Desired thickness of the line
+        color: u32,            // Color of the line in ARGB format
+    ) {
+        // Closure to plot a pixel with a given intensity
+        let mut plot = |x: usize, y: usize, intensity: f64| {
+            // Ensure the pixel is within the screen boundaries
+            if x < screen_width && y < screen_height {
+                let idx = y * screen_width + x; // Calculate the buffer index
+                let base_color = buffer[idx]; // Get the current pixel color
+                let blended_color = blend_colors(color, base_color, intensity); // Blend colors
+                buffer[idx] = blended_color; // Update the pixel color in the buffer
+            }
+        };
+
+        // Convert integer coordinates to floating-point for precise calculations
+        let (x0, y0, x1, y1) = (x0 as f64, y0 as f64, x1 as f64, y1 as f64);
+
+        // Determine if the line is steep (i.e., slope > 1)
+        let steep = (y1 - y0).abs() > (x1 - x0).abs();
+
+        // If the line is steep, swap the x and y coordinates
+        let (mut x0, mut y0, mut x1, mut y1) = if steep {
+            (y0, x0, y1, x1)
+        } else {
+            (x0, y0, x1, y1)
+        };
+
+        // Ensure the line is drawn from left to right
+        if x0 > x1 {
+            (x0, x1) = (x1, x0);
+            (y0, y1) = (y1, y0);
+        }
+
+        let dx = x1 - x0; // Difference in x-coordinates
+        let dy = y1 - y0; // Difference in y-coordinates
+        let gradient = if dx == 0.0 { 1.0 } else { dy / dx }; // Calculate the gradient
+
+        // Handle the first endpoint
+        let xend = x0.round(); // Round x0 to the nearest integer
+        let yend = y0 + gradient * (xend - x0); // Calculate the corresponding y
+        let xpxl1 = xend as usize; // Integer part of xend
+
+        let mut intery = yend + gradient; // Initialize the y-intercept for the main loop
+
+        // Draw the line with the specified thickness
+        let half_thickness = thickness / 2.0;
+        for x in xpxl1..=(x1.round() as usize) {
+            // For each point on the centerline, draw a perpendicular "strip" of pixels
+            for offset in -(half_thickness.ceil() as i32)..=(half_thickness.ceil() as i32) {
+                let distance = (offset as f64).abs(); // Distance from the centerline
+                let intensity = if distance <= half_thickness {
+                    1.0 - (distance / half_thickness) // Linear falloff for intensity
+                } else {
+                    0.0
+                };
+                if steep {
+                    // If the line is steep, plot transposed coordinates
+                    plot(intery.floor() as usize + offset as usize, x, intensity);
+                } else {
+                    // Otherwise, plot normal coordinates
+                    plot(x, intery.floor() as usize + offset as usize, intensity);
+                }
+            }
+            intery += gradient; // Increment the y-intercept
         }
     }
 }
