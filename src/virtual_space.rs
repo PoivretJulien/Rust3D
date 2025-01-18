@@ -789,29 +789,20 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(0, 0, 0),
                 );
                 ////////////////////////////////////////////////////////////////
-                draw::draw_rounded_rectangle(
-                    &mut buffer,
-                    screen_width,
-                    screen_width / 2 - 200,
-                    10,
-                    400,
-                    35,
-                    5,
-                    Color::convert_rgb_color(104, 104, 104),
-                );
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
-                    draw::exercise_draw_line(
+                    draw::exercise_draw_line_thick(
                         &mut buffer,
                         screen_width,
                         ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                         (pos.0 as f64, pos.1 as f64),
                         0x0,
+                        1,
                     );
                     draw::draw_thick_line_experimental(
                         &mut buffer,
                         screen_width,
                         screen_height,
-                        (170, 25),
+                        (200, 150),
                         (pos.0 as isize, pos.1 as isize),
                         Color::convert_rgb_color(255, 0, 255),
                         2,
@@ -826,6 +817,16 @@ impl DisplayPipeLine {
                         3,
                     );
                 }
+                draw::draw_rounded_rectangle(
+                    &mut buffer,
+                    screen_width,
+                    screen_width / 2 - 200,
+                    10,
+                    400,
+                    35,
+                    5,
+                    Color::convert_rgb_color(104, 104, 104),
+                );
                 // Update buffer.
                 draw::draw_text(
                     &mut buffer,

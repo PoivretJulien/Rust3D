@@ -2352,7 +2352,7 @@ pub mod draw {
             }
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
-            let m = if dx != 0.0 {
+            let m = if dy != 0.0 {
                 dx / dy // compute the slope.
             } else {
                 dx / 1.0 // slope if dx == 0.
@@ -2370,7 +2370,80 @@ pub mod draw {
             }
         }
     }
+    pub fn exercise_draw_line_thick(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        mut pt1: (f64, f64),
+        mut pt2: (f64, f64),
+        color: u32,
+        thickness: usize,
+    ) {
+        let half_thickness = (thickness as f64) / 2.0;
 
+        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
+            if pt2.0 < pt1.0 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            let m = if dx != 0.0 { dy / dx } else { dy / 1.0 };
+
+            for i in 0..(dx as usize) {
+                let frac_x = pt1.0 + (i as f64);
+                let frac_y = pt1.1 + (i as f64) * m;
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_y - (y as f64);
+
+                for offset in -(half_thickness as isize)..=(half_thickness as isize) {
+                    let y_offset = y as isize + offset;
+                    if y_offset >= 0 && (y_offset as usize) < buffer.len() / screen_width {
+                        buffer[(y_offset as usize) * screen_width + x] = blend_colors(
+                            color,
+                            buffer[(y_offset as usize) * screen_width + x],
+                            1.0 - dist,
+                        );
+                        buffer[(y_offset as usize + 1) * screen_width + x] = blend_colors(
+                            color,
+                            buffer[(y_offset as usize + 1) * screen_width + x],
+                            dist,
+                        );
+                    }
+                }
+            }
+        } else {
+            if pt2.1 < pt1.1 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            let m = if dy != 0.0 { dx / dy } else { dx / 1.0 };
+
+            for i in 0..(dy as usize) {
+                let frac_x = pt1.0 + (i as f64) * m;
+                let frac_y = pt1.1 + (i as f64);
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_x - (x as f64);
+
+                for offset in -(half_thickness as isize)..=(half_thickness as isize) {
+                    let x_offset = x as isize + offset;
+                    if x_offset >= 0 && (x_offset as usize) < screen_width {
+                        buffer[y * screen_width + (x_offset as usize)] = blend_colors(
+                            color,
+                            buffer[y * screen_width + (x_offset as usize)],
+                            1.0 - dist,
+                        );
+                        buffer[(y + 1) * screen_width + (x_offset as usize)] = blend_colors(
+                            color,
+                            buffer[(y + 1) * screen_width + (x_offset as usize)],
+                            dist,
+                        );
+                    }
+                }
+            }
+        }
+    }
     pub fn exercise_draw_line(
         buffer: &mut Vec<u32>,
         screen_width: usize,
