@@ -2285,7 +2285,9 @@ pub mod draw {
         }
     }
 
-pub fn draw_thick_line_aa(
+    // try to implement aa for this methods 
+    // not sure of the benefit.
+    pub fn draw_thick_line_experimental(
         buffer: &mut Vec<u32>,
         width: usize,
         height: usize,
@@ -2293,51 +2295,39 @@ pub fn draw_thick_line_aa(
         end: (isize, isize),
         color: u32,
         thickness: usize,
-        aa_offset: f64,
     ) {
         let (x0, y0) = start;
         let (x1, y1) = end;
-
         let dx = (x1 - x0).abs();
         let dy = (y1 - y0).abs();
-
         let sx = if x0 < x1 { 1 } else { -1 };
         let sy = if y0 < y1 { 1 } else { -1 };
-
         let mut err = dx - dy;
         let mut x = x0;
         let mut y = y0;
-
         let half_thickness = (thickness / 2) as isize;
-
         loop {
             // Draw the central line pixel
             if x >= 0 && x < width as isize && y >= 0 && y < height as isize {
-                draw_anti_aliased_point(buffer, width, height, x as usize, y as usize, aa_offset, color);
-                //buffer[y as usize * width + x as usize] = color;
+                buffer[y as usize * width + x as usize] = color;
             }
-
             // Draw additional pixels to achieve the desired thickness
             for t in -half_thickness..=half_thickness {
                 if dx > dy {
                     // Line is more horizontal; vary y-coordinate
                     if y + t >= 0 && y + t < height as isize {
-                        draw_anti_aliased_point(buffer, width, height, x as usize, y as usize, aa_offset, color);
-                        //buffer[(y + t) as usize * width + x as usize] = color;
+                        draw_anti_aliased_point(buffer, width, height, x as usize, (y+t) as usize, 0.6, color);
                     }
                 } else {
                     // Line is more vertical; vary x-coordinate
                     if x + t >= 0 && x + t < width as isize {
-                        draw_anti_aliased_point(buffer, width, height, x as usize, y as usize, aa_offset, color);
-                        //buffer[y as usize * width + (x + t) as usize] = color;
+                        draw_anti_aliased_point(buffer, width, height, (x+t) as usize, y as usize, 0.6, color);
                     }
                 }
             }
-
             if x == x1 && y == y1 {
                 break;
             }
-
             let e2 = 2 * err;
             if e2 > -dy {
                 err -= dy;
@@ -2405,7 +2395,7 @@ pub fn draw_thick_line_aa(
 
     /// Draws an anti-aliased line with a specified thickness on a pixel buffer
     /// using an adaptation of Xiaolin Wu's line algorithm.
-    pub fn draw_anti_aliased_line(
+    pub fn draw_anti_aliased_line_deprecated(
         buffer: &mut Vec<u32>, // Mutable reference to the pixel buffer
         screen_width: usize,   // Width of the screen or image in pixels
         screen_height: usize,  // Height of the screen or image in pixels
@@ -2480,7 +2470,7 @@ pub fn draw_thick_line_aa(
         }
     }
 
-    //
+    // this aa doesn't work very well for strait lines
     pub fn draw_anti_aliased_point(
         buffer: &mut Vec<u32>,
         width: usize,

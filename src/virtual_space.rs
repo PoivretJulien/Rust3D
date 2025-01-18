@@ -617,19 +617,20 @@ impl DisplayPipeLine {
     */
     pub fn start_display_pipeline(&mut self) {
         // Draw a sine path... for test.
-        let mut sine_path: Vec<(isize,isize)> = Vec::new();
+        let mut sine_path: Vec<(isize, isize)> = Vec::new();
         let step = 0.005f32;
         let mut ct = 000;
         let mut v = 0.0f32;
-        let mut d : Vec<f32> = Vec::new();
-        const SCALAR:f32 = 50.0;
-        const XOFFSET:isize = 100;
-        const YOFFSET:isize = 300;
+        const SCALAR: f32 = 50.0;
+        const XOFFSET: isize = 100;
+        const YOFFSET: isize = 300;
         while ct <= 3000 {
-             v += step;
-             d.push((f32::sin(v) * SCALAR));
-             sine_path.push(((v*SCALAR) as isize + XOFFSET, (f32::sin(v) * SCALAR) as isize + YOFFSET ));
-             ct+=1;
+            v += step;
+            sine_path.push((
+                (v * (SCALAR / 2.5)) as isize + XOFFSET,
+                (f32::sin(v) * SCALAR) as isize + YOFFSET,
+            ));
+            ct += 1;
         }
         // println!("{:?}",d);
         // panic!();
@@ -770,8 +771,8 @@ impl DisplayPipeLine {
                     &mut buffer,
                     screen_width,
                     screen_height,
-                    (screen_width / 4)*3,
-                    (screen_height / 4)*2,
+                    (screen_width / 4) * 3,
+                    (screen_height / 4) * 2,
                     30,
                     Color::convert_rgb_color(153, 117, 255),
                     1,
@@ -798,17 +799,30 @@ impl DisplayPipeLine {
                     5,
                     Color::convert_rgb_color(104, 104, 104),
                 );
-                draw::draw_line(&mut buffer, screen_width, (160,15), (210,410), Color::convert_rgb_color(255, 0, 255));
-                draw::draw_anti_aliased_line(
+                draw::draw_thick_line_experimental(
                     &mut buffer,
                     screen_width,
                     screen_height,
-                    150,
-                    5,
-                    200,
-                    400,
-                    3.0,
+                    (170, 25),
+                    (220, 420),
                     Color::convert_rgb_color(255, 0, 255),
+                    3,
+                );
+                draw::draw_line(
+                    &mut buffer,
+                    screen_width,
+                    (160, 15),
+                    (210, 410),
+                    Color::convert_rgb_color(255, 0, 255),
+                );
+                draw::draw_thick_line(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    (150, 5),
+                    (200, 400),
+                    Color::convert_rgb_color(255, 0, 255),
+                    3,
                 );
 
                 // Update buffer.
@@ -822,11 +836,20 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
-                for (x,y) in sine_path.iter(){
+                for (x, y) in sine_path.iter() {
                     // without antialiasing
-                    buffer[(*y as usize + 50 as usize)*screen_width+ (*x as usize)] = Color::convert_rgb_color(255, 241, 0);
+                    buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
+                        Color::convert_rgb_color(255, 241, 0);
                     // with antialiasing.
-                    draw::draw_anti_aliased_point(&mut buffer, screen_width, screen_height, *x as usize, *y as usize, 0.8, Color::convert_rgb_color(255, 241, 0));
+                    draw::draw_anti_aliased_point(
+                        &mut buffer,
+                        screen_width,
+                        screen_height,
+                        *x as usize,
+                        *y as usize,
+                        0.8,
+                        Color::convert_rgb_color(255, 241, 0),
+                    );
                 }
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
