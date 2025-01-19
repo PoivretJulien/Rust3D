@@ -1534,33 +1534,68 @@ pub mod geometry {
     }
 }
 
+// Everything related to intersections or Zones evaluation.
 pub mod intersection {
-    use super::geometry::{CPlane, Point3d, Vector3d};
-    /// - early function deprecated.
-    /// Compute intersection of two point projected by two vectors
-    /// # Arguments
-    /// p1 first points (Point3d), d1 first direction (Vector3d)
-    /// p2 first points (Point3d), d2 first direction (Vector3d)
-    /// # Returns
-    /// None if vectors never intersect or Point3d of intersection on Success.
-    /// ! vectors must be coplanar for intersecting.
-    pub fn compute_intersection_coplanar(
-        p1: &Point3d,
-        d1: &Vector3d,
-        p2: &Point3d,
-        d2: &Vector3d,
-    ) -> Option<Point3d> {
-        let cross_d1_d2 = Vector3d::cross_product(d1, d2);
-        let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
-        if !Vector3d::are_coplanar_a(d1, d2) {
-            None // if lines never intersect.
-        } else {
-            let diff = *p2 - *p1; // Make vector delta.
-            let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Compute intersection from formula.
-            Some(*p1 + ((*d1) * t1)) // Return result.
+    // Act as an interface "the object can hold the
+    // Circle or the Rectangle type inside a same collection list.
+    pub enum ClickZoneType {
+        ClickZoneCircle(Circle),
+        ClickZoneRectangle(Rectangle),
+    }
+    pub struct Rectangle {
+        pub pt1: (usize, usize),
+        pub pt2: (usize, usize),
+    }
+    impl Rectangle {
+        /// Create a Rectangle from 2 points describing it's diagonal.
+        pub fn new(first_point: (usize, usize), second_point: (usize, usize)) -> Self {
+            Self {
+                pt1: first_point,
+                pt2: second_point,
+            }
+        }
+        /// Test if a point is inside the rectangle.
+        pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
+            if (test_point.0 >= self.pt1.0)
+                && (test_point.1 >= self.pt1.1)
+                && (test_point.0 <= self.pt2.0)
+                && (test_point.1 <= self.pt2.1)
+            {
+                true
+            } else {
+                false
+            }
+        }
+    }
+    pub struct Circle {
+        center_point: (usize, usize),
+        radius: f64,
+    }
+
+    impl Circle {
+        /// Create a circle from center point and radius.
+        pub fn new(center_point: (usize, usize), radius: f64) -> Self {
+            Self {
+                center_point,
+                radius,
+            }
+        }
+        /// Test if a point is inside the circle.
+        pub fn is_point_inside(self, test_point:(usize,usize))->bool
+        {
+            let dx = (self.center_point.0 - test_point.0) as isize;
+            let dy = (self.center_point.1 - test_point.1) as isize;
+            let squared_ditance = (dx as f64) * (dx as f64) + (dy as f64) * (dy as f64);
+            // println!("\x1b[1;1HDistance from circle center: {0:?}",squared_ditance.sqrt());
+            if squared_ditance.sqrt() <= self.radius {
+                true
+            }else{
+                false
+            }
         }
     }
 
+    use super::geometry::{CPlane, Point3d, Vector3d};
     /// Project a Point3d on a CPlane.
     /// # Arguments
     /// a Point3d , a Vector3d and a CPlane.
@@ -1592,179 +1627,29 @@ pub mod intersection {
         let intersection = (*point) + ((*direction) * t);
         Some(intersection)
     }
-}
 
-/*
- * 'atomic' Case study for a simple representation of a 3d point
- *  on simple 2D screen via projection matrix honestly for now it's kind of
- *  a magic black box for me but let's refine the analysis.
- */
-pub mod visualization_disabled_alpha {
-
-    use super::geometry::{Point3d, Vector3d};
-
-    pub struct Camera {
-        position: Point3d, // Camera position in world space
-        target: Point3d,   // The point the camera is looking at
-        up: Vector3d,      // The "up" direction (usually the Y-axis)
-        fov: f64,          // Field of view (in degrees)
-        width: f64,        // Screen width
-        height: f64,       // Screen height
-        near: f64,         // Near clipping plane
-        far: f64,          // Far clipping plane
-    }
-
-    impl Camera {
-        pub fn new(
-            position: Point3d,
-            target: Point3d,
-            up: Vector3d,
-            width: f64,
-            height: f64,
-            fov: f64,
-            near: f64,
-            far: f64,
-        ) -> Self {
-            Self {
-                position,
-                target,
-                up,
-                fov,
-                width,
-                height,
-                near,
-                far,
-            }
-        }
-
-        /// Get view matrix.
-        fn get_view_matrix(&self) -> [[f64; 4]; 4] {
-            let forward = Vector3d::new(
-                self.position.X - self.target.X,
-                self.position.Y - self.target.Y,
-                self.position.Z - self.target.Z,
-            )
-            .unitize_b();
-            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
-            let up = Vector3d::cross_product(&right, &forward).unitize_b();
-            // a Point3d is used there instead of Vector3d to avoid
-            // computing unused vector length automatically.
-            let translation = Point3d::new(-self.position.X, -self.position.Y, -self.position.Z);
-            [
-                [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
-                [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
-                [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
-                // Compute dot product manually... (i don't plan to implemented 'Vector3d*Point3d').
-                [
-                    (right.get_X() * translation.X)
-                        + (right.get_Y() * translation.Y)
-                        + (right.get_Z() * translation.Z),
-                    (up.get_X() * translation.X)
-                        + (up.get_Y() * translation.Y)
-                        + (right.get_Z() * translation.Z),
-                    (forward.get_X() * translation.X)
-                        + (forward.get_Y() * translation.Y)
-                        + (forward.get_Z() * translation.Z),
-                    1.0,
-                ],
-            ]
-        }
-
-        // Create a perspective projection matrix
-        fn get_projection_matrix(&self) -> [[f64; 4]; 4] {
-            let aspect_ratio = self.width / self.height;
-            let fov_rad = self.fov.to_radians();
-            let f = 1.0 / (fov_rad / 2.0).tan();
-            [
-                [f / aspect_ratio, 0.0, 0.0, 0.0],
-                [0.0, f, 0.0, 0.0],
-                [
-                    0.0,
-                    0.0,
-                    (self.far + self.near) / (self.near - self.far),
-                    -1.0,
-                ],
-                [
-                    0.0,
-                    0.0,
-                    (2.0 * self.far * self.near) / (self.near - self.far),
-                    0.0,
-                ],
-            ]
-        }
-
-        // Project a 3D point to 2D space using the camera's view and projection matrices
-        pub fn project(&self, point: Point3d) -> Option<(usize, usize)> {
-            let view_matrix = self.get_view_matrix();
-            let projection_matrix = self.get_projection_matrix();
-
-            let camera_space_point = self.multiply_matrix_vector(view_matrix, point);
-            let projected_point =
-                self.multiply_matrix_vector(projection_matrix, camera_space_point);
-
-            // Homogeneous divide (perspective divide)
-            let x = projected_point.X / projected_point.Z;
-            let y = projected_point.Y / projected_point.Z;
-
-            // Map the coordinates from [-1, 1] to screen space
-            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
-            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
-
-            if screen_x < 0
-                || screen_x >= self.width as isize
-                || screen_y < 0
-                || screen_y >= self.height as isize
-            {
-                return None; // Point is out of screen bounds
-            }
-
-            Some((screen_x as usize, screen_y as usize))
-        }
-
-        pub fn project_with_depth(&self, point: Point3d) -> Option<(usize, usize, f64)> {
-            let view_matrix = self.get_view_matrix();
-            let projection_matrix = self.get_projection_matrix();
-
-            // Step 1: Transform the point into camera space
-            let camera_space_point = self.multiply_matrix_vector(view_matrix, point);
-
-            // Extract depth in camera space (before projection)
-            let depth_in_camera_space = camera_space_point.Z;
-
-            // Step 2: Project the point using the projection matrix
-            let projected_point =
-                self.multiply_matrix_vector(projection_matrix, camera_space_point);
-
-            // Homogeneous divide (perspective divide)
-            let x = projected_point.X / projected_point.Z;
-            let y = projected_point.Y / projected_point.Z;
-
-            // Extract normalized depth from the projection
-            //let _depth_in_ndc = projected_point.Z;
-
-            // Map the coordinates from [-1, 1] to screen space
-            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
-            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
-
-            if screen_x < 0
-                || screen_x >= self.width as isize
-                || screen_y < 0
-                || screen_y >= self.height as isize
-            {
-                return None; // Point is out of screen bounds
-            }
-
-            // Return screen coordinates and the depth
-            Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
-        }
-
-        // Multiply 3d point by a matrix vector.
-        fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Point3d) -> Point3d {
-            Point3d::new(
-                matrix[0][0] * v.X + matrix[0][1] * v.Y + matrix[0][2] * v.Z + matrix[0][3],
-                matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
-                matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
-            )
+    /// - early function deprecated.
+    /// Compute intersection of two point projected by two vectors
+    /// # Arguments
+    /// p1 first points (Point3d), d1 first direction (Vector3d)
+    /// p2 first points (Point3d), d2 first direction (Vector3d)
+    /// # Returns
+    /// None if vectors never intersect or Point3d of intersection on Success.
+    /// ! vectors must be coplanar for intersecting.
+    pub fn compute_intersection_coplanar(
+        p1: &Point3d,
+        d1: &Vector3d,
+        p2: &Point3d,
+        d2: &Vector3d,
+    ) -> Option<Point3d> {
+        let cross_d1_d2 = Vector3d::cross_product(d1, d2);
+        let denom = cross_d1_d2 * cross_d1_d2; // dot product (square of cross product vector)
+        if !Vector3d::are_coplanar_a(d1, d2) {
+            None // if lines never intersect.
+        } else {
+            let diff = *p2 - *p1; // Make vector delta.
+            let t1 = Vector3d::cross_product(&diff, d2) * cross_d1_d2 / denom; // Compute intersection from formula.
+            Some(*p1 + ((*d1) * t1)) // Return result.
         }
     }
 }
@@ -2211,10 +2096,10 @@ pub mod transformation {
 
 /*
  * - Draw are all objects that are mainelly related to the 2d Screen space buffer
-     like shapes, lines, gimball, world 3d grid ect they should be fast and 
+     like shapes, lines, gimball, world 3d grid ect they should be fast and
      are the main objects for user visual interactions.
-   - this module is in developement and exploration... every thing may deeply 
-     change at  any time as i'm learning new technic for not only quality but efficiency 
+   - this module is in developement and exploration... every thing may deeply
+     change at  any time as i'm learning new technic for not only quality but efficiency
    - optiomization will come after an overall view of the module requirements.
 */
 //TODO: the Draw method of a NurbsCurve must be in draw module.
@@ -2287,8 +2172,9 @@ pub mod draw {
         }
     }
 
-    ///  Xiaolin Wu's line algorithm
-    /// Draw a good quality antialiased line with thickness.
+    /// Xiaolin Wu's line algorithm
+    /// Draw a good quality antialiased
+    /// line with thickness.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2360,8 +2246,9 @@ pub mod draw {
         }
     }
 
-    ///  Xiaolin Wu's line algorithm
-    /// A good function for drawing clean anti-aliased line without thickness.
+    /// Xiaolin Wu's line algorithm
+    /// A good function for drawing clean
+    /// anti-aliased line without thickness.
     pub fn draw_aa_line(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2734,6 +2621,7 @@ pub mod draw {
             }
         }
     }
+
     /// Draw a full disc with anti aliasing for smooth visual effects.
     /// anti aliasing factor is a border transition added to the radius
     /// where pixel color is blended to the background color.
@@ -3220,11 +3108,9 @@ pub mod draw {
             }
         }
     }
-    ////////////////bcp//////scratch codes//////////////////////////////////
-    ////////////////bcp//////scratch codes//////////////////////////////////
-    ////////////////bcp//////scratch codes//////////////////////////////////
-    ////////////////bcp//////scratch codes//////////////////////////////////
-    ////////////////bcp//////scratch codes//////////////////////////////////
+    //              following scratch codes deprecated.                   //
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     pub fn _exercise_draw_line_bcp(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -3312,7 +3198,7 @@ pub mod draw {
         }
     }
 
-    // a try to implement aa for this methods
+    // A try to implement aa for this methods
     // not sure of the benefit.
     pub fn draw_thick_line_experimental(
         buffer: &mut Vec<u32>,
@@ -3575,6 +3461,181 @@ pub mod utillity {
             + std::ops::Mul<f64, Output = T>,
     {
         a + (b - a) * t
+    }
+}
+
+/*
+ * 'atomic' Case study for a simple representation of a 3d point
+ *  on simple 2D screen via projection matrix honestly for now it's kind of
+ *  a magic black box for me but let's refine the analysis.
+ */
+pub mod visualization_disabled_alpha {
+
+    use super::geometry::{Point3d, Vector3d};
+
+    pub struct Camera {
+        position: Point3d, // Camera position in world space
+        target: Point3d,   // The point the camera is looking at
+        up: Vector3d,      // The "up" direction (usually the Y-axis)
+        fov: f64,          // Field of view (in degrees)
+        width: f64,        // Screen width
+        height: f64,       // Screen height
+        near: f64,         // Near clipping plane
+        far: f64,          // Far clipping plane
+    }
+
+    impl Camera {
+        pub fn new(
+            position: Point3d,
+            target: Point3d,
+            up: Vector3d,
+            width: f64,
+            height: f64,
+            fov: f64,
+            near: f64,
+            far: f64,
+        ) -> Self {
+            Self {
+                position,
+                target,
+                up,
+                fov,
+                width,
+                height,
+                near,
+                far,
+            }
+        }
+
+        /// Get view matrix.
+        fn get_view_matrix(&self) -> [[f64; 4]; 4] {
+            let forward = Vector3d::new(
+                self.position.X - self.target.X,
+                self.position.Y - self.target.Y,
+                self.position.Z - self.target.Z,
+            )
+            .unitize_b();
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+            // a Point3d is used there instead of Vector3d to avoid
+            // computing unused vector length automatically.
+            let translation = Point3d::new(-self.position.X, -self.position.Y, -self.position.Z);
+            [
+                [right.get_X(), up.get_X(), -forward.get_X(), 0.0],
+                [right.get_Y(), up.get_Y(), -forward.get_Y(), 0.0],
+                [right.get_Z(), up.get_Z(), -forward.get_Z(), 0.0],
+                // Compute dot product manually... (i don't plan to implemented 'Vector3d*Point3d').
+                [
+                    (right.get_X() * translation.X)
+                        + (right.get_Y() * translation.Y)
+                        + (right.get_Z() * translation.Z),
+                    (up.get_X() * translation.X)
+                        + (up.get_Y() * translation.Y)
+                        + (right.get_Z() * translation.Z),
+                    (forward.get_X() * translation.X)
+                        + (forward.get_Y() * translation.Y)
+                        + (forward.get_Z() * translation.Z),
+                    1.0,
+                ],
+            ]
+        }
+
+        // Create a perspective projection matrix
+        fn get_projection_matrix(&self) -> [[f64; 4]; 4] {
+            let aspect_ratio = self.width / self.height;
+            let fov_rad = self.fov.to_radians();
+            let f = 1.0 / (fov_rad / 2.0).tan();
+            [
+                [f / aspect_ratio, 0.0, 0.0, 0.0],
+                [0.0, f, 0.0, 0.0],
+                [
+                    0.0,
+                    0.0,
+                    (self.far + self.near) / (self.near - self.far),
+                    -1.0,
+                ],
+                [
+                    0.0,
+                    0.0,
+                    (2.0 * self.far * self.near) / (self.near - self.far),
+                    0.0,
+                ],
+            ]
+        }
+
+        // Project a 3D point to 2D space using the camera's view and projection matrices
+        pub fn project(&self, point: Point3d) -> Option<(usize, usize)> {
+            let view_matrix = self.get_view_matrix();
+            let projection_matrix = self.get_projection_matrix();
+
+            let camera_space_point = self.multiply_matrix_vector(view_matrix, point);
+            let projected_point =
+                self.multiply_matrix_vector(projection_matrix, camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.X / projected_point.Z;
+            let y = projected_point.Y / projected_point.Z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            if screen_x < 0
+                || screen_x >= self.width as isize
+                || screen_y < 0
+                || screen_y >= self.height as isize
+            {
+                return None; // Point is out of screen bounds
+            }
+
+            Some((screen_x as usize, screen_y as usize))
+        }
+
+        pub fn project_with_depth(&self, point: Point3d) -> Option<(usize, usize, f64)> {
+            let view_matrix = self.get_view_matrix();
+            let projection_matrix = self.get_projection_matrix();
+
+            // Step 1: Transform the point into camera space
+            let camera_space_point = self.multiply_matrix_vector(view_matrix, point);
+
+            // Extract depth in camera space (before projection)
+            let depth_in_camera_space = camera_space_point.Z;
+
+            // Step 2: Project the point using the projection matrix
+            let projected_point =
+                self.multiply_matrix_vector(projection_matrix, camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.X / projected_point.Z;
+            let y = projected_point.Y / projected_point.Z;
+
+            // Extract normalized depth from the projection
+            //let _depth_in_ndc = projected_point.Z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            if screen_x < 0
+                || screen_x >= self.width as isize
+                || screen_y < 0
+                || screen_y >= self.height as isize
+            {
+                return None; // Point is out of screen bounds
+            }
+
+            // Return screen coordinates and the depth
+            Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
+        }
+
+        // Multiply 3d point by a matrix vector.
+        fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Point3d) -> Point3d {
+            Point3d::new(
+                matrix[0][0] * v.X + matrix[0][1] * v.Y + matrix[0][2] * v.Z + matrix[0][3],
+                matrix[1][0] * v.X + matrix[1][1] * v.Y + matrix[1][2] * v.Z + matrix[1][3],
+                matrix[2][0] * v.X + matrix[2][1] * v.Y + matrix[2][2] * v.Z + matrix[2][3],
+            )
+        }
     }
 }
 

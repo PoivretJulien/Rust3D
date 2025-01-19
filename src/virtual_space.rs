@@ -41,7 +41,7 @@
 use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::draw;
+use crate::rust3d::draw::{self, draw_rectangle};
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
@@ -733,17 +733,7 @@ impl DisplayPipeLine {
                         }
                     }
                 }
-                draw::draw_circle(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    31,
-                    31,
-                    30,
-                    1,
-                    Color::convert_rgb_color(226, 0, 32),
-                    1,
-                );
+
                 draw::draw_circle(
                     &mut buffer,
                     screen_width,
@@ -790,6 +780,56 @@ impl DisplayPipeLine {
                 );
                 ////////////////////////////////////////////////////////////////
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
+                    use rust3d::intersection::{Circle, Rectangle};
+                    let circle_zone = Circle::new((31, 31), 32.0);
+                    if circle_zone.is_point_inside((pos.0 as usize, pos.1 as usize)) {
+                        draw::draw_circle(
+                            &mut buffer,
+                            screen_width,
+                            screen_height,
+                            31,
+                            31,
+                            30,
+                            1,
+                            Color::convert_rgb_color(226, 0, 32),
+                            1,
+                        );
+                    } else {
+                        draw::draw_circle(
+                            &mut buffer,
+                            screen_width,
+                            screen_height,
+                            31,
+                            31,
+                            30,
+                            1,
+                            Color::convert_rgb_color(0, 255, 32),
+                            1,
+                        );
+                    }
+                    let rec = Rectangle::new((100, 10), (110, 21));
+                    if rec.is_point_inside((pos.0 as usize, pos.1 as usize)) {
+                        draw_rectangle(&mut buffer,
+                            screen_width,
+                            screen_height, 
+                            100, 
+                            10, 
+                            10, 
+                            10, 
+                            0
+                            );
+                    }else{
+                        draw_rectangle(&mut buffer,
+                            screen_width,
+                            screen_height, 
+                            100, 
+                            10, 
+                            10, 
+                            10, 
+                            Color::convert_rgb_color(255, 255, 255)
+                            );
+                    }
+
                     draw::draw_thick_line_experimental(
                         &mut buffer,
                         screen_width,
