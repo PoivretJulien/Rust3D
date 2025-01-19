@@ -2287,6 +2287,7 @@ pub mod draw {
         }
     }
 
+    ///  Xiaolin Wu's line algorithm
     /// Draw a good quality antialiased line with thickness.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
@@ -2359,6 +2360,7 @@ pub mod draw {
         }
     }
 
+    ///  Xiaolin Wu's line algorithm
     /// A good function for drawing clean anti-aliased line without thickness.
     pub fn draw_aa_line(
         buffer: &mut Vec<u32>,

@@ -835,7 +835,7 @@ impl DisplayPipeLine {
                     10,
                     400,
                     35,
-                    5,
+                    8,
                     Color::convert_rgb_color(104, 104, 104),
                 );
                 // Update buffer.
