@@ -2179,6 +2179,7 @@ pub mod draw {
     /// Xiaolin Wu's line algorithm
     /// tickness line with thickness.
     /// will be rewrited with a better quality.
+    /// line thickness is implemented in wrog way.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2275,7 +2276,7 @@ pub mod draw {
                 dy / 1.0 // slope if dx == 0.
             };
             //////////////////////////////////
-            for i in 0..(dx as usize) {
+            for i in 0..=(dx as usize) {
                 let frac_x = pt1.0 + (i as f64);
                 let frac_y = pt1.1 + (i as f64) * m;
                 let x = frac_x as usize;
@@ -2299,7 +2300,7 @@ pub mod draw {
             } else {
                 dx / 1.0 // slope if dx == 0.
             };
-            for i in 0..(dy as usize) {
+            for i in 0..=(dy as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
                 let frac_y = pt1.1 + (i as f64);
                 let x = frac_x as usize;
