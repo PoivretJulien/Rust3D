@@ -1567,11 +1567,11 @@ pub mod intersection {
             }
         }
     }
+    /// Construct a tehorectical circle.
     pub struct Circle {
         center_point: (usize, usize),
         radius: f64,
     }
-
     impl Circle {
         /// Create a circle from center point and radius.
         pub fn new(center_point: (usize, usize), radius: f64) -> Self {
@@ -1580,16 +1580,18 @@ pub mod intersection {
                 radius,
             }
         }
+
         /// Test if a point is inside the circle.
-        pub fn is_point_inside(self, test_point:(usize,usize))->bool
-        {
+        pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
+            // Compute distance from circle center.
             let dx = (self.center_point.0 - test_point.0) as isize;
             let dy = (self.center_point.1 - test_point.1) as isize;
             let squared_ditance = (dx as f64) * (dx as f64) + (dy as f64) * (dy as f64);
             // println!("\x1b[1;1HDistance from circle center: {0:?}",squared_ditance.sqrt());
+            // Check if the squared circle is inside the circle.
             if squared_ditance.sqrt() <= self.radius {
                 true
-            }else{
+            } else {
                 false
             }
         }
@@ -1628,7 +1630,7 @@ pub mod intersection {
         Some(intersection)
     }
 
-    /// - early function deprecated.
+    /// - an Early function deprecated.
     /// Compute intersection of two point projected by two vectors
     /// # Arguments
     /// p1 first points (Point3d), d1 first direction (Vector3d)
@@ -2183,6 +2185,30 @@ pub mod draw {
         color: u32,
         thickness: usize,
     ) {
+        let height = buffer.len() / screen_width;
+        // draw fist point.
+        self::draw_disc(
+            buffer,
+            screen_width,
+            height,
+            pt1.0 as usize,
+            pt1.1 as usize,
+            thickness / 2,
+            color,
+            1,
+        );
+
+        // draw second point.
+        self::draw_disc(
+            buffer,
+            screen_width,
+            height,
+            pt2.0 as usize,
+            pt2.1 as usize,
+            thickness / 2,
+            color,
+            1,
+        );
         let half_thickness = (thickness as f64) / 2.0;
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
             if pt2.0 < pt1.0 {
@@ -2191,7 +2217,7 @@ pub mod draw {
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
             let m = if dx != 0.0 { dy / dx } else { dy / 1.0 };
-            for i in 0..(dx as usize) {
+            for i in 0..=(dx as usize) {
                 let frac_x = pt1.0 + (i as f64);
                 let frac_y = pt1.1 + (i as f64) * m;
                 let x = frac_x as usize;
@@ -2221,7 +2247,7 @@ pub mod draw {
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
             let m = if dy != 0.0 { dx / dy } else { dx / 1.0 };
-            for i in 0..(dy as usize) {
+            for i in 0..=(dy as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
                 let frac_y = pt1.1 + (i as f64);
                 let x = frac_x as usize;
@@ -2509,7 +2535,6 @@ pub mod draw {
             true,
             false,
         ); // Bottom-left
-
         draw_circle_quarter_aa(
             buffer,
             buffer_width,
@@ -2520,7 +2545,6 @@ pub mod draw {
             false,
             false,
         ); // Bottom-right
-
         // Fill horizontal parts (top and bottom)
         for dy in 0..radius {
             for dx in (x + radius)..(x + width - radius) {
@@ -2612,9 +2636,10 @@ pub mod draw {
                     } else {
                         alpha_in // (alpha is 1.0 in that case)
                     };
-                    let blended_color = blend_colors(color, buffer[y * screen_width + x], alpha);
                     // Write the blended color to the buffer
                     if (x < screen_width) && (y < screen_height) {
+                        let blended_color =
+                            blend_colors(color, buffer[y * screen_width + x], alpha);
                         buffer[y * screen_width + x] = blended_color;
                     }
                 }
@@ -2675,10 +2700,10 @@ pub mod draw {
                     .clamp(0.0, 1.0);
                 // Evaluate circle border from alpha_out value conditions.
                 if alpha_out > 0.0 {
-                    let blended_color =
-                        blend_colors(color, buffer[y * screen_width + x], alpha_out);
                     // Write the blended color to the buffer
                     if (x < screen_width) && (y < screen_height) {
+                        let blended_color =
+                            blend_colors(color, buffer[y * screen_width + x], alpha_out);
                         buffer[y * screen_width + x] = blended_color;
                     }
                 }
