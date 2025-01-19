@@ -816,7 +816,7 @@ impl DisplayPipeLine {
                             10, 
                             10, 
                             10, 
-                            0
+                            Color::convert_rgb_color(255, 25, 255),
                             );
                     }else{
                         draw_rectangle(&mut buffer,
@@ -826,7 +826,7 @@ impl DisplayPipeLine {
                             10, 
                             10, 
                             10, 
-                            Color::convert_rgb_color(255, 255, 255)
+                            Color::convert_rgb_color(38, 25, 74)
                             );
                     }
 
