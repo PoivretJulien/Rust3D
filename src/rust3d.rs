@@ -2177,8 +2177,8 @@ pub mod draw {
     }
 
     /// Xiaolin Wu's line algorithm
-    /// Draw a good quality antialiased
-    /// line with thickness.
+    /// tickness line with thickness.
+    /// will be rewrited with a better quality.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
