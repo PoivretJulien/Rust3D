@@ -2210,10 +2210,12 @@ pub mod transformation {
 }
 
 /*
- *- Draw are all objects that are manelly related to the 2d Screen
-    projected space, some are 3d object but they involve buffer rasterization
-    for being represented they are not real data structure objects but rather
-    a list of Point3d
+ * - Draw are all objects that are mainelly related to the 2d Screen space buffer
+     like shapes, lines, gimball, world 3d grid ect they should be fast and 
+     are the main objects for user visual interactions.
+   - this module is in developement and exploration... every thing may deeply 
+     change at  any time as i'm learning new technic for not only quality but efficiency 
+   - optiomization will come after an overall view of the module requirements.
 */
 //TODO: the Draw method of a NurbsCurve must be in draw module.
 pub mod draw {
@@ -2295,7 +2297,6 @@ pub mod draw {
         thickness: usize,
     ) {
         let half_thickness = (thickness as f64) / 2.0;
-
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
             if pt2.0 < pt1.0 {
                 (pt1, pt2) = (pt2, pt1);
@@ -2303,7 +2304,6 @@ pub mod draw {
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
             let m = if dx != 0.0 { dy / dx } else { dy / 1.0 };
-
             for i in 0..(dx as usize) {
                 let frac_x = pt1.0 + (i as f64);
                 let frac_y = pt1.1 + (i as f64) * m;
@@ -2334,14 +2334,12 @@ pub mod draw {
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
             let m = if dy != 0.0 { dx / dy } else { dx / 1.0 };
-
             for i in 0..(dy as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
                 let frac_y = pt1.1 + (i as f64);
                 let x = frac_x as usize;
                 let y = frac_y as usize;
                 let dist = frac_x - (x as f64);
-
                 for offset in -(half_thickness as isize)..=(half_thickness as isize) {
                     let x_offset = x as isize + offset;
                     if x_offset >= 0 && (x_offset as usize) < screen_width {
@@ -3312,7 +3310,7 @@ pub mod draw {
         }
     }
 
-    // try to implement aa for this methods
+    // a try to implement aa for this methods
     // not sure of the benefit.
     pub fn draw_thick_line_experimental(
         buffer: &mut Vec<u32>,
@@ -3579,7 +3577,7 @@ pub mod utillity {
 }
 
 /*
- *   Unit Test integration for main structural components as far as i can
+ *   Unit Test for main structural components as far as i can.
  *   Every thing graphical is cumbersome to evalutate.
  *   but essential components will always be there since
  *   they are always crafted with love.
