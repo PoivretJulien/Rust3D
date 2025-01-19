@@ -632,14 +632,11 @@ impl DisplayPipeLine {
             ));
             ct += 1;
         }
-        // println!("{:?}",d);
-        // panic!();
-
         // minifb must be lunch in the main thread (i was not aware about that) so the overall
         // runtime will be simply flipped:
-        // - a thread will be allocated for virtualspace (where geometric interactions will be
-        // computed )
-        // -  the main thread will take care of the display pipe line with mini fb.
+        // - a thread will be allocated for virtualspace 
+        // (where geometric interactions will be computed.)
+        // - the main thread will take care of the display pipe line with mini fb.
         // i'm focusing on graphical tools for now and try to learn some techniques.
         let thread_data = self.virtual_space.clone();
         if let Ok(m) = &thread_data.lock() {
@@ -733,7 +730,6 @@ impl DisplayPipeLine {
                         }
                     }
                 }
-
                 draw::draw_circle(
                     &mut buffer,
                     screen_width,
@@ -829,7 +825,6 @@ impl DisplayPipeLine {
                             Color::convert_rgb_color(38, 25, 74)
                             );
                     }
-
                     draw::draw_thick_line_experimental(
                         &mut buffer,
                         screen_width,
@@ -855,7 +850,7 @@ impl DisplayPipeLine {
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
                             Color::convert_rgb_color(255, 217, 0),
-                            2,
+                            3,
                         );
                     } else {
                         draw::draw_aa_line_with_thickness(
@@ -864,7 +859,7 @@ impl DisplayPipeLine {
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
                             Color::convert_rgb_color(0, 104, 255),
-                            2,
+                            3,
                         );
                     }
                 }

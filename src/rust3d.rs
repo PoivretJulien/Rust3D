@@ -1547,14 +1547,15 @@ pub mod intersection {
         pub pt2: (usize, usize),
     }
     impl Rectangle {
-        /// Create a Rectangle from 2 points describing it's diagonal.
+        /// Create a rectangle zone area from 2 points
+        /// describing it's diagonal start and end point.
         pub fn new(first_point: (usize, usize), second_point: (usize, usize)) -> Self {
             Self {
                 pt1: first_point,
                 pt2: second_point,
             }
         }
-        /// Test if a point is inside the rectangle.
+        /// Test if a point is inside the rectangle zone.
         pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
             if (test_point.0 >= self.pt1.0)
                 && (test_point.1 >= self.pt1.1)
@@ -1567,13 +1568,14 @@ pub mod intersection {
             }
         }
     }
-    /// Construct a tehorectical circle.
+    /// Construct a circle zone area.
     pub struct Circle {
         center_point: (usize, usize),
         radius: f64,
     }
+
     impl Circle {
-        /// Create a circle from center point and radius.
+        /// Create a circle zone area from it's center point and radius.
         pub fn new(center_point: (usize, usize), radius: f64) -> Self {
             Self {
                 center_point,
@@ -1581,7 +1583,7 @@ pub mod intersection {
             }
         }
 
-        /// Test if a point is inside the circle.
+        /// Test if a point is inside the circle zone area.
         pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
             // Compute distance from circle center.
             let dx = (self.center_point.0 - test_point.0) as isize;
@@ -1598,7 +1600,7 @@ pub mod intersection {
     }
 
     use super::geometry::{CPlane, Point3d, Vector3d};
-    /// Project a Point3d on a CPlane.
+    /// Project a Point3d on a CPlane through a ray vector.
     /// # Arguments
     /// a Point3d , a Vector3d and a CPlane.
     /// # Returns
@@ -2185,30 +2187,6 @@ pub mod draw {
         color: u32,
         thickness: usize,
     ) {
-        let height = buffer.len() / screen_width;
-        // draw fist point.
-        self::draw_disc(
-            buffer,
-            screen_width,
-            height,
-            pt1.0 as usize,
-            pt1.1 as usize,
-            thickness / 2,
-            color,
-            1,
-        );
-
-        // draw second point.
-        self::draw_disc(
-            buffer,
-            screen_width,
-            height,
-            pt2.0 as usize,
-            pt2.1 as usize,
-            thickness / 2,
-            color,
-            1,
-        );
         let half_thickness = (thickness as f64) / 2.0;
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
             if pt2.0 < pt1.0 {
