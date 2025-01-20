@@ -1547,14 +1547,15 @@ pub mod intersection {
         pub pt2: (usize, usize),
     }
     impl Rectangle {
-        /// Create a Rectangle from 2 points describing it's diagonal.
+        /// Create a rectangle zone area from 2 points
+        /// describing it's diagonal start and end point.
         pub fn new(first_point: (usize, usize), second_point: (usize, usize)) -> Self {
             Self {
                 pt1: first_point,
                 pt2: second_point,
             }
         }
-        /// Test if a point is inside the rectangle.
+        /// Test if a point is inside the rectangle zone.
         pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
             if (test_point.0 >= self.pt1.0)
                 && (test_point.1 >= self.pt1.1)
@@ -1567,13 +1568,14 @@ pub mod intersection {
             }
         }
     }
-    /// Construct a tehorectical circle.
+    /// Construct a circle zone area.
     pub struct Circle {
         center_point: (usize, usize),
         radius: f64,
     }
+
     impl Circle {
-        /// Create a circle from center point and radius.
+        /// Create a circle zone area from it's center point and radius.
         pub fn new(center_point: (usize, usize), radius: f64) -> Self {
             Self {
                 center_point,
@@ -1581,7 +1583,7 @@ pub mod intersection {
             }
         }
 
-        /// Test if a point is inside the circle.
+        /// Test if a point is inside the circle zone area.
         pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
             // Compute distance from circle center.
             let dx = (self.center_point.0 - test_point.0) as isize;
@@ -1598,7 +1600,7 @@ pub mod intersection {
     }
 
     use super::geometry::{CPlane, Point3d, Vector3d};
-    /// Project a Point3d on a CPlane.
+    /// Project a Point3d on a CPlane through a ray vector.
     /// # Arguments
     /// a Point3d , a Vector3d and a CPlane.
     /// # Returns
@@ -2175,8 +2177,188 @@ pub mod draw {
     }
 
     /// Xiaolin Wu's line algorithm
-    /// Draw a good quality antialiased
-    /// line with thickness.
+    /// A good function for drawing clean
+    /// anti-aliased line (without thickness though).
+    pub fn draw_aa_line_test(
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        mut pt1: (f64, f64),
+        mut pt2: (f64, f64),
+        thickness: usize,
+        color: u32,
+    ) {
+        let screen_height = buffer.len() / screen_width;
+        let mut half_thickness = thickness / 2;
+        if half_thickness == 0 {
+            half_thickness = 1;
+        }
+        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
+            // Swap x and y for writing
+            // line from end to start when pt2.x
+            // is inferior to pt1.x.
+            if pt2.0 < pt1.0 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            // Compute end point distances on x and y.
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            //////////////////////////////////
+            // Avoid division by zero for
+            // defining the slope ration m.
+            let m = if dx != 0.0 {
+                dy / dx // compute the slope
+            } else {
+                dy / 1.0 // slope if dx == 0.
+            };
+            //////////////////////////////////
+            // Compute the x overlap distance for start point.
+            let overlap = 1.0 - ((pt1.0 + 0.5) - ((pt1.0 + 0.5) as usize) as f64);
+            // Vertical distance on y for the first point.
+            let diststart = pt1.1 - ((pt1.1 as usize) as f64);
+            // write buffer only for the first point if input point are in the screen.
+            let x = (pt1.0 + 0.5) as usize;
+            let y = pt1.1 as usize;
+            if (x < screen_width) && ((y + 1) < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - diststart) * overlap,
+                );
+                buffer[(y + 1) * screen_width + x] = blend_colors(
+                    color,
+                    buffer[(y + 1) * screen_width + x],
+                    diststart * overlap,
+                );
+            }
+            // Compute the x overlap distance for End point.
+            let overlap = (pt2.0 - 0.5) - ((pt2.0 - 0.5) as usize) as f64;
+            // Vertical distance on y for the first point.
+            let distend = pt2.1 - ((pt2.1 as usize) as f64);
+            // write buffer only for the first point if input point are in the screen.
+            let x = (pt2.0 + 0.5) as usize;
+            let y = pt2.1 as usize;
+            if (x < screen_width) && ((y + 1) < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - distend) * overlap,
+                );
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], distend * overlap);
+            }
+            //////////////////////////////////
+            // From 2nd point to penultimate point.
+            for i in 1..=((dx) as usize) {
+                // Move x px from + i on x axis
+                let frac_x = pt1.0 + (i as f64);
+                // Move the y px from slope ratio time
+                // the n iteration step as scalar factor.
+                let frac_y = pt1.1 + (i as f64) * m;
+                // Convert x and y in integer.
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_y - (y as f64); // Get only the fractional part.
+                for i in 0..=thickness {
+                    if x < screen_width && ((y + (i - half_thickness)) < screen_height) {
+                        if i == 0 {
+                            buffer[(y + (i - half_thickness)) * screen_width + x] = blend_colors(
+                                color,
+                                buffer[(y + (i - half_thickness)) * screen_width + x],
+                                1.0 - dist,
+                            );
+                        } else if i == thickness {
+                            buffer[(y + (i - half_thickness)) * screen_width + x] = blend_colors(
+                                color,
+                                buffer[(y + (i - half_thickness)) * screen_width + x],
+                                dist,
+                            );
+                        } else {
+                            buffer[(y + (i - half_thickness)) * screen_width + x] = color;
+                        }
+                    }
+                }
+            }
+            // Same as a bove but anti-aliasing logic apply on x instead of y
+            // when line is vertical.
+        } else {
+            if pt2.1 < pt1.1 {
+                (pt1, pt2) = (pt2, pt1);
+            }
+            let dx = pt2.0 - pt1.0;
+            let dy = pt2.1 - pt1.1;
+            let m = if dx != 0.0 {
+                dx / dy // compute the slope.
+            } else {
+                dx / 1.0 // slope if dx == 0.
+            };
+            // Compute the y overlap distance for start point.
+            let overlap = 1.0 - ((pt1.1 + 0.5) - ((pt1.1 + 0.5) as usize) as f64);
+            // Vertical distance on y for the first point.
+            let diststart = pt1.1 - ((pt1.1 as usize) as f64);
+            // write buffer only for the first point if input point are in the screen.
+            let x = (pt1.0 + 0.5) as usize;
+            let y = pt1.1 as usize;
+            if (x < screen_width) && ((y + 1) < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - diststart) * overlap,
+                );
+                buffer[(y + 1) * screen_width + x] = blend_colors(
+                    color,
+                    buffer[(y + 1) * screen_width + x],
+                    diststart * overlap,
+                );
+            }
+            // Compute the y overlap distance for End point.
+            let overlap = (pt2.1 - 0.5) - ((pt2.1 - 0.5) as usize) as f64;
+            // Vertical distance on y for the first point.
+            let distend = pt2.1 - ((pt2.1 as usize) as f64);
+            // Write buffer only for the End point if input point are in the screen.
+            let x = pt2.0 as usize;
+            let y = (pt2.1 + 0.5) as usize;
+            if ((x + 1) < screen_width) && (y < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - distend) * overlap,
+                );
+                buffer[y * screen_width + (x + 1)] =
+                    blend_colors(color, buffer[y * screen_width + (x + 1)], distend * overlap);
+            }
+            for i in 1..=((dy) as usize) {
+                let frac_x = pt1.0 + (i as f64) * m;
+                let frac_y = pt1.1 + (i as f64);
+                let x = frac_x as usize;
+                let y = frac_y as usize;
+                let dist = frac_x - (x as f64);
+                /////////////////
+                for i in 0..=thickness {
+                    if ((x + (i - half_thickness)) < screen_width) && (y < screen_height) {
+                        if i == 0 {
+                            buffer[y * screen_width + (x + (i - half_thickness))] = blend_colors(
+                                color,
+                                buffer[y * screen_width + (x + (i - half_thickness))],
+                                1.0 - dist,
+                            );
+                        } else if i == thickness {
+                            buffer[y * screen_width + (x + (i - half_thickness))] = blend_colors(
+                                color,
+                                buffer[y * screen_width + (x + (i - half_thickness))],
+                                dist,
+                            );
+                        } else {
+                            buffer[y * screen_width + (x + (i - half_thickness))] = color;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Xiaolin Wu's line algorithm
+    /// tickness line with thickness.
+    /// will be rewrited with a better quality.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2199,7 +2381,6 @@ pub mod draw {
                 let x = frac_x as usize;
                 let y = frac_y as usize;
                 let dist = frac_y - (y as f64);
-
                 for offset in -(half_thickness as isize)..=(half_thickness as isize) {
                     let y_offset = y as isize + offset;
                     if y_offset >= 0 && (y_offset as usize + 1) < buffer.len() / screen_width {
@@ -2250,7 +2431,7 @@ pub mod draw {
 
     /// Xiaolin Wu's line algorithm
     /// A good function for drawing clean
-    /// anti-aliased line without thickness.
+    /// anti-aliased line (without thickness though).
     pub fn draw_aa_line(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2258,34 +2439,83 @@ pub mod draw {
         mut pt2: (f64, f64),
         color: u32,
     ) {
+        let screen_height = buffer.len() / screen_width;
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
+            // Swap x and y for writing
+            // line from end to start when pt2.x
+            // is inferior to pt1.x.
             if pt2.0 < pt1.0 {
                 (pt1, pt2) = (pt2, pt1);
             }
+            // Compute end point distances on x and y.
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
             //////////////////////////////////
-            // avoid division by zero for
+            // Avoid division by zero for
             // defining the slope ration m.
             let m = if dx != 0.0 {
-                dy / dx // compute the slope.
+                dy / dx // compute the slope
             } else {
                 dy / 1.0 // slope if dx == 0.
             };
             //////////////////////////////////
-            for i in 0..(dx as usize) {
+            // Compute the x overlap distance for start point.
+            let overlap = 1.0 - ((pt1.0 + 0.5) - ((pt1.0 + 0.5) as usize) as f64);
+            // Vertical distance on y for the first point.
+            let diststart = pt1.1 - ((pt1.1 as usize) as f64);
+            // write buffer only for the first point if input point are in the screen.
+            let x = (pt1.0 + 0.5) as usize;
+            let y = pt1.1 as usize;
+            if (x < screen_width) && ((y + 1) < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - diststart) * overlap,
+                );
+                buffer[(y + 1) * screen_width + x] = blend_colors(
+                    color,
+                    buffer[(y + 1) * screen_width + x],
+                    diststart * overlap,
+                );
+            }
+            // Compute the x overlap distance for End point.
+            let overlap = (pt2.0 - 0.5) - ((pt2.0 - 0.5) as usize) as f64;
+            // Vertical distance on y for the first point.
+            let distend = pt2.1 - ((pt2.1 as usize) as f64);
+            // write buffer only for the first point if input point are in the screen.
+            let x = (pt2.0 + 0.5) as usize;
+            let y = pt2.1 as usize;
+            if (x < screen_width) && ((y + 1) < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - distend) * overlap,
+                );
+                buffer[(y + 1) * screen_width + x] =
+                    blend_colors(color, buffer[(y + 1) * screen_width + x], distend * overlap);
+            }
+            //////////////////////////////////
+            // From 2nd point to penultimate point.
+            for i in 1..=((dx) as usize) {
+                // Move x px from + i on x axis
                 let frac_x = pt1.0 + (i as f64);
+                // Move the y px from slope ratio time
+                // the n iteration step as scalar factor.
                 let frac_y = pt1.1 + (i as f64) * m;
+                // Convert x and y in integer.
                 let x = frac_x as usize;
                 let y = frac_y as usize;
-                let dist = frac_y - (y as f64);
-                if x < screen_width && (y + 1 < (buffer.len() / screen_width)) {
+                let dist = frac_y - (y as f64); // Get only the fractional part.
+                if x < screen_width && (y + 1 < screen_height) {
+                    // Apply opacity on alpha from fractional part distance as reminder of 1.
                     buffer[y * screen_width + x] =
                         blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
                     buffer[(y + 1) * screen_width + x] =
                         blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
                 }
             }
+            // Same as a bove but anti-aliasing logic apply on x instead of y
+            // when line is vertical.
         } else {
             if pt2.1 < pt1.1 {
                 (pt1, pt2) = (pt2, pt1);
@@ -2297,16 +2527,53 @@ pub mod draw {
             } else {
                 dx / 1.0 // slope if dx == 0.
             };
-            for i in 0..(dy as usize) {
+            // Compute the y overlap distance for start point.
+            let overlap = 1.0 - ((pt1.1 + 0.5) - ((pt1.1 + 0.5) as usize) as f64);
+            // Vertical distance on y for the first point.
+            let diststart = pt1.1 - ((pt1.1 as usize) as f64);
+            // write buffer only for the first point if input point are in the screen.
+            let x = (pt1.0 + 0.5) as usize;
+            let y = pt1.1 as usize;
+            if (x < screen_width) && ((y + 1) < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - diststart) * overlap,
+                );
+                buffer[(y + 1) * screen_width + x] = blend_colors(
+                    color,
+                    buffer[(y + 1) * screen_width + x],
+                    diststart * overlap,
+                );
+            }
+            // Compute the y overlap distance for End point.
+            let overlap = (pt2.1 - 0.5) - ((pt2.1 - 0.5) as usize) as f64;
+            // Vertical distance on y for the first point.
+            let distend = pt2.1 - ((pt2.1 as usize) as f64);
+            // Write buffer only for the End point if input point are in the screen.
+            let x = pt2.0 as usize;
+            let y = (pt2.1 + 0.5) as usize;
+            if ((x + 1) < screen_width) && (y < screen_height) {
+                buffer[y * screen_width + x] = blend_colors(
+                    color,
+                    buffer[y * screen_width + x],
+                    (1.0 - distend) * overlap,
+                );
+                buffer[y * screen_width + (x + 1)] =
+                    blend_colors(color, buffer[y * screen_width + (x + 1)], distend * overlap);
+            }
+            for i in 1..=((dy) as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
                 let frac_y = pt1.1 + (i as f64);
                 let x = frac_x as usize;
                 let y = frac_y as usize;
                 let dist = frac_x - (x as f64);
-                buffer[y * screen_width + x] =
-                    blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
-                buffer[(y + 1) * screen_width + x] =
-                    blend_colors(color, buffer[(y + 1) * screen_width + x], dist);
+                if ((x + 1) < screen_width) && (y < screen_height) {
+                    buffer[y * screen_width + x] =
+                        blend_colors(color, buffer[y * screen_width + x], 1.0 - dist);
+                    buffer[y * screen_width + (x + 1)] =
+                        blend_colors(color, buffer[y * screen_width + (x + 1)], dist);
+                }
             }
         }
     }
@@ -2521,7 +2788,7 @@ pub mod draw {
             false,
             false,
         ); // Bottom-right
-        // Fill horizontal parts (top and bottom)
+           // Fill horizontal parts (top and bottom)
         for dy in 0..radius {
             for dx in (x + radius)..(x + width - radius) {
                 if x < buffer_width && y < buffer.len() / buffer_width {
@@ -2532,7 +2799,6 @@ pub mod draw {
                 } // Bottom part
             }
         }
-
         // Fill vertical middle part
         for dy in (y + radius)..(y + height - radius) {
             for dx in x..(x + width) {
@@ -2702,7 +2968,6 @@ pub mod draw {
             for x in 0..=radius {
                 let distance = ((x * x + y * y) as f64).sqrt(); // Euclidean distance
                 let dist_to_edge = radius as f64 - distance;
-
                 if dist_to_edge >= 0.0 {
                     // Inside the circle
                     let px = if is_left { cx - x } else { cx + x };
