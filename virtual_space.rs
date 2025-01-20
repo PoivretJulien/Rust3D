@@ -634,7 +634,7 @@ impl DisplayPipeLine {
         }
         // minifb must be lunch in the main thread (i was not aware about that) so the overall
         // runtime will be simply flipped:
-        // - a thread will be allocated for virtualspace 
+        // - a thread will be allocated for virtualspace
         // (where geometric interactions will be computed.)
         // - the main thread will take care of the display pipe line with mini fb.
         // i'm focusing on graphical tools for now and try to learn some techniques.
@@ -805,25 +805,27 @@ impl DisplayPipeLine {
                     }
                     let rec = Rectangle::new((100, 10), (110, 21));
                     if rec.is_point_inside((pos.0 as usize, pos.1 as usize)) {
-                        draw_rectangle(&mut buffer,
+                        draw_rectangle(
+                            &mut buffer,
                             screen_width,
-                            screen_height, 
-                            100, 
-                            10, 
-                            10, 
-                            10, 
+                            screen_height,
+                            100,
+                            10,
+                            10,
+                            10,
                             Color::convert_rgb_color(255, 25, 255),
-                            );
-                    }else{
-                        draw_rectangle(&mut buffer,
+                        );
+                    } else {
+                        draw_rectangle(
+                            &mut buffer,
                             screen_width,
-                            screen_height, 
-                            100, 
-                            10, 
-                            10, 
-                            10, 
-                            Color::convert_rgb_color(38, 25, 74)
-                            );
+                            screen_height,
+                            100,
+                            10,
+                            10,
+                            10,
+                            Color::convert_rgb_color(38, 25, 74),
+                        );
                     }
                     draw::draw_thick_line_experimental(
                         &mut buffer,
@@ -849,17 +851,16 @@ impl DisplayPipeLine {
                             screen_width,
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
-                            Color::convert_rgb_color(255, 217, 0),
                             3,
+                            Color::convert_rgb_color(255, 217, 0),
                         );
                     } else {
-                        draw::draw_aa_line_with_thickness(
+                        draw::draw_aa_line(
                             &mut buffer,
                             screen_width,
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
                             Color::convert_rgb_color(0, 104, 255),
-                            3,
                         );
                     }
                 }
