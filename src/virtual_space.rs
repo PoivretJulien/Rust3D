@@ -846,12 +846,12 @@ impl DisplayPipeLine {
                         3,
                     );
                     if window.get_mouse_down(MouseButton::Left) {
-                        draw::draw_aa_line_test(
+                        draw::draw_aa_line_with_thickness(
                             &mut buffer,
                             screen_width,
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
-                            12,
+                            3,
                             Color::convert_rgb_color(255, 217, 0),
                         );
                     } else {

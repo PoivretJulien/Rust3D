@@ -2179,7 +2179,7 @@ pub mod draw {
     /// Xiaolin Wu's line algorithm
     /// A good function for drawing clean
     /// anti-aliased line (without thickness though).
-    pub fn draw_aa_line_test(
+    pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
         mut pt1: (f64, f64),
@@ -2211,44 +2211,10 @@ pub mod draw {
                 dy / 1.0 // slope if dx == 0.
             };
             //////////////////////////////////
-            // Compute the x overlap distance for start point.
-            let overlap = 1.0 - ((pt1.0 + 0.5) - ((pt1.0 + 0.5) as usize) as f64);
-            // Vertical distance on y for the first point.
-            let diststart = pt1.1 - ((pt1.1 as usize) as f64);
-            // write buffer only for the first point if input point are in the screen.
-            let x = (pt1.0 + 0.5) as usize;
-            let y = pt1.1 as usize;
-            if (x < screen_width) && ((y + 1) < screen_height) {
-                buffer[y * screen_width + x] = blend_colors(
-                    color,
-                    buffer[y * screen_width + x],
-                    (1.0 - diststart) * overlap,
-                );
-                buffer[(y + 1) * screen_width + x] = blend_colors(
-                    color,
-                    buffer[(y + 1) * screen_width + x],
-                    diststart * overlap,
-                );
-            }
-            // Compute the x overlap distance for End point.
-            let overlap = (pt2.0 - 0.5) - ((pt2.0 - 0.5) as usize) as f64;
-            // Vertical distance on y for the first point.
-            let distend = pt2.1 - ((pt2.1 as usize) as f64);
-            // write buffer only for the first point if input point are in the screen.
-            let x = (pt2.0 + 0.5) as usize;
-            let y = pt2.1 as usize;
-            if (x < screen_width) && ((y + 1) < screen_height) {
-                buffer[y * screen_width + x] = blend_colors(
-                    color,
-                    buffer[y * screen_width + x],
-                    (1.0 - distend) * overlap,
-                );
-                buffer[(y + 1) * screen_width + x] =
-                    blend_colors(color, buffer[(y + 1) * screen_width + x], distend * overlap);
-            }
+            
             //////////////////////////////////
             // From 2nd point to penultimate point.
-            for i in 1..=((dx) as usize) {
+            for i in 0..=(dx as usize) {
                 // Move x px from + i on x axis
                 let frac_x = pt1.0 + (i as f64);
                 // Move the y px from slope ratio time
@@ -2291,42 +2257,7 @@ pub mod draw {
             } else {
                 dx / 1.0 // slope if dx == 0.
             };
-            // Compute the y overlap distance for start point.
-            let overlap = 1.0 - ((pt1.1 + 0.5) - ((pt1.1 + 0.5) as usize) as f64);
-            // Vertical distance on y for the first point.
-            let diststart = pt1.1 - ((pt1.1 as usize) as f64);
-            // write buffer only for the first point if input point are in the screen.
-            let x = (pt1.0 + 0.5) as usize;
-            let y = pt1.1 as usize;
-            if (x < screen_width) && ((y + 1) < screen_height) {
-                buffer[y * screen_width + x] = blend_colors(
-                    color,
-                    buffer[y * screen_width + x],
-                    (1.0 - diststart) * overlap,
-                );
-                buffer[(y + 1) * screen_width + x] = blend_colors(
-                    color,
-                    buffer[(y + 1) * screen_width + x],
-                    diststart * overlap,
-                );
-            }
-            // Compute the y overlap distance for End point.
-            let overlap = (pt2.1 - 0.5) - ((pt2.1 - 0.5) as usize) as f64;
-            // Vertical distance on y for the first point.
-            let distend = pt2.1 - ((pt2.1 as usize) as f64);
-            // Write buffer only for the End point if input point are in the screen.
-            let x = pt2.0 as usize;
-            let y = (pt2.1 + 0.5) as usize;
-            if ((x + 1) < screen_width) && (y < screen_height) {
-                buffer[y * screen_width + x] = blend_colors(
-                    color,
-                    buffer[y * screen_width + x],
-                    (1.0 - distend) * overlap,
-                );
-                buffer[y * screen_width + (x + 1)] =
-                    blend_colors(color, buffer[y * screen_width + (x + 1)], distend * overlap);
-            }
-            for i in 1..=((dy) as usize) {
+            for i in 0..=(dy as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
                 let frac_y = pt1.1 + (i as f64);
                 let x = frac_x as usize;
@@ -2350,79 +2281,6 @@ pub mod draw {
                         } else {
                             buffer[y * screen_width + (x + (i - half_thickness))] = color;
                         }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Xiaolin Wu's line algorithm
-    /// tickness line with thickness.
-    /// will be rewrited with a better quality.
-    pub fn draw_aa_line_with_thickness(
-        buffer: &mut Vec<u32>,
-        screen_width: usize,
-        mut pt1: (f64, f64),
-        mut pt2: (f64, f64),
-        color: u32,
-        thickness: usize,
-    ) {
-        let half_thickness = (thickness as f64) / 2.0;
-        if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
-            if pt2.0 < pt1.0 {
-                (pt1, pt2) = (pt2, pt1);
-            }
-            let dx = pt2.0 - pt1.0;
-            let dy = pt2.1 - pt1.1;
-            let m = if dx != 0.0 { dy / dx } else { dy / 1.0 };
-            for i in 0..=(dx as usize) {
-                let frac_x = pt1.0 + (i as f64);
-                let frac_y = pt1.1 + (i as f64) * m;
-                let x = frac_x as usize;
-                let y = frac_y as usize;
-                let dist = frac_y - (y as f64);
-                for offset in -(half_thickness as isize)..=(half_thickness as isize) {
-                    let y_offset = y as isize + offset;
-                    if y_offset >= 0 && (y_offset as usize + 1) < buffer.len() / screen_width {
-                        buffer[(y_offset as usize) * screen_width + x] = blend_colors(
-                            color,
-                            buffer[(y_offset as usize) * screen_width + x],
-                            1.0 - dist,
-                        );
-                        buffer[(y_offset as usize + 1) * screen_width + x] = blend_colors(
-                            color,
-                            buffer[(y_offset as usize + 1) * screen_width + x],
-                            dist,
-                        );
-                    }
-                }
-            }
-        } else {
-            if pt2.1 < pt1.1 {
-                (pt1, pt2) = (pt2, pt1);
-            }
-            let dx = pt2.0 - pt1.0;
-            let dy = pt2.1 - pt1.1;
-            let m = if dy != 0.0 { dx / dy } else { dx / 1.0 };
-            for i in 0..=(dy as usize) {
-                let frac_x = pt1.0 + (i as f64) * m;
-                let frac_y = pt1.1 + (i as f64);
-                let x = frac_x as usize;
-                let y = frac_y as usize;
-                let dist = frac_x - (x as f64);
-                for offset in -(half_thickness as isize)..=(half_thickness as isize) {
-                    let x_offset = x as isize + offset;
-                    if x_offset >= 0 && (x_offset as usize) < screen_width {
-                        buffer[y * screen_width + (x_offset as usize)] = blend_colors(
-                            color,
-                            buffer[y * screen_width + (x_offset as usize)],
-                            1.0 - dist,
-                        );
-                        buffer[y * screen_width + (x_offset as usize + 1)] = blend_colors(
-                            color,
-                            buffer[y * screen_width + (x_offset as usize) + 1],
-                            dist,
-                        );
                     }
                 }
             }
