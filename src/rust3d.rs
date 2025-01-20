@@ -2178,7 +2178,9 @@ pub mod draw {
 
     /// Xiaolin Wu's line algorithm
     /// A good function for drawing clean
-    /// anti-aliased line (without thickness though).
+    /// anti-aliased line
+    /// - in rare case The start and the end may have to be cap with 
+    /// two overlaping half disc if line is to tick.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2485,8 +2487,9 @@ pub mod draw {
         }
     }
 
-    /// Draw a very basic text for bsic feedback infrormations
+    /// Draw a very basic text for minimal feedback infrormations
     /// caution ! not all characters are implemented yet (see the list just bellow).
+    /// but numerical values are.
     pub fn draw_text(
         buffer: &mut Vec<u32>,
         height: usize,
