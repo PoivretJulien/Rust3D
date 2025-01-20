@@ -2208,13 +2208,10 @@ pub mod draw {
             // Avoid division by zero for
             // defining the slope ration m.
             let m = if dx != 0.0 {
-                dy / dx // compute the slope
+                dy / dx // compute the slope ratio.
             } else {
-                dy / 1.0 // slope if dx == 0.
+                dy / 1.0 // slope if dx == 0 then replace by 1.
             };
-            //////////////////////////////////
-            
-            //////////////////////////////////
             // From 2nd point to penultimate point.
             for i in 0..=(dx as usize) {
                 // Move x px from + i on x axis
@@ -2255,9 +2252,9 @@ pub mod draw {
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
             let m = if dx != 0.0 {
-                dx / dy // compute the slope.
+                dx / dy // Compute the slope ratio.
             } else {
-                dx / 1.0 // slope if dx == 0.
+                dx / 1.0 // if dy == 0 then replace by 1.
             };
             for i in 0..=(dy as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
@@ -2265,7 +2262,7 @@ pub mod draw {
                 let x = frac_x as usize;
                 let y = frac_y as usize;
                 let dist = frac_x - (x as f64);
-                /////////////////
+                ////////////////////////////////////////////////////////////////
                 for i in 0..=thickness {
                     if ((x + (i - half_thickness)) < screen_width) && (y < screen_height) {
                         if i == 0 {
@@ -2301,29 +2298,31 @@ pub mod draw {
     ) {
         let screen_height = buffer.len() / screen_width;
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
-            // Swap x and y for writing
-            // line from end to start when pt2.x
-            // is inferior to pt1.x.
+            // - Swap x and y for reversing the write order of the line.
+            // if pt2(x,y) about pt1(x,y) is first from buffer logic 
+            // (buffer alway write from left to write) the process is writed
+            // in reverse by swaping x an y.
+            // so pt1 become pt2 and pt1 become pt2.
             if pt2.0 < pt1.0 {
                 (pt1, pt2) = (pt2, pt1);
             }
             // Compute end point distances on x and y.
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
-            //////////////////////////////////
+            ///////////////////////////////////////////
             // Avoid division by zero for
             // defining the slope ration m.
             let m = if dx != 0.0 {
-                dy / dx // compute the slope
+                dy / dx // compute the slope ratio.
             } else {
-                dy / 1.0 // slope if dx == 0.
+                dy / 1.0 // if dx == 0 replace by 1.
             };
-            //////////////////////////////////
+            //////////////////////////////////////////
             // Compute the x overlap distance for start point.
             let overlap = 1.0 - ((pt1.0 + 0.5) - ((pt1.0 + 0.5) as usize) as f64);
             // Vertical distance on y for the first point.
             let diststart = pt1.1 - ((pt1.1 as usize) as f64);
-            // write buffer only for the first point if input point are in the screen.
+            // Write buffer only for the first point if input point are in the screen.
             let x = (pt1.0 + 0.5) as usize;
             let y = pt1.1 as usize;
             if (x < screen_width) && ((y + 1) < screen_height) {
