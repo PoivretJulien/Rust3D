@@ -733,8 +733,8 @@ impl DisplayPipeLine {
                     let red_line_count = (grid_y_length / grid_spacing_unit) as usize + 1;
                     let mut red_lines = Vec::new();
                     let mut green_lines = Vec::new();
-                    // Put x and y line (Start,End) pooint in two stacks
-                    // (horizontal,vertical)
+                    // Put x and y line (Start,End) point in two stacks
+                    // horizontal(red) and vertical(green)
                     for i in 0..green_line_count {
                         green_lines.push((
                             grid_plane
@@ -750,6 +750,8 @@ impl DisplayPipeLine {
                                 )
                                 .to_vertex(),
                         ));
+                    }
+                    for i in 0..red_line_count {
                         red_lines.push((
                             grid_plane
                                 .point_on_plane_uv(
@@ -760,7 +762,7 @@ impl DisplayPipeLine {
                             grid_plane
                                 .point_on_plane_uv(
                                     grid_x_length / 2.0,
-                                    (-(grid_x_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                                    (-(grid_y_length / 2.0)) + (grid_spacing_unit * (i as f64)),
                                 )
                                 .to_vertex(),
                         ));
@@ -772,6 +774,8 @@ impl DisplayPipeLine {
                                 transformation::transform_point_4x3(matrix, &red_lines[i].0);
                             red_lines[i].1 =
                                 transformation::transform_point_4x3(matrix, &red_lines[i].1);
+                        }
+                        for i in 0..green_lines.len() {
                             green_lines[i].0 =
                                 transformation::transform_point_4x3(matrix, &green_lines[i].0);
                             green_lines[i].1 =
@@ -779,6 +783,7 @@ impl DisplayPipeLine {
                         }
                     }
                     // Project clipped lines on screen space.
+                    // for x aligned lignes (red).
                     for line in red_lines.iter() {
                         //////////////////////////////////////////////////////////////////////
                         // Project line Start and End point on screen space.
@@ -798,6 +803,7 @@ impl DisplayPipeLine {
                             );
                         }
                     }
+                    // for y aligned lignes (green)
                     for line in green_lines.iter() {
                         //////////////////////////////////////////////////////////////////////
                         // Project line Start and End point on screen space.
@@ -839,14 +845,6 @@ impl DisplayPipeLine {
                         v_points[0] = transformation::transform_point_4x3(matrix, &v_points[0]);
                         v_points[1] = transformation::transform_point_4x3(matrix, &v_points[1]);
                     }
-                    /*
-                    // Project the Grid points on screen.
-                    // let projected_grid = camera.project_points(&grid);
-                    // Write the buffer for Grid points.
-                    for pt in projected_grid.iter() {
-                        buffer[pt.1 * screen_width + pt.0] = 0x0; // Grid dot are black.
-                    }
-                    */
                     //////////////////////////////////////////////////////////////////////
                     // Project u axis line Start and End point red line on screen space.
                     let mut line_point = (
@@ -885,7 +883,7 @@ impl DisplayPipeLine {
                     }
 
                 };
-                // Draw a unit grid.
+                // Draw a unit grid test.
                 let p = CPlane::new_(Point3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 1.0));
                 gr_line(
                     &camera,
@@ -893,11 +891,12 @@ impl DisplayPipeLine {
                     screen_width,
                     screen_height,
                     &p,
-                    0.4,
-                    0.4,
+                    1.0,
+                    1.0,
                     0.05,
                     Some(&matrix),
-                ); // Get points.
+                ); 
+                // Get points.
                 if let Ok(mesh) = m.object_list[0].lock() {
                     if let Some(obj) = mesh.data.clone() {
                         if let Ok(mut m) = obj.lock() {
