@@ -715,8 +715,9 @@ impl DisplayPipeLine {
                     matrix[0], matrix[1], matrix[2]
                 );
                 ////// Prototype B closure //// will be implemented in lib. //////
+                // Some minor bug for now im working on it.
                 ////////////////////////////////////////////////////////////////
-                let gr_line_vb = |camera: &Camera,
+                let gr_line = |camera: &Camera,
                                   buffer: &mut Vec<u32>,
                                   screen_width: usize,
                                   screen_height: usize,
@@ -726,12 +727,10 @@ impl DisplayPipeLine {
                                   grid_spacing_unit: f64,
                                   matrix: Option<&[[f64; 4]; 3]>| {
                     // Generate Points for the Grid lines system.
-                    let start =
-                        grid_plane.point_on_plane_uv(-grid_x_length / 2.0, -grid_y_length / 2.0);
+                    use rust3d::intersection::clip_line;
                     ///////////////////////////////////////////////////////////////////////////////////
-                    //  (+2) interval + zero based index.
-                    let green_line_count = (grid_x_length / grid_spacing_unit) as usize + 2;
-                    let red_line_count = (grid_y_length / grid_spacing_unit) as usize + 2;
+                    let green_line_count = (grid_x_length / grid_spacing_unit) as usize + 1;
+                    let red_line_count = (grid_y_length / grid_spacing_unit) as usize + 1;
                     let mut red_lines = Vec::new();
                     let mut green_lines = Vec::new();
                     // Put x and y line (Start,End) pooint in two stacks
@@ -787,7 +786,6 @@ impl DisplayPipeLine {
                             camera.project_maybe_outside(line.0),
                             camera.project_maybe_outside(line.1),
                         );
-                        use rust3d::intersection::clip_line;
                         if let Some(pt) =
                             clip_line(line_point.0, line_point.1, screen_width, screen_height)
                         {
@@ -807,7 +805,6 @@ impl DisplayPipeLine {
                             camera.project_maybe_outside(line.0),
                             camera.project_maybe_outside(line.1),
                         );
-                        use rust3d::intersection::clip_line;
                         if let Some(pt) =
                             clip_line(line_point.0, line_point.1, screen_width, screen_height)
                         {
@@ -820,27 +817,10 @@ impl DisplayPipeLine {
                             );
                         }
                     }
-                };
-                ////// Prototype A closure //// will be implemented in lib. //////
-                ////////////////////////////////////////////////////////////////
-                let gr_line = |camera: &Camera,
-                               buffer: &mut Vec<u32>,
-                               screen_width: usize,
-                               screen_height: usize,
-                               grid_plane: &CPlane,
-                               grid_x_length: f64,
-                               grid_y_length: f64,
-                               grid_spacing_unit: f64,
-                               matrix: Option<&[[f64; 4]; 3]>| {
                     /*
-                    // Generate the grid points.
-                    let mut grid = draw::draw_3d_grid_lines(
-                        &grid_plane,
-                        grid_x_length,
-                        grid_y_length,
-                        grid_spacing_unit,
-                    );
-                    */
+                     * Now Draw red and Green axis always from midle if grid 
+                     * line count number are odd. 
+                     */
                     // Compute grid line X axis.
                     let mut u_points = [
                         grid_plane.origin + (grid_plane.u * (grid_x_length * 0.5)),
@@ -851,7 +831,6 @@ impl DisplayPipeLine {
                         grid_plane.origin + (grid_plane.v * (grid_y_length * 0.5)),
                         grid_plane.origin + (-(grid_plane.v) * (grid_y_length * 0.5)),
                     ];
-                    use rust3d::intersection::clip_line;
                     // If there is a transformation matrix then transform the points.
                     if let Some(matrix) = matrix {
                         // grid = transformation::transform_points_4x3(matrix, &grid);
@@ -904,6 +883,7 @@ impl DisplayPipeLine {
                             Color::convert_rgba_color(150, 75, 75, 1.0, background_color),
                         );
                     }
+
                 };
                 // Draw a unit grid.
                 let p = CPlane::new_(Point3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 1.0));
@@ -913,19 +893,8 @@ impl DisplayPipeLine {
                     screen_width,
                     screen_height,
                     &p,
-                    0.6,
-                    0.6,
-                    0.05,
-                    Some(&matrix),
-                );
-                gr_line_vb(
-                    &camera,
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    &p,
-                    0.6,
-                    0.6,
+                    0.4,
+                    0.4,
                     0.05,
                     Some(&matrix),
                 ); // Get points.
