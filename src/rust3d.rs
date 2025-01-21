@@ -1656,6 +1656,93 @@ pub mod intersection {
             Some(*p1 + ((*d1) * t1)) // Return result.
         }
     }
+
+    /// Cohen-Sutherland Line Clipping Algorithm
+    pub fn clip_line(
+        mut pt1: (f64, f64),
+        mut pt2: (f64, f64),
+        screen_width: usize,
+        screen_height: usize,
+    ) -> Option<((f64, f64), (f64, f64))> {
+        // Screen boundaries
+        let xmin = 0.0;
+        let ymin = 0.0;
+        let xmax = (screen_width - 1) as f64;
+        let ymax = (screen_height - 1) as f64;
+
+        // Region codes
+        const INSIDE: u8 = 0; // 0000
+        const LEFT: u8 = 1; // 0001
+        const RIGHT: u8 = 2; // 0010
+        const BOTTOM: u8 = 4; // 0100
+        const TOP: u8 = 8; // 1000
+
+        // Function to compute the region code for a point
+        fn compute_code(x: f64, y: f64, xmin: f64, ymin: f64, xmax: f64, ymax: f64) -> u8 {
+            let mut code = INSIDE;
+            if x < xmin {
+                code |= LEFT;
+            } else if x > xmax {
+                code |= RIGHT;
+            }
+            if y < ymin {
+                code |= BOTTOM;
+            } else if y > ymax {
+                code |= TOP;
+            }
+            code
+        }
+
+        let mut code1 = compute_code(pt1.0, pt1.1, xmin, ymin, xmax, ymax);
+        let mut code2 = compute_code(pt2.0, pt2.1, xmin, ymin, xmax, ymax);
+
+        while code1 != 0 || code2 != 0 {
+            // If both points are outside the same region, the line is completely outside
+            if code1 & code2 != 0 {
+                return None;
+            }
+
+            // Choose the point outside the screen to clip
+            let (code_out, x, y);
+            if code1 != 0 {
+                code_out = code1;
+                x = pt1.0;
+                y = pt1.1;
+            } else {
+                code_out = code2;
+                x = pt2.0;
+                y = pt2.1;
+            }
+
+            // Find intersection with the screen boundary
+            let (new_x, new_y) = if code_out & TOP != 0 {
+                // Clip to the top edge
+                (x + (pt2.0 - pt1.0) * (ymax - y) / (pt2.1 - pt1.1), ymax)
+            } else if code_out & BOTTOM != 0 {
+                // Clip to the bottom edge
+                (x + (pt2.0 - pt1.0) * (ymin - y) / (pt2.1 - pt1.1), ymin)
+            } else if code_out & RIGHT != 0 {
+                // Clip to the right edge
+                (xmax, y + (pt2.1 - pt1.1) * (xmax - x) / (pt2.0 - pt1.0))
+            } else if code_out & LEFT != 0 {
+                // Clip to the left edge
+                (xmin, y + (pt2.1 - pt1.1) * (xmin - x) / (pt2.0 - pt1.0))
+            } else {
+                unreachable!()
+            };
+
+            // Update the point and its region code
+            if code_out == code1 {
+                pt1 = (new_x, new_y);
+                code1 = compute_code(pt1.0, pt1.1, xmin, ymin, xmax, ymax);
+            } else {
+                pt2 = (new_x, new_y);
+                code2 = compute_code(pt2.0, pt2.1, xmin, ymin, xmax, ymax);
+            }
+        }
+
+        Some((pt1, pt2))
+    }
 }
 
 /*
@@ -2076,6 +2163,30 @@ pub mod transformation {
             .collect()
     }
 
+    /// Apply a 4x3 transformation matrix to a points of implementing Coordinate3d.
+    pub fn transform_point_4x3<T: Coordinate3d + Send + Sync>(
+        transform_matrix: &[[f64; 4]; 3],
+        point_to_process: &T,
+    ) -> T
+    where
+        T: Coordinate3d<Output = T>,
+    {
+        T::new(
+            transform_matrix[0][0] * point_to_process.get_x()
+                + transform_matrix[0][1] * point_to_process.get_y()
+                + transform_matrix[0][2] * point_to_process.get_z()
+                + transform_matrix[0][3],
+            transform_matrix[1][0] * point_to_process.get_x()
+                + transform_matrix[1][1] * point_to_process.get_y()
+                + transform_matrix[1][2] * point_to_process.get_z()
+                + transform_matrix[1][3],
+            transform_matrix[2][0] * point_to_process.get_x()
+                + transform_matrix[2][1] * point_to_process.get_y()
+                + transform_matrix[2][2] * point_to_process.get_z()
+                + transform_matrix[2][3],
+        )
+    }
+
     /// Deprecated. use Vector3d method to project on CPlane instead.
     /// Project a 3d point on a 4 defined Point3d plane (from the plane Vector Normal)
     pub fn project_3d_point_on_plane(point: &Point3d, plane_pt: &[Point3d; 4]) -> Option<Point3d> {
@@ -2179,7 +2290,7 @@ pub mod draw {
     /// Xiaolin Wu's line algorithm
     /// A good function for drawing clean
     /// anti-aliased line
-    /// - in rare case The start and the end may have to be cap with 
+    /// - in rare case The start and the end may have to be cap with
     /// two overlaping half disc if line is to tick.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
@@ -2299,7 +2410,7 @@ pub mod draw {
         let screen_height = buffer.len() / screen_width;
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
             // - Swap x and y for reversing the write order of the line.
-            // if pt2(x,y) about pt1(x,y) is first from buffer logic 
+            // if pt2(x,y) about pt1(x,y) is first from buffer logic
             // (buffer alway write from left to write) the process is writed
             // in reverse by swaping x an y.
             // so pt1 become pt2 and pt1 become pt2.
@@ -2550,6 +2661,61 @@ pub mod draw {
     /// (the origin point is in the middle of the grid holding
     /// positive and negative domain on each relative sides.)
     use super::geometry::CPlane;
+    pub fn draw_3d_grid_lines(
+        plane: &CPlane,
+        x_length: f64,
+        y_length: f64,
+        grid_spacing_unit: f64,
+    ) -> Vec<Vertex> {
+        let mut grid_points = Vec::new();
+        let x_length = x_length / 2.0;
+        let y_length = y_length / 2.0;
+        let mut x = -x_length;
+        let mut y = -y_length;
+        while x <= x_length {
+            while y <= y_length {
+                grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
+                y += grid_spacing_unit;
+            }
+            if y >= y_length {
+                y = -y_length;
+            }
+            x += grid_spacing_unit;
+        }
+        grid_points
+    }
+
+    /// Draw a contextual Grid graphing a unit system intervals.
+    /// (the origin point is in the middle of the grid holding
+    /// positive and negative domain on each relative sides.)
+    pub fn draw_3d_grid_test(
+        plane: &CPlane,
+        x_length: f64,
+        y_length: f64,
+        grid_spacing_unit: f64,
+    ) -> Vec<Vertex> {
+        let mut grid_points = Vec::new();
+        let x_length = x_length / 2.0;
+        let y_length = y_length / 2.0;
+        let grid_spacing_unit = grid_spacing_unit;
+        let mut x = -x_length;
+        let mut y = -y_length;
+        while x <= x_length {
+            while y <= y_length {
+                grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
+                y += grid_spacing_unit;
+            }
+            if y >= y_length {
+                y = -y_length;
+            }
+            x += grid_spacing_unit;
+        }
+        grid_points
+    }
+
+    /// Draw a contextual Grid graphing a unit system intervals.
+    /// (the origin point is in the middle of the grid holding
+    /// positive and negative domain on each relative sides.)
     pub fn draw_3d_grid(
         plane: &CPlane,
         x_positif_length: f64,

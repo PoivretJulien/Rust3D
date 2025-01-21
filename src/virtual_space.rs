@@ -714,7 +714,221 @@ impl DisplayPipeLine {
                     "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
                     matrix[0], matrix[1], matrix[2]
                 );
-                // Get points.
+                ////// Prototype B closure //// will be implemented in lib. //////
+                ////////////////////////////////////////////////////////////////
+                let gr_line_vb = |camera: &Camera,
+                                  buffer: &mut Vec<u32>,
+                                  screen_width: usize,
+                                  screen_height: usize,
+                                  grid_plane: &CPlane,
+                                  grid_x_length: f64,
+                                  grid_y_length: f64,
+                                  grid_spacing_unit: f64,
+                                  matrix: Option<&[[f64; 4]; 3]>| {
+                    // Generate Points for the Grid lines system.
+                    let start =
+                        grid_plane.point_on_plane_uv(-grid_x_length / 2.0, -grid_y_length / 2.0);
+                    ///////////////////////////////////////////////////////////////////////////////////
+                    //  (+2) interval + zero based index.
+                    let green_line_count = (grid_x_length / grid_spacing_unit) as usize + 2;
+                    let red_line_count = (grid_y_length / grid_spacing_unit) as usize + 2;
+                    let mut red_lines = Vec::new();
+                    let mut green_lines = Vec::new();
+                    // Put x and y line (Start,End) pooint in two stacks
+                    // (horizontal,vertical)
+                    for i in 0..green_line_count {
+                        green_lines.push((
+                            grid_plane
+                                .point_on_plane_uv(
+                                    (-(grid_x_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                                    -grid_y_length / 2.0,
+                                )
+                                .to_vertex(),
+                            grid_plane
+                                .point_on_plane_uv(
+                                    (-(grid_x_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                                    grid_y_length / 2.0,
+                                )
+                                .to_vertex(),
+                        ));
+                        red_lines.push((
+                            grid_plane
+                                .point_on_plane_uv(
+                                    -grid_x_length / 2.0,
+                                    (-(grid_y_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                                )
+                                .to_vertex(),
+                            grid_plane
+                                .point_on_plane_uv(
+                                    grid_x_length / 2.0,
+                                    (-(grid_x_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                                )
+                                .to_vertex(),
+                        ));
+                    }
+                    // Apply transformation matrix if needed.
+                    if let Some(matrix) = matrix {
+                        for i in 0..red_lines.len() {
+                            red_lines[i].0 =
+                                transformation::transform_point_4x3(matrix, &red_lines[i].0);
+                            red_lines[i].1 =
+                                transformation::transform_point_4x3(matrix, &red_lines[i].1);
+                            green_lines[i].0 =
+                                transformation::transform_point_4x3(matrix, &green_lines[i].0);
+                            green_lines[i].1 =
+                                transformation::transform_point_4x3(matrix, &green_lines[i].1);
+                        }
+                    }
+                    // Project clipped lines on screen space.
+                    for line in red_lines.iter() {
+                        //////////////////////////////////////////////////////////////////////
+                        // Project line Start and End point on screen space.
+                        let line_point = (
+                            camera.project_maybe_outside(line.0),
+                            camera.project_maybe_outside(line.1),
+                        );
+                        use rust3d::intersection::clip_line;
+                        if let Some(pt) =
+                            clip_line(line_point.0, line_point.1, screen_width, screen_height)
+                        {
+                            draw::draw_aa_line(
+                                buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                Color::convert_rgba_color(20, 20, 20, 0.5, background_color),
+                            );
+                        }
+                    }
+                    for line in green_lines.iter() {
+                        //////////////////////////////////////////////////////////////////////
+                        // Project line Start and End point on screen space.
+                        let line_point = (
+                            camera.project_maybe_outside(line.0),
+                            camera.project_maybe_outside(line.1),
+                        );
+                        use rust3d::intersection::clip_line;
+                        if let Some(pt) =
+                            clip_line(line_point.0, line_point.1, screen_width, screen_height)
+                        {
+                            draw::draw_aa_line(
+                                buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                Color::convert_rgba_color(20, 20, 20, 0.5, background_color),
+                            );
+                        }
+                    }
+                };
+                ////// Prototype A closure //// will be implemented in lib. //////
+                ////////////////////////////////////////////////////////////////
+                let gr_line = |camera: &Camera,
+                               buffer: &mut Vec<u32>,
+                               screen_width: usize,
+                               screen_height: usize,
+                               grid_plane: &CPlane,
+                               grid_x_length: f64,
+                               grid_y_length: f64,
+                               grid_spacing_unit: f64,
+                               matrix: Option<&[[f64; 4]; 3]>| {
+                    /*
+                    // Generate the grid points.
+                    let mut grid = draw::draw_3d_grid_lines(
+                        &grid_plane,
+                        grid_x_length,
+                        grid_y_length,
+                        grid_spacing_unit,
+                    );
+                    */
+                    // Compute grid line X axis.
+                    let mut u_points = [
+                        grid_plane.origin + (grid_plane.u * (grid_x_length * 0.5)),
+                        grid_plane.origin + (-(grid_plane.u) * (grid_x_length * 0.5)),
+                    ];
+                    // Compute grid line Y axis.
+                    let mut v_points = [
+                        grid_plane.origin + (grid_plane.v * (grid_y_length * 0.5)),
+                        grid_plane.origin + (-(grid_plane.v) * (grid_y_length * 0.5)),
+                    ];
+                    use rust3d::intersection::clip_line;
+                    // If there is a transformation matrix then transform the points.
+                    if let Some(matrix) = matrix {
+                        // grid = transformation::transform_points_4x3(matrix, &grid);
+                        u_points[0] = transformation::transform_point_4x3(matrix, &u_points[0]);
+                        u_points[1] = transformation::transform_point_4x3(matrix, &u_points[1]);
+                        v_points[0] = transformation::transform_point_4x3(matrix, &v_points[0]);
+                        v_points[1] = transformation::transform_point_4x3(matrix, &v_points[1]);
+                    }
+                    /*
+                    // Project the Grid points on screen.
+                    // let projected_grid = camera.project_points(&grid);
+                    // Write the buffer for Grid points.
+                    for pt in projected_grid.iter() {
+                        buffer[pt.1 * screen_width + pt.0] = 0x0; // Grid dot are black.
+                    }
+                    */
+                    //////////////////////////////////////////////////////////////////////
+                    // Project u axis line Start and End point red line on screen space.
+                    let mut line_point = (
+                        camera.project_maybe_outside(u_points[0].to_vertex()),
+                        camera.project_maybe_outside(u_points[1].to_vertex()),
+                    );
+                    if let Some(pt) =
+                        clip_line(line_point.0, line_point.1, screen_width, screen_height)
+                    {
+                        draw::draw_aa_line_with_thickness(
+                            buffer,
+                            screen_width,
+                            pt.0,
+                            pt.1,
+                            2,
+                            Color::convert_rgba_color(75, 150, 75, 1.0, background_color),
+                        );
+                    }
+                    //////////////////////////////////////////////////////////////////////
+                    // Project v axis line Start and End point green line on screen space.
+                    line_point = (
+                        camera.project_maybe_outside(v_points[0].to_vertex()),
+                        camera.project_maybe_outside(v_points[1].to_vertex()),
+                    );
+                    if let Some(pt) =
+                        clip_line(line_point.0, line_point.1, screen_width, screen_height)
+                    {
+                        draw::draw_aa_line_with_thickness(
+                            buffer,
+                            screen_width,
+                            pt.0,
+                            pt.1,
+                            2,
+                            Color::convert_rgba_color(150, 75, 75, 1.0, background_color),
+                        );
+                    }
+                };
+                // Draw a unit grid.
+                let p = CPlane::new_(Point3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 1.0));
+                gr_line(
+                    &camera,
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    &p,
+                    0.6,
+                    0.6,
+                    0.05,
+                    Some(&matrix),
+                );
+                gr_line_vb(
+                    &camera,
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    &p,
+                    0.6,
+                    0.6,
+                    0.05,
+                    Some(&matrix),
+                ); // Get points.
                 if let Ok(mesh) = m.object_list[0].lock() {
                     if let Some(obj) = mesh.data.clone() {
                         if let Ok(mut m) = obj.lock() {
