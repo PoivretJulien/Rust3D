@@ -159,6 +159,26 @@ pub mod visualization_v3 {
 
             Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
         }
+        
+        #[inline(always)]
+        /// Project a vertex in a 2d camera space projection.
+        pub fn project_maybe_outside(&self, point: Vertex) -> (f64, f64) {
+            // Use precomputed matrices
+            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+
+            let projected_point =
+                self.multiply_matrix_vector(self.projection_matrix, camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.x / projected_point.z;
+            let y = projected_point.y / projected_point.z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            (screen_x as f64, screen_y as f64)
+        }
 
         pub fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Vertex) -> Vertex {
             Vertex::new(
