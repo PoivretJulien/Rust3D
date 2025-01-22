@@ -2169,7 +2169,7 @@ pub mod transformation {
     }
 
     #[inline(always)]
-    /// Apply a 4x3 transformation matrix to a 
+    /// Apply a 4x3 transformation matrix to a
     /// points of implementing Coordinate3d.
     pub fn transform_point_4x3<T: Coordinate3d + Send + Sync>(
         transform_matrix: &[[f64; 4]; 3],
@@ -2664,84 +2664,199 @@ pub mod draw {
         }
     }
 
+    /// Draw a unit Grid System with anti aliased lines for visual reference of the unit system.
+    /// note:
+    ///    - unid grid spacing should be always a multiple of the overall
+    ///    both grid length related sides... ( a rounding process would
+    ///    add a runtime overhead for each calls so it should be done outside
+    ///    the method once and for all ( this method will alway be call from a
+    ///    carefully designed runtime anyway so the grid specs have
+    ///    to be computed form there ).
+    ////////////////////////////////////////////////////////////////////////////
+    pub fn draw_unit_grid_system(
+        camera: &Camera,
+        buffer: &mut Vec<u32>,
+        screen_width: usize,
+        screen_height: usize,
+        background_color: u32,
+        grid_plane: &CPlane,
+        grid_x_length: f64,
+        grid_y_length: f64,
+        grid_spacing_unit: f64,
+        matrix: Option<&[[f64; 4]; 3]>,
+    ) {
+        use super::intersection::clip_line;
+        use super::transformation;
+        ///////////////////////////////////////////////////////////
+        let green_line_count = (grid_x_length / grid_spacing_unit) as usize + 1;
+        let red_line_count = (grid_y_length / grid_spacing_unit) as usize + 1;
+        let mut red_lines = Vec::new();
+        let mut green_lines = Vec::new();
+        ///////////////////////////////////////////////////////////
+        // Put x and y line (Start,End) point in two stacks
+        //         horizontal(red) and vertical(green)
+        //    (since they can have different size length)
+        ///////////////////////////////////////////////////////////
+        // First stack:
+        for i in 0..green_line_count {
+            green_lines.push((
+                grid_plane
+                    .point_on_plane_uv(
+                        (-(grid_x_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                        -grid_y_length / 2.0,
+                    )
+                    .to_vertex(),
+                grid_plane
+                    .point_on_plane_uv(
+                        (-(grid_x_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                        grid_y_length / 2.0,
+                    )
+                    .to_vertex(),
+            ));
+        }
+        // Second stack.
+        for i in 0..red_line_count {
+            red_lines.push((
+                grid_plane
+                    .point_on_plane_uv(
+                        -grid_x_length / 2.0,
+                        (-(grid_y_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                    )
+                    .to_vertex(),
+                grid_plane
+                    .point_on_plane_uv(
+                        grid_x_length / 2.0,
+                        (-(grid_y_length / 2.0)) + (grid_spacing_unit * (i as f64)),
+                    )
+                    .to_vertex(),
+            ));
+        }
+        // Apply transformation matrix if needed.
+        if let Some(matrix) = matrix {
+            for i in 0..red_lines.len() {
+                red_lines[i].0 = transformation::transform_point_4x3(matrix, &red_lines[i].0);
+                red_lines[i].1 = transformation::transform_point_4x3(matrix, &red_lines[i].1);
+            }
+            for i in 0..green_lines.len() {
+                green_lines[i].0 = transformation::transform_point_4x3(matrix, &green_lines[i].0);
+                green_lines[i].1 = transformation::transform_point_4x3(matrix, &green_lines[i].1);
+            }
+        }
+        // Project clipped lines on screen space.
+        // For x aligned lignes (red).
+        for line in red_lines.iter() {
+            //////////////////////////////////////////////////////////////////////
+            // Project line Start and End point on screen space.
+            let line_point = (
+                camera.project_maybe_outside(line.0),
+                camera.project_maybe_outside(line.1),
+            );
+            if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
+                draw_aa_line(
+                    buffer,
+                    screen_width,
+                    pt.0,
+                    pt.1,
+                    Color::convert_rgba_color(20, 20, 20, 0.3, background_color),
+                );
+            }
+        }
+        // For y aligned lignes (green)
+        for line in green_lines.iter() {
+            //////////////////////////////////////////////////////////////////////
+            // Project line Start and End point on screen space.
+            let line_point = (
+                camera.project_maybe_outside(line.0),
+                camera.project_maybe_outside(line.1),
+            );
+            if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
+                draw_aa_line(
+                    buffer,
+                    screen_width,
+                    pt.0,
+                    pt.1,
+                    Color::convert_rgba_color(20, 20, 20, 0.3, background_color),
+                );
+            }
+        }
+        /*
+         * - The following will draw (Red and Green) axis always
+         *   from the midle of the grid if the lines count
+         *   number is odd.
+         */
+        // Compute the grid line X axis.
+        let mut u_points = [
+            grid_plane.origin + (grid_plane.u * (grid_x_length * 0.5)),
+            grid_plane.origin + (-(grid_plane.u) * (grid_x_length * 0.5)),
+        ];
+        // Compute the grid line Y axis.
+        let mut v_points = [
+            grid_plane.origin + (grid_plane.v * (grid_y_length * 0.5)),
+            grid_plane.origin + (-(grid_plane.v) * (grid_y_length * 0.5)),
+        ];
+        // If there is a transformation matrix then transform the points.
+        if let Some(matrix) = matrix {
+            u_points[0] = transformation::transform_point_4x3(matrix, &u_points[0]);
+            u_points[1] = transformation::transform_point_4x3(matrix, &u_points[1]);
+            v_points[0] = transformation::transform_point_4x3(matrix, &v_points[0]);
+            v_points[1] = transformation::transform_point_4x3(matrix, &v_points[1]);
+        }
+        //////////////////////////////////////////////////////////////////////
+        // Project u axis line (from Start and End point)  (red line aligned and clipped on screen space).
+        let mut line_point = (
+            camera.project_maybe_outside(u_points[0].to_vertex()),
+            camera.project_maybe_outside(u_points[1].to_vertex()),
+        );
+        if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
+            draw_aa_line_with_thickness(
+                buffer,
+                screen_width,
+                pt.0,
+                pt.1,
+                2,
+                Color::convert_rgba_color(75, 150, 75, 1.0, background_color),
+            );
+        }
+        //////////////////////////////////////////////////////////////////////
+        // Project v axis line (from Start and End point)  (green line aligned and clipped on screen space).
+        line_point = (
+            camera.project_maybe_outside(v_points[0].to_vertex()),
+            camera.project_maybe_outside(v_points[1].to_vertex()),
+        );
+        if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
+            draw_aa_line_with_thickness(
+                buffer,
+                screen_width,
+                pt.0,
+                pt.1,
+                2,
+                Color::convert_rgba_color(150, 75, 75, 1.0, background_color),
+            );
+        }
+    }
+
     /// Draw a contextual Grid graphing a unit system intervals.
     /// (the origin point is in the middle of the grid holding
     /// positive and negative domain on each relative sides.)
     use super::geometry::CPlane;
-    pub fn draw_3d_grid_lines(
-        plane: &CPlane,
-        x_length: f64,
-        y_length: f64,
-        grid_spacing_unit: f64,
-    ) -> Vec<Vertex> {
-        let mut grid_points = Vec::new();
-        let x_length = x_length / 2.0;
-        let y_length = y_length / 2.0;
-        let mut x = -x_length;
-        let mut y = -y_length;
-        while x <= x_length {
-            while y <= y_length {
-                grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
-                y += grid_spacing_unit;
-            }
-            if y >= y_length {
-                y = -y_length;
-            }
-            x += grid_spacing_unit;
-        }
-        grid_points
-    }
-
-    /// Draw a contextual Grid graphing a unit system intervals.
-    /// (the origin point is in the middle of the grid holding
-    /// positive and negative domain on each relative sides.)
-    pub fn draw_3d_grid_test(
-        plane: &CPlane,
-        x_length: f64,
-        y_length: f64,
-        grid_spacing_unit: f64,
-    ) -> Vec<Vertex> {
-        let mut grid_points = Vec::new();
-        let x_length = x_length / 2.0;
-        let y_length = y_length / 2.0;
-        let grid_spacing_unit = grid_spacing_unit;
-        let mut x = -x_length;
-        let mut y = -y_length;
-        while x <= x_length {
-            while y <= y_length {
-                grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
-                y += grid_spacing_unit;
-            }
-            if y >= y_length {
-                y = -y_length;
-            }
-            x += grid_spacing_unit;
-        }
-        grid_points
-    }
-
-    /// Draw a contextual Grid graphing a unit system intervals.
-    /// (the origin point is in the middle of the grid holding
-    /// positive and negative domain on each relative sides.)
     pub fn draw_3d_grid(
         plane: &CPlane,
-        x_positif_length: f64,
-        y_positif_length: f64,
+        x_length: f64,
+        y_length: f64,
         grid_spacing_unit: f64,
     ) -> Vec<Vertex> {
         let mut grid_points = Vec::new();
-        let x_positif_length = x_positif_length / 2.0;
-        let y_positif_length = y_positif_length / 2.0;
-        let grid_spacing_unit = grid_spacing_unit / 2.0;
-        let mut x = -x_positif_length;
-        let mut y = -y_positif_length;
-        while x <= x_positif_length {
-            while y <= y_positif_length {
+        let x_length = x_length / 2.0;
+        let y_length = y_length / 2.0;
+        let mut x = -x_length;
+        let mut y = -y_length;
+        while x <= x_length {
+            while y <= y_length {
                 grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
                 y += grid_spacing_unit;
             }
-            if y >= y_positif_length {
-                y = -y_positif_length;
+            if y >= y_length {
+                y = -y_length;
             }
             x += grid_spacing_unit;
         }
