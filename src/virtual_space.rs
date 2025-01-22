@@ -41,7 +41,10 @@
 use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::draw::{self, draw_plane_gimball_3d, draw_rectangle, draw_unit_grid_system};
+use crate::rust3d::draw::{
+    self, draw_aa_line_with_thickness, draw_plane_gimball_3d, draw_rectangle, draw_unit_grid_system,
+};
+use crate::rust3d::intersection::clip_line;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
@@ -734,12 +737,14 @@ impl DisplayPipeLine {
                 let draw_gimball_from_plane =
                     |buffer: &mut Vec<u32>,
                      screen_width: usize,
+                     screen_height: usize,
                      plane: &CPlane,
                      camera: &Camera,
                      matrix: Option<&[[f64; 4]; 3]>,
                      scalar: f64,
                      alpha: f64,
-                     background_color: u32| {
+                     background_color: u32,
+                     draw_arrow: bool| {
                         use rust3d::intersection;
                         use rust3d::transformation;
                         // Extract and scale cplane base components.
@@ -792,21 +797,206 @@ impl DisplayPipeLine {
                                 draw::blend_colors(0x0000ff, background_color, alpha),
                             );
                         }
+                        if draw_arrow {
+                            // Draw arrows by axis colors.
+                            let mut arrow_x = [
+                                (Vertex::new(0.000, 0.000, -0.083) + Vertex::new(1.0, 0.0, 0.0))
+                                    * scalar,
+                                (Vertex::new(0.000, -0.000, 0.083) + Vertex::new(1.0, 0.0, 0.0))
+                                    * scalar,
+                                (Vertex::new(0.250, 0.000, -0.000) + Vertex::new(1.0, 0.0, 0.0))
+                                    * scalar,
+                            ];
+                            let mut arrow_y = [
+                                (Vertex::new(-0.000, 0.000, -0.083) + Vertex::new(0.0, 1.0, 0.0))
+                                    * scalar,
+                                (Vertex::new(0.000, 0.000, 0.083) + Vertex::new(0.0, 1.0, 0.0))
+                                    * scalar,
+                                (Vertex::new(0.000, 0.250, -0.000) + Vertex::new(0.0, 1.0, 0.0))
+                                    * scalar,
+                            ];
+                            let mut arrow_z = [
+                                (Vertex::new(0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0))
+                                    * scalar,
+                                (Vertex::new(-0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0))
+                                    * scalar,
+                                (Vertex::new(0.000, 0.000, 0.250) + Vertex::new(0.0, 0.0, 1.0))
+                                    * scalar,
+                            ];
+                            // Mutate arrow arrays point to map Point3d on the gimball CPlane local coordinates.
+                            arrow_x.iter_mut().for_each(|vertex| {
+                                *vertex = plane
+                                    .point_on_plane(vertex.x, vertex.y, vertex.z)
+                                    .to_vertex()
+                            });
+                            arrow_y.iter_mut().for_each(|vertex| {
+                                *vertex = plane
+                                    .point_on_plane(vertex.x, vertex.y, vertex.z)
+                                    .to_vertex()
+                            });
+                            arrow_z.iter_mut().for_each(|vertex| {
+                                *vertex = plane
+                                    .point_on_plane(vertex.x, vertex.y, vertex.z)
+                                    .to_vertex()
+                            });
+                            // Apply transfomation matrix if needed.
+                            if let Some(matrix) =  matrix {
+                                    arrow_x[0] = transformation::transform_point_4x3(matrix, &arrow_x[0]);
+                                    arrow_x[1] = transformation::transform_point_4x3(matrix, &arrow_x[1]);
+                                    arrow_x[2] = transformation::transform_point_4x3(matrix, &arrow_x[2]);
+                                    arrow_y[0] = transformation::transform_point_4x3(matrix, &arrow_y[0]);
+                                    arrow_y[1] = transformation::transform_point_4x3(matrix, &arrow_y[1]);
+                                    arrow_y[2] = transformation::transform_point_4x3(matrix, &arrow_y[2]);
+                                    arrow_z[0] = transformation::transform_point_4x3(matrix, &arrow_z[0]);
+                                    arrow_z[1] = transformation::transform_point_4x3(matrix, &arrow_z[1]);
+                                    arrow_z[2] = transformation::transform_point_4x3(matrix, &arrow_z[2]);
+                             }
+                            // Project 3d points from local CPlane coordinates to 2d
+                            // screen place.
+                            let arrow_x_2d = (
+                                camera.project_maybe_outside(arrow_x[0]),
+                                camera.project_maybe_outside(arrow_x[1]),
+                                camera.project_maybe_outside(arrow_x[2]),
+                            );
+                            let arrow_y_2d = (
+                                camera.project_maybe_outside(arrow_y[0]),
+                                camera.project_maybe_outside(arrow_y[1]),
+                                camera.project_maybe_outside(arrow_y[2]),
+                            );
+                            let arrow_z_2d = (
+                                camera.project_maybe_outside(arrow_z[0]),
+                                camera.project_maybe_outside(arrow_z[1]),
+                                camera.project_maybe_outside(arrow_z[2]),
+                            );
+                            // Clip line on 2d screen space for arrow x.
+                            if let Some(line_point) =
+                                clip_line(arrow_x_2d.0, arrow_x_2d.1, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0xff0000, background_color, alpha),
+                                );
+                            }
+                            if let Some(line_point) =
+                                clip_line(arrow_x_2d.1, arrow_x_2d.2, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0xff0000, background_color, alpha),
+                                );
+                            }
+                            if let Some(line_point) =
+                                clip_line(arrow_x_2d.2, arrow_x_2d.0, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0xff0000, background_color, alpha),
+                                );
+                            }
+                            // Clip line on 2d screen space for arrow y.
+                            if let Some(line_point) =
+                                clip_line(arrow_y_2d.0, arrow_y_2d.1, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0x00ff00, background_color, alpha),
+                                );
+                            }
+                            if let Some(line_point) =
+                                clip_line(arrow_y_2d.1, arrow_y_2d.2, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0x00ff00, background_color, alpha),
+                                );
+                            }
+                            if let Some(line_point) =
+                                clip_line(arrow_y_2d.2, arrow_y_2d.0, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0x00ff00, background_color, alpha),
+                                );
+                            }
+                             // Clip line on 2d screen space for arrow y.
+                            if let Some(line_point) =
+                                clip_line(arrow_z_2d.0, arrow_z_2d.1, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0x0000ff, background_color, alpha),
+                                );
+                            }
+                            if let Some(line_point) =
+                                clip_line(arrow_z_2d.1, arrow_z_2d.2, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0x0000ff, background_color, alpha),
+                                );
+                            }
+                            if let Some(line_point) =
+                                clip_line(arrow_z_2d.2, arrow_z_2d.0, screen_width, screen_height)
+                            {
+                                draw_aa_line_with_thickness(
+                                    buffer,
+                                    screen_width,
+                                    line_point.0,
+                                    line_point.1,
+                                    2,
+                                    draw::blend_colors(0x0000ff, background_color, alpha),
+                                );
+                            }
+                        }
                     };
 
-                let o = Point3d::new(-0.1, -0.1, 0.0);
+                let o = Point3d::new(-0.2, -0.3, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
                 let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
                 draw_gimball_from_plane(
                     &mut buffer,
                     screen_width,
+                    screen_height,
                     &p2,
                     &camera,
                     Some(&matrix),
-                    0.2,
+                    0.15,
                     1.0,
                     background_color,
+                    true,
                 );
                 /*
                                 draw_plane_gimball_3d(

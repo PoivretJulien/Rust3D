@@ -617,7 +617,7 @@ pub mod geometry {
             (self.x, self.y, self.z)
         }
     }
-
+    
     /// Construction Plane tools set.
     /// - a full set of tools, for establishing a
     ///   reliable local coordinate system
@@ -719,7 +719,7 @@ pub mod geometry {
             // compute the normal.
             let normal = Vector3d::cross_product(&x_axis, &y_axis).unitize_b();
             // make sure that v is orthogonal to u.
-            y_axis = Vector3d::cross_product(&x_axis, &normal).unitize_b();
+            y_axis = -Vector3d::cross_product(&x_axis, &normal).unitize_b();
             Self {
                 origin: *origin,
                 normal,
