@@ -799,7 +799,7 @@ impl DisplayPipeLine {
                                 screen_width,
                                 pt.0,
                                 pt.1,
-                                Color::convert_rgba_color(20, 20, 20, 0.5, background_color),
+                                Color::convert_rgba_color(20, 20, 20, 0.3, background_color),
                             );
                         }
                     }
@@ -819,7 +819,7 @@ impl DisplayPipeLine {
                                 screen_width,
                                 pt.0,
                                 pt.1,
-                                Color::convert_rgba_color(20, 20, 20, 0.5, background_color),
+                                Color::convert_rgba_color(20, 20, 20, 0.3, background_color),
                             );
                         }
                     }

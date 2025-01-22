@@ -728,6 +728,7 @@ pub mod geometry {
             }
         }
 
+        #[inline(always)]
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
         pub fn point_on_plane_uv(&self, u: f64, v: f64) -> Point3d {
             Point3d {
@@ -737,6 +738,7 @@ pub mod geometry {
             }
         }
 
+        #[inline(always)]
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
         /// Also offsets the point along the plane's normal by z value.
         pub fn point_on_plane(&self, x: f64, y: f64, z: f64) -> Point3d {
@@ -746,6 +748,8 @@ pub mod geometry {
                 Z: self.origin.Z + self.u.Z * x + self.v.Z * y + self.normal.Z * z,
             }
         }
+
+        #[inline(always)]
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
         pub fn point_on_plane_uv_ref(&self, u: &f64, v: &f64) -> Point3d {
             Point3d {
@@ -755,6 +759,7 @@ pub mod geometry {
             }
         }
 
+        #[inline(always)]
         /// Converts local (u, v) coordinates to global (x, y, z) coordinates on the plane
         /// Also offsets the point along the plane's normal by z value.
         pub fn point_on_plane_ref(&self, x: &f64, y: &f64, z: &f64) -> Point3d {
@@ -2163,7 +2168,9 @@ pub mod transformation {
             .collect()
     }
 
-    /// Apply a 4x3 transformation matrix to a points of implementing Coordinate3d.
+    #[inline(always)]
+    /// Apply a 4x3 transformation matrix to a 
+    /// points of implementing Coordinate3d.
     pub fn transform_point_4x3<T: Coordinate3d + Send + Sync>(
         transform_matrix: &[[f64; 4]; 3],
         point_to_process: &T,
