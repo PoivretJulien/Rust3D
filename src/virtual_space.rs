@@ -725,7 +725,7 @@ impl DisplayPipeLine {
                     &p,
                     1.0,
                     1.0,
-                    0.05,
+                    0.1,
                     Some(&matrix),
                 );
 
@@ -773,7 +773,7 @@ impl DisplayPipeLine {
                                 cplane_origin_2dpoint,
                                 cplane_x_axis_2dpoint,
                                 3,
-                                draw::blend_colors(0x964b4b, background_color, alpha),
+                                draw::blend_colors(0xff0000, background_color, alpha),
                             );
                             draw::draw_aa_line_with_thickness(
                                 buffer,
@@ -781,7 +781,7 @@ impl DisplayPipeLine {
                                 cplane_origin_2dpoint,
                                 cplane_y_axis_2dpoint,
                                 3,
-                                draw::blend_colors(0x4b964b, background_color, alpha),
+                                draw::blend_colors(0x00ff00, background_color, alpha),
                             );
                             draw::draw_aa_line_with_thickness(
                                 buffer,
@@ -789,7 +789,7 @@ impl DisplayPipeLine {
                                 cplane_origin_2dpoint,
                                 cplane_z_axis_2dpoint,
                                 3,
-                                draw::blend_colors(0x4b4b96, background_color, alpha),
+                                draw::blend_colors(0x0000ff, background_color, alpha),
                             );
                         }
                     };
