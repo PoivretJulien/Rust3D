@@ -2917,7 +2917,7 @@ pub mod draw {
                     (Vertex::new(-0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
                     (Vertex::new(0.000, 0.000, 0.250) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
                 ];
-                // Mutate arrow arrays point to map Point3d on the gimball CPlane local coordinates.
+                // Mutate arrow points array to map 3d points on the gimball CPlane local coordinates.
                 arrow_x.iter_mut().for_each(|vertex| {
                     *vertex = plane
                         .point_on_plane(vertex.x, vertex.y, vertex.z)
