@@ -714,8 +714,13 @@ impl DisplayPipeLine {
                     "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
                     matrix[0], matrix[1], matrix[2]
                 );
-                ////// Prototype B closure //// will be implemented in lib. //////
-                // Some minor bug for now im working on it.
+                ////// Prototype closure. //// will be implemented in lib soon. 
+                //note:
+                //    - unid grid spacing should be always a multiple of the overall 
+                //    grid length related sides ... (a rounding process would add a runtime 
+                //    overhead for each calls so it should be done outside the method.
+                //    once for all ( this metode will alway be call from a designed 
+                //    runtime anyway so the grid specs have to be computed form there). 
                 ////////////////////////////////////////////////////////////////
                 let gr_line = |camera: &Camera,
                                   buffer: &mut Vec<u32>,
@@ -726,15 +731,18 @@ impl DisplayPipeLine {
                                   grid_y_length: f64,
                                   grid_spacing_unit: f64,
                                   matrix: Option<&[[f64; 4]; 3]>| {
-                    // Generate Points for the Grid lines system.
                     use rust3d::intersection::clip_line;
-                    ///////////////////////////////////////////////////////////////////////////////////
+                    ///////////////////////////////////////////////////////////
                     let green_line_count = (grid_x_length / grid_spacing_unit) as usize + 1;
                     let red_line_count = (grid_y_length / grid_spacing_unit) as usize + 1;
                     let mut red_lines = Vec::new();
                     let mut green_lines = Vec::new();
+                    ///////////////////////////////////////////////////////////
                     // Put x and y line (Start,End) point in two stacks
-                    // horizontal(red) and vertical(green)
+                    //         horizontal(red) and vertical(green) 
+                    //    (since they can have different size length)
+                    ///////////////////////////////////////////////////////////
+                    //Fist stack:
                     for i in 0..green_line_count {
                         green_lines.push((
                             grid_plane
@@ -751,6 +759,7 @@ impl DisplayPipeLine {
                                 .to_vertex(),
                         ));
                     }
+                    // Second stack.
                     for i in 0..red_line_count {
                         red_lines.push((
                             grid_plane
@@ -771,19 +780,27 @@ impl DisplayPipeLine {
                     if let Some(matrix) = matrix {
                         for i in 0..red_lines.len() {
                             red_lines[i].0 =
-                                transformation::transform_point_4x3(matrix, &red_lines[i].0);
+                                transformation::transform_point_4x3(
+                                    matrix, 
+                                    &red_lines[i].0);
                             red_lines[i].1 =
-                                transformation::transform_point_4x3(matrix, &red_lines[i].1);
+                                transformation::transform_point_4x3(
+                                    matrix, 
+                                    &red_lines[i].1);
                         }
                         for i in 0..green_lines.len() {
                             green_lines[i].0 =
-                                transformation::transform_point_4x3(matrix, &green_lines[i].0);
+                                transformation::transform_point_4x3(
+                                    matrix, 
+                                    &green_lines[i].0);
                             green_lines[i].1 =
-                                transformation::transform_point_4x3(matrix, &green_lines[i].1);
+                                transformation::transform_point_4x3(
+                                    matrix, 
+                                    &green_lines[i].1);
                         }
                     }
                     // Project clipped lines on screen space.
-                    // for x aligned lignes (red).
+                    // For x aligned lignes (red).
                     for line in red_lines.iter() {
                         //////////////////////////////////////////////////////////////////////
                         // Project line Start and End point on screen space.
@@ -803,7 +820,7 @@ impl DisplayPipeLine {
                             );
                         }
                     }
-                    // for y aligned lignes (green)
+                    // For y aligned lignes (green)
                     for line in green_lines.iter() {
                         //////////////////////////////////////////////////////////////////////
                         // Project line Start and End point on screen space.
@@ -824,29 +841,29 @@ impl DisplayPipeLine {
                         }
                     }
                     /*
-                     * Now Draw red and Green axis always from midle if grid 
-                     * line count number are odd. 
+                     * - The following will draw (Red and Green) axis always 
+                     *   from the midle of the grid if the lines count 
+                     *   number is odd. 
                      */
-                    // Compute grid line X axis.
+                    // Compute the grid line X axis.
                     let mut u_points = [
                         grid_plane.origin + (grid_plane.u * (grid_x_length * 0.5)),
                         grid_plane.origin + (-(grid_plane.u) * (grid_x_length * 0.5)),
                     ];
-                    // Compute grid line Y axis.
+                    // Compute the grid line Y axis.
                     let mut v_points = [
                         grid_plane.origin + (grid_plane.v * (grid_y_length * 0.5)),
                         grid_plane.origin + (-(grid_plane.v) * (grid_y_length * 0.5)),
                     ];
                     // If there is a transformation matrix then transform the points.
                     if let Some(matrix) = matrix {
-                        // grid = transformation::transform_points_4x3(matrix, &grid);
                         u_points[0] = transformation::transform_point_4x3(matrix, &u_points[0]);
                         u_points[1] = transformation::transform_point_4x3(matrix, &u_points[1]);
                         v_points[0] = transformation::transform_point_4x3(matrix, &v_points[0]);
                         v_points[1] = transformation::transform_point_4x3(matrix, &v_points[1]);
                     }
                     //////////////////////////////////////////////////////////////////////
-                    // Project u axis line Start and End point red line on screen space.
+                    // Project u axis line (from Start and End point)  (red line aligned and clipped on screen space).
                     let mut line_point = (
                         camera.project_maybe_outside(u_points[0].to_vertex()),
                         camera.project_maybe_outside(u_points[1].to_vertex()),
@@ -864,7 +881,7 @@ impl DisplayPipeLine {
                         );
                     }
                     //////////////////////////////////////////////////////////////////////
-                    // Project v axis line Start and End point green line on screen space.
+                    // Project v axis line (from Start and End point)  (green line aligned and clipped on screen space).
                     line_point = (
                         camera.project_maybe_outside(v_points[0].to_vertex()),
                         camera.project_maybe_outside(v_points[1].to_vertex()),
