@@ -41,7 +41,7 @@
 use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::draw::{self, draw_rectangle, draw_unit_grid_system};
+use crate::rust3d::draw::{self, draw_plane_gimball_3d, draw_rectangle, draw_unit_grid_system};
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
@@ -727,7 +727,98 @@ impl DisplayPipeLine {
                     1.0,
                     0.05,
                     Some(&matrix),
-                ); 
+                );
+
+                // Draw a gimball.                            ///////////////////
+                ///// Gimbal Prototype closure /// will be implemented soon. ////
+                let draw_gimball_from_plane =
+                    |buffer: &mut Vec<u32>,
+                     screen_width: usize,
+                     plane: &CPlane,
+                     camera: &Camera,
+                     matrix: Option<&[[f64; 4]; 3]>,
+                     scalar: f64,
+                     alpha: f64,
+                     background_color: u32| {
+                        use rust3d::intersection;
+                        use rust3d::transformation;
+                        // Extract and scale cplane base components.
+                        let mut cplane_origin = plane.origin.to_vertex();
+                        let mut cplane_x_axis = (plane.origin + (plane.u * scalar)).to_vertex();
+                        let mut cplane_y_axis = (plane.origin + (plane.v * scalar)).to_vertex();
+                        let mut cplane_z_axis =
+                            (plane.origin + (plane.normal * scalar)).to_vertex();
+                        // Apply matrix transformation if needed.
+                        if let Some(matrix) = matrix {
+                            cplane_origin =
+                                transformation::transform_point_4x3(matrix, &cplane_origin);
+                            cplane_x_axis =
+                                transformation::transform_point_4x3(matrix, &cplane_x_axis);
+                            cplane_y_axis =
+                                transformation::transform_point_4x3(matrix, &cplane_y_axis);
+                            cplane_z_axis =
+                                transformation::transform_point_4x3(matrix, &cplane_z_axis);
+                        }
+                        // Project Cplane system on screen space.
+                        let cplane_origin_2dpoint = camera.project_maybe_outside(cplane_origin);
+                        let cplane_x_axis_2dpoint = camera.project_maybe_outside(cplane_x_axis);
+                        let cplane_y_axis_2dpoint = camera.project_maybe_outside(cplane_y_axis);
+                        let cplane_z_axis_2dpoint = camera.project_maybe_outside(cplane_z_axis);
+                        // Draw antialiased lines for each base axis colors.
+                        // TODO: make a refined layer aproch for alpha channel.
+                        if alpha != 0.0 {
+                            draw::draw_aa_line_with_thickness(
+                                buffer,
+                                screen_width,
+                                cplane_origin_2dpoint,
+                                cplane_x_axis_2dpoint,
+                                3,
+                                draw::blend_colors(0x964b4b, background_color, alpha),
+                            );
+                            draw::draw_aa_line_with_thickness(
+                                buffer,
+                                screen_width,
+                                cplane_origin_2dpoint,
+                                cplane_y_axis_2dpoint,
+                                3,
+                                draw::blend_colors(0x4b964b, background_color, alpha),
+                            );
+                            draw::draw_aa_line_with_thickness(
+                                buffer,
+                                screen_width,
+                                cplane_origin_2dpoint,
+                                cplane_z_axis_2dpoint,
+                                3,
+                                draw::blend_colors(0x4b4b96, background_color, alpha),
+                            );
+                        }
+                    };
+
+                let o = Point3d::new(-0.1, -0.1, 0.0);
+                let x = o + Point3d::new(0.1, 0.0, 0.0);
+                let y = o + Point3d::new(0.0, 0.1, 0.0);
+                let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
+                draw_gimball_from_plane(
+                    &mut buffer,
+                    screen_width,
+                    &p2,
+                    &camera,
+                    Some(&matrix),
+                    0.2,
+                    1.0,
+                    background_color,
+                );
+                /*
+                                draw_plane_gimball_3d(
+                                    &mut buffer,
+                                    screen_width,
+                                    p2,
+                                    &camera,
+                                    1.0,
+                                    background_color,
+                                    0.05,
+                                );
+                */
                 // Get points.
                 if let Ok(mesh) = m.object_list[0].lock() {
                     if let Some(obj) = mesh.data.clone() {

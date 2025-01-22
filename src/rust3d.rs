@@ -2667,7 +2667,7 @@ pub mod draw {
     /// Draw a unit Grid System with anti aliased lines for visual reference of the unit system.
     /// note:
     ///    - unid grid spacing should be always a multiple of the overall
-    ///    both grid length related sides... ( a rounding process would
+    ///    both grid lengths related sides... ( a rounding process would
     ///    add a runtime overhead for each calls so it should be done outside
     ///    the method once and for all ( this method will alway be call from a
     ///    carefully designed runtime anyway so the grid specs have
@@ -3138,7 +3138,7 @@ pub mod draw {
     }
 
     //private function to blend two colors based on alpha
-    fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
+    pub fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
         let fg_r = ((foreground >> 16) & 0xFF) as f64;
         let fg_g = ((foreground >> 8) & 0xFF) as f64;
         let fg_b = (foreground & 0xFF) as f64;
