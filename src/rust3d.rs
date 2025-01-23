@@ -2355,7 +2355,7 @@ pub mod draw {
                 dy / 1.0 // slope if dx == 0 then replace by 1.
             };
             // From 2nd point to penultimate point.
-            for i in 0..=(dx.ceil() as usize + 1) {
+            for i in 0..=(dx.ceil() as usize) {
                 // Move x px from + i on x axis
                 let frac_x = pt1.0 + (i as f64);
                 // Move the y px from slope ratio time
@@ -2397,7 +2397,7 @@ pub mod draw {
             } else {
                 dx / 1.0 // if dy == 0 then replace by 1.
             };
-            for i in 0..=(dy.ceil() as usize + 1) {
+            for i in 0..=(dy.ceil() as usize) {
                 let frac_x = pt1.0 + (i as f64) * m;
                 let frac_y = pt1.1 + (i as f64);
                 let x = frac_x as usize;
