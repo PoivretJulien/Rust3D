@@ -731,6 +731,7 @@ impl DisplayPipeLine {
                     0.1,
                     Some(&matrix),
                 );
+                // test for a gimball graphic position.
                 let o = Point3d::new(0.5, 0.5, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
@@ -767,7 +768,7 @@ impl DisplayPipeLine {
                     draw::draw_aa_line_with_thickness(
                         &mut buffer,
                         screen_width,
-                        (screen_width as f64 / 2.0, screen_height as f64 / 3.0),
+                        (screen_width as f64 / 2.0, screen_height as f64 / 2.0),
                         (pos.0 as f64, pos.1 as f64),
                         20,
                         0x964b4b,
@@ -777,12 +778,14 @@ impl DisplayPipeLine {
                         screen_width,
                         screen_height,
                         screen_width / 2,
-                        screen_height / 3,
+                        screen_height / 2,
                         1,
                         0xff0000,
                         1,
                     );
                 }
+                // Draw a simple triangle for evaluating the line thickness  ///
+                // behavior.  //////////////////////////////////////////////////
                 let tri = [(50.0, 50.0), (50.0, 100.0), (100.0, 100.0), (100.0, 50.0)];
                 let color: u32 = 0x964b4b;
                 let thick = 3;
@@ -818,6 +821,7 @@ impl DisplayPipeLine {
                     thick,
                     color,
                 );
+                //Triangle end./////////////////////////////////////////////////
                 draw::draw_circle(
                     &mut buffer,
                     screen_width,
@@ -829,7 +833,7 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(255, 0, 255),
                     10,
                 );
-                ////////////////////////////////////////////////////////////////
+                //Draw a falloff disc like a brush style.///////////////////////
                 draw::draw_disc(
                     &mut buffer,
                     screen_width,
@@ -840,7 +844,7 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(0, 179, 255),
                     100,
                 );
-                ////////////////////////////////////////////////////////////////
+                //Draw a regular disc  /////////////////////////////////////////
                 draw::draw_disc(
                     &mut buffer,
                     screen_width,
@@ -851,7 +855,7 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(153, 117, 255),
                     1,
                 );
-                ////////////////////////////////////////////////////////////////
+                //Draw a primitive rectangle ///////////////////////////////////
                 draw::draw_rectangle(
                     &mut buffer,
                     screen_width,
