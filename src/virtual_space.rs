@@ -731,7 +731,7 @@ impl DisplayPipeLine {
                     0.1,
                     Some(&matrix),
                 );
-                // test for a gimball graphic position.
+                // Test for a gimball graphic position.
                 let o = Point3d::new(0.5, 0.5, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
@@ -872,7 +872,6 @@ impl DisplayPipeLine {
                     30,
                     Color::convert_rgb_color(0, 0, 0),
                 );
-                /*
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
                     use rust3d::intersection::{Circle, Rectangle};
                     let circle_zone = Circle::new((31, 31), 32.0);
@@ -944,12 +943,12 @@ impl DisplayPipeLine {
                         3,
                     );
                     if window.get_mouse_down(MouseButton::Left) {
-                        draw::draw_aa_line(
+                        draw::draw_aa_line_with_thickness(
                             &mut buffer,
                             screen_width,
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
-                            //3,
+                            3,
                             Color::convert_rgb_color(255, 217, 0),
                         );
                     } else {
@@ -983,9 +982,7 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
-                */
                 //Draw Sine wave////////////////////////////////////////////////
-                /*
                 for (x, y) in sine_path.iter() {
                     // Without antialiasing
                     buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
@@ -1001,7 +998,6 @@ impl DisplayPipeLine {
                         Color::convert_rgb_color(255, 241, 0),
                     );
                 }
-                */
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

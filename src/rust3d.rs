@@ -1592,8 +1592,8 @@ pub mod intersection {
         /// Test if a point is inside the circle zone area.
         pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
             // Compute distance from circle center.
-            let dx = (self.center_point.0 - test_point.0) as isize;
-            let dy = (self.center_point.1 - test_point.1) as isize;
+            let dx = self.center_point.0  as isize - test_point.0 as isize;
+            let dy = self.center_point.1 as isize - test_point.1 as isize;
             let squared_ditance = (dx as f64) * (dx as f64) + (dy as f64) * (dy as f64);
             // println!("\x1b[1;1HDistance from circle center: {0:?}",squared_ditance.sqrt());
             // Check if the squared circle is inside the circle.
@@ -2341,7 +2341,7 @@ pub mod draw {
                 let dist = frac_y - (y as f64); // Get only the fractional part.
                 for j in 0..=thickness {
                     let y_offset = (y + j).saturating_sub(half_thickness) + 1; // problematic part.
-                   // panic!("----->{y_offset} x:{x} y:{y} j:{j} half_thickness{half_thickness}");
+                                                                               // panic!("----->{y_offset} x:{x} y:{y} j:{j} half_thickness{half_thickness}");
                     if (x < screen_width) && (y_offset < screen_height) {
                         if j == 0 {
                             buffer[y_offset * screen_width + x] = blend_colors(
@@ -2805,14 +2805,7 @@ pub mod draw {
             camera.project_maybe_outside(u_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line_with_thickness(
-                buffer,
-                screen_width,
-                pt.0,
-                pt.1,
-                2,
-                0x964b4b,
-            );
+            draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x964b4b);
         }
         //////////////////////////////////////////////////////////////////////
         // Project v axis line (from Start and End point)  (green line aligned and clipped on screen space).
@@ -2821,14 +2814,7 @@ pub mod draw {
             camera.project_maybe_outside(v_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line_with_thickness(
-                buffer,
-                screen_width,
-                pt.0,
-                pt.1,
-                2,
-                0x4b964b,
-            );
+            draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x4b964b);
         }
     }
     /// Draw a gimball. from a CPlane              //////////////////////
