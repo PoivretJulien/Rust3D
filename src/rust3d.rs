@@ -2311,32 +2311,6 @@ pub mod draw {
         let screen_height = buffer.len() / screen_width;
         let half_thickness = thickness / 2;
         ///////////////////////////////////////////////////////////////////////
-        // for Temporary diagnostic.///////////////////////////////////////////
-        let half_thickness_f = half_thickness as f64;
-        let mut flag = (0, 0, 0, 0);
-        if pt1.0 <= half_thickness_f {
-            pt1.0 += half_thickness_f;
-            flag.0 = 1;
-        }
-        if pt1.1 <= half_thickness_f {
-            pt1.1 += half_thickness_f;
-            flag.1 = 1;
-        }
-        if pt2.0 <= half_thickness_f {
-            pt2.0 += half_thickness_f;
-            flag.2 = 1;
-        }
-        if pt2.1 <= half_thickness_f {
-            pt2.1 += half_thickness_f;
-            flag.3 = 1;
-        }
-        /*
-        println!(
-            "\x1b[2JHalf thickness: {0:?} pt1:{1:?} pt2:{2:?} flag:{3:?}",
-            half_thickness_f, pt1, pt2,flag
-        );
-        */
-        ///////////////////////////////////////////////////////////////////////
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
             // Swap x and y for writing line from end
             // to start when pt2.x is inferior to pt1.x
