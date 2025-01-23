@@ -2831,12 +2831,13 @@ pub mod draw {
             camera.project_maybe_outside(u_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line(
+            draw_aa_line_with_thickness(
                 buffer,
                 screen_width,
                 pt.0,
                 pt.1,
-                Color::convert_rgba_color(75, 150, 75, 1.0, background_color),
+                2,
+                0x964b4b,
             );
         }
         //////////////////////////////////////////////////////////////////////
@@ -2846,12 +2847,13 @@ pub mod draw {
             camera.project_maybe_outside(v_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line(
+            draw_aa_line_with_thickness(
                 buffer,
                 screen_width,
                 pt.0,
                 pt.1,
-                Color::convert_rgba_color(150, 75, 75, 1.0, background_color),
+                2,
+                0x4b964b,
             );
         }
     }
