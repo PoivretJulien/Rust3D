@@ -765,10 +765,9 @@ impl DisplayPipeLine {
                     }
                 }
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
-                    // problematic function where inner type overflow when input are at screen
-                    // border (offset computation push x or y usize below zero resulting an
-                    // overflow. the goal is to find a solution with the right data type without 
-                    // too much type casting overhead. 
+                    // Some problems remain on the accuracy of the line position due to the rounding of
+                    // the data type usize may be an average display from float weight may be
+                    // implemented like with the aa of point method.
                     draw::draw_aa_line_with_thickness(
                         &mut buffer,
                         screen_width,
