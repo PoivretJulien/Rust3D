@@ -731,7 +731,7 @@ impl DisplayPipeLine {
                     0.1,
                     Some(&matrix),
                 );
-                let o = Point3d::new(-0.2, -0.3, 0.0);
+                let o = Point3d::new(0.5, 0.5, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
                 let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
@@ -763,6 +763,61 @@ impl DisplayPipeLine {
                         }
                     }
                 }
+                if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
+                    draw::draw_aa_line_with_thickness(
+                        &mut buffer,
+                        screen_width,
+                        (screen_width as f64 / 2.0, screen_height as f64 / 2.0),
+                        (pos.0 as f64, pos.1 as f64),
+                        20,
+                        0x964b4b,
+                    );
+                    draw::draw_disc(
+                        &mut buffer,
+                        screen_width,
+                        screen_height,
+                        screen_width / 2,
+                        screen_height / 2,
+                        1,
+                        0xff0000,
+                        1,
+                    );
+                }
+                let tri = [(50.0, 50.0), (50.0, 100.0), (100.0, 100.0), (100.0, 50.0)];
+                let color: u32 = 0x964b4b;
+                let thick = 3;
+                draw::draw_aa_line_with_thickness(
+                    &mut buffer,
+                    screen_width,
+                    tri[0],
+                    tri[1],
+                    thick,
+                    color,
+                );
+                draw::draw_aa_line_with_thickness(
+                    &mut buffer,
+                    screen_width,
+                    tri[1],
+                    tri[2],
+                    thick,
+                    color,
+                );
+                draw::draw_aa_line_with_thickness(
+                    &mut buffer,
+                    screen_width,
+                    tri[2],
+                    tri[0],
+                    thick,
+                    color,
+                );
+                draw::draw_aa_line_with_thickness(
+                    &mut buffer,
+                    screen_width,
+                    tri[1],
+                    tri[3],
+                    thick,
+                    color,
+                );
                 draw::draw_circle(
                     &mut buffer,
                     screen_width,
@@ -770,7 +825,7 @@ impl DisplayPipeLine {
                     (screen_width / 4) * 3,
                     (screen_height / 4) * 3,
                     30,
-                    1,
+                    2,
                     Color::convert_rgb_color(255, 0, 255),
                     10,
                 );
@@ -808,6 +863,7 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(0, 0, 0),
                 );
                 ////////////////////////////////////////////////////////////////
+                /*
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
                     use rust3d::intersection::{Circle, Rectangle};
                     let circle_zone = Circle::new((31, 31), 32.0);
@@ -879,12 +935,12 @@ impl DisplayPipeLine {
                         3,
                     );
                     if window.get_mouse_down(MouseButton::Left) {
-                        draw::draw_aa_line_with_thickness(
+                        draw::draw_aa_line(
                             &mut buffer,
                             screen_width,
                             ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
                             (pos.0 as f64, pos.1 as f64),
-                            3,
+                            //3,
                             Color::convert_rgb_color(255, 217, 0),
                         );
                     } else {
@@ -918,6 +974,8 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
+                */
+                /*
                 for (x, y) in sine_path.iter() {
                     // Without antialiasing
                     buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
@@ -933,6 +991,7 @@ impl DisplayPipeLine {
                         Color::convert_rgb_color(255, 241, 0),
                     );
                 }
+                */
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

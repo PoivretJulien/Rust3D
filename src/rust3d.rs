@@ -84,6 +84,7 @@ pub mod geometry {
             }
         }
     }
+
     // Implementation of + and - operator for Point3d.
     impl Add for Point3d {
         type Output = Self; // Specify the result type of the addition
@@ -2308,21 +2309,44 @@ pub mod draw {
         color: u32,
     ) {
         let screen_height = buffer.len() / screen_width;
-        let mut half_thickness = thickness / 2;
-        if half_thickness == 0 {
-            half_thickness = 1;
+        let half_thickness = thickness / 2;
+        ///////////////////////////////////////////////////////////////////////
+        // for Temporary diagnostic.
+        let half_thickness_f = half_thickness as f64;
+        let mut flag = (0, 0, 0, 0);
+        if pt1.0 <= half_thickness_f {
+            pt1.0 += half_thickness_f;
+            flag.0 = 1;
         }
+        if pt1.1 <= half_thickness_f {
+            pt1.1 += half_thickness_f;
+            flag.1 = 1;
+        }
+        if pt2.0 <= half_thickness_f {
+            pt2.0 += half_thickness_f;
+            flag.2 = 1;
+        }
+        if pt2.1 <= half_thickness_f {
+            pt2.1 += half_thickness_f;
+            flag.3 = 1;
+        }
+        /*
+        println!(
+            "\x1b[2JHalf thickness: {0:?} pt1:{1:?} pt2:{2:?} flag:{3:?}",
+            half_thickness_f, pt1, pt2,flag
+        );
+        */
+        ///////////////////////////////////////////////////////////////////////
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
-            // Swap x and y for writing
-            // line from end to start when pt2.x
-            // is inferior to pt1.x.
+            // Swap x and y for writing line from end 
+            // to start when pt2.x is inferior to pt1.x
             if pt2.0 < pt1.0 {
                 (pt1, pt2) = (pt2, pt1);
             }
             // Compute end point distances on x and y.
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
-            //////////////////////////////////
+            // ///////////////////////////////////////
             // Avoid division by zero for
             // defining the slope ration m.
             let m = if dx != 0.0 {
@@ -2341,22 +2365,23 @@ pub mod draw {
                 let x = frac_x as usize;
                 let y = frac_y as usize;
                 let dist = frac_y - (y as f64); // Get only the fractional part.
-                for i in 0..=thickness {
-                    if x < screen_width && ((y + (i - half_thickness)) < screen_height) {
-                        if i == 0 {
-                            buffer[(y + (i - half_thickness)) * screen_width + x] = blend_colors(
+                for j in 0..=thickness {
+                    let y_offset = y + j - half_thickness + 1; // problematic part.
+                    // panic!("----->{y_offset} x:{x} y:{y} j:{j} half_thickness{half_thickness}");
+                    if (x < screen_width) && (y_offset < screen_height) {
+                        if j == 0 {
+                            buffer[y_offset * screen_width + x] = blend_colors(
                                 color,
-                                buffer[(y + (i - half_thickness)) * screen_width + x],
+                                buffer[y_offset * screen_width + x],
                                 1.0 - dist,
                             );
-                        } else if i == thickness {
-                            buffer[(y + (i - half_thickness)) * screen_width + x] = blend_colors(
-                                color,
-                                buffer[(y + (i - half_thickness)) * screen_width + x],
-                                dist,
-                            );
+                        } else if j == thickness {
+                            buffer[y_offset * screen_width + x] =
+                                blend_colors(color, 
+                                    buffer[y_offset * screen_width + x], 
+                                    dist);
                         } else {
-                            buffer[(y + (i - half_thickness)) * screen_width + x] = color;
+                            buffer[y_offset * screen_width + x] = color;
                         }
                     }
                 }
@@ -2381,25 +2406,29 @@ pub mod draw {
                 let y = frac_y as usize;
                 let dist = frac_x - (x as f64);
                 ////////////////////////////////////////////////////////////////
-                for i in 0..=thickness {
-                    if ((x + (i - half_thickness)) < screen_width) && (y < screen_height) {
-                        if i == 0 {
-                            buffer[y * screen_width + (x + (i - half_thickness))] = blend_colors(
+                for j in 0..=thickness {
+                    let x_offset = x + j - half_thickness + 1;
+                    if (x_offset < screen_width) && (y < screen_height) {
+                        if j == 0 {
+                            buffer[y * screen_width + x_offset] = 
+                                blend_colors(
                                 color,
-                                buffer[y * screen_width + (x + (i - half_thickness))],
+                                buffer[y * screen_width + x_offset],
                                 1.0 - dist,
                             );
-                        } else if i == thickness {
-                            buffer[y * screen_width + (x + (i - half_thickness))] = blend_colors(
-                                color,
-                                buffer[y * screen_width + (x + (i - half_thickness))],
-                                dist,
-                            );
+                        } else if j == thickness {
+                            buffer[y * screen_width + x_offset] =
+                                blend_colors(
+                                    color, 
+                                    buffer[y * screen_width + x_offset],
+                                    dist
+                                    );
                         } else {
-                            buffer[y * screen_width + (x + (i - half_thickness))] = color;
+                            buffer[y * screen_width + x_offset] = color;
                         }
                     }
                 }
+                ////////////////////////////////////////////////////////////////
             }
         }
     }
@@ -2808,12 +2837,12 @@ pub mod draw {
             camera.project_maybe_outside(u_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line_with_thickness(
+            draw_aa_line(
                 buffer,
                 screen_width,
                 pt.0,
                 pt.1,
-                2,
+                
                 Color::convert_rgba_color(75, 150, 75, 1.0, background_color),
             );
         }
@@ -2824,12 +2853,12 @@ pub mod draw {
             camera.project_maybe_outside(v_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line_with_thickness(
+            draw_aa_line(
                 buffer,
                 screen_width,
                 pt.0,
                 pt.1,
-                2,
+                
                 Color::convert_rgba_color(150, 75, 75, 1.0, background_color),
             );
         }
@@ -2876,28 +2905,25 @@ pub mod draw {
             let cplane_z_axis_2dpoint = camera.project_maybe_outside(cplane_z_axis);
             // Draw antialiased lines for each base axis colors.
             // TODO: make a refined layer aproch for alpha channel.
-            draw_aa_line_with_thickness(
+            draw_aa_line(
                 buffer,
                 screen_width,
                 cplane_origin_2dpoint,
                 cplane_x_axis_2dpoint,
-                3,
                 blend_colors(0xff0000, background_color, alpha),
             );
-            draw_aa_line_with_thickness(
+            draw_aa_line(
                 buffer,
                 screen_width,
                 cplane_origin_2dpoint,
                 cplane_y_axis_2dpoint,
-                3,
                 blend_colors(0x00ff00, background_color, alpha),
             );
-            draw_aa_line_with_thickness(
+            draw_aa_line(
                 buffer,
                 screen_width,
                 cplane_origin_2dpoint,
                 cplane_z_axis_2dpoint,
-                3,
                 blend_colors(0x0000ff, background_color, alpha),
             );
             if draw_arrow {
@@ -2966,36 +2992,33 @@ pub mod draw {
                 if let Some(line_point) =
                     clip_line(arrow_x_2d.0, arrow_x_2d.1, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
-                        line_point.1,
-                        2,
+                        line_point.1, 
                         blend_colors(0xff0000, background_color, alpha),
                     );
                 }
                 if let Some(line_point) =
                     clip_line(arrow_x_2d.1, arrow_x_2d.2, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0xff0000, background_color, alpha),
                     );
                 }
                 if let Some(line_point) =
                     clip_line(arrow_x_2d.2, arrow_x_2d.0, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0xff0000, background_color, alpha),
                     );
                 }
@@ -3003,73 +3026,67 @@ pub mod draw {
                 if let Some(line_point) =
                     clip_line(arrow_y_2d.0, arrow_y_2d.1, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0x00ff00, background_color, alpha),
                     );
                 }
                 if let Some(line_point) =
                     clip_line(arrow_y_2d.1, arrow_y_2d.2, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0x00ff00, background_color, alpha),
                     );
                 }
                 if let Some(line_point) =
                     clip_line(arrow_y_2d.2, arrow_y_2d.0, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0x00ff00, background_color, alpha),
                     );
                 }
-                // Clip line on 2d screen space for arrow y.
+                // Clip line on 2d screen space for arrow z.
                 if let Some(line_point) =
                     clip_line(arrow_z_2d.0, arrow_z_2d.1, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0x0000ff, background_color, alpha),
                     );
                 }
                 if let Some(line_point) =
                     clip_line(arrow_z_2d.1, arrow_z_2d.2, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0x0000ff, background_color, alpha),
                     );
                 }
                 if let Some(line_point) =
                     clip_line(arrow_z_2d.2, arrow_z_2d.0, screen_width, screen_height)
                 {
-                    draw_aa_line_with_thickness(
+                    draw_aa_line(
                         buffer,
                         screen_width,
                         line_point.0,
                         line_point.1,
-                        2,
                         blend_colors(0x0000ff, background_color, alpha),
                     );
                 }
