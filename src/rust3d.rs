@@ -2311,7 +2311,7 @@ pub mod draw {
         let screen_height = buffer.len() / screen_width;
         let half_thickness = thickness / 2;
         ///////////////////////////////////////////////////////////////////////
-        // for Temporary diagnostic.
+        // for Temporary diagnostic.///////////////////////////////////////////
         let half_thickness_f = half_thickness as f64;
         let mut flag = (0, 0, 0, 0);
         if pt1.0 <= half_thickness_f {
@@ -2338,7 +2338,7 @@ pub mod draw {
         */
         ///////////////////////////////////////////////////////////////////////
         if (pt2.1 - pt1.1).abs() < (pt2.0 - pt1.0).abs() {
-            // Swap x and y for writing line from end 
+            // Swap x and y for writing line from end
             // to start when pt2.x is inferior to pt1.x
             if pt2.0 < pt1.0 {
                 (pt1, pt2) = (pt2, pt1);
@@ -2346,7 +2346,7 @@ pub mod draw {
             // Compute end point distances on x and y.
             let dx = pt2.0 - pt1.0;
             let dy = pt2.1 - pt1.1;
-            // ///////////////////////////////////////
+            //////////////////////////////////////////
             // Avoid division by zero for
             // defining the slope ration m.
             let m = if dx != 0.0 {
@@ -2367,7 +2367,7 @@ pub mod draw {
                 let dist = frac_y - (y as f64); // Get only the fractional part.
                 for j in 0..=thickness {
                     let y_offset = y + j - half_thickness + 1; // problematic part.
-                    // panic!("----->{y_offset} x:{x} y:{y} j:{j} half_thickness{half_thickness}");
+                                                               // panic!("----->{y_offset} x:{x} y:{y} j:{j} half_thickness{half_thickness}");
                     if (x < screen_width) && (y_offset < screen_height) {
                         if j == 0 {
                             buffer[y_offset * screen_width + x] = blend_colors(
@@ -2377,9 +2377,7 @@ pub mod draw {
                             );
                         } else if j == thickness {
                             buffer[y_offset * screen_width + x] =
-                                blend_colors(color, 
-                                    buffer[y_offset * screen_width + x], 
-                                    dist);
+                                blend_colors(color, buffer[y_offset * screen_width + x], dist);
                         } else {
                             buffer[y_offset * screen_width + x] = color;
                         }
@@ -2410,19 +2408,14 @@ pub mod draw {
                     let x_offset = x + j - half_thickness + 1;
                     if (x_offset < screen_width) && (y < screen_height) {
                         if j == 0 {
-                            buffer[y * screen_width + x_offset] = 
-                                blend_colors(
+                            buffer[y * screen_width + x_offset] = blend_colors(
                                 color,
                                 buffer[y * screen_width + x_offset],
                                 1.0 - dist,
                             );
                         } else if j == thickness {
                             buffer[y * screen_width + x_offset] =
-                                blend_colors(
-                                    color, 
-                                    buffer[y * screen_width + x_offset],
-                                    dist
-                                    );
+                                blend_colors(color, buffer[y * screen_width + x_offset], dist);
                         } else {
                             buffer[y * screen_width + x_offset] = color;
                         }
@@ -2842,7 +2835,6 @@ pub mod draw {
                 screen_width,
                 pt.0,
                 pt.1,
-                
                 Color::convert_rgba_color(75, 150, 75, 1.0, background_color),
             );
         }
@@ -2858,7 +2850,6 @@ pub mod draw {
                 screen_width,
                 pt.0,
                 pt.1,
-                
                 Color::convert_rgba_color(150, 75, 75, 1.0, background_color),
             );
         }
@@ -2905,27 +2896,48 @@ pub mod draw {
             let cplane_z_axis_2dpoint = camera.project_maybe_outside(cplane_z_axis);
             // Draw antialiased lines for each base axis colors.
             // TODO: make a refined layer aproch for alpha channel.
-            draw_aa_line(
-                buffer,
-                screen_width,
+            if let Some(line_point) = clip_line(
                 cplane_origin_2dpoint,
                 cplane_x_axis_2dpoint,
-                blend_colors(0xff0000, background_color, alpha),
-            );
-            draw_aa_line(
-                buffer,
                 screen_width,
+                screen_height,
+            ) {
+                draw_aa_line(
+                    buffer,
+                    screen_width,
+                    line_point.0,
+                    line_point.1,
+                    blend_colors(0xff0000, background_color, alpha),
+                );
+            }
+            if let Some(line_point) = clip_line(
                 cplane_origin_2dpoint,
                 cplane_y_axis_2dpoint,
-                blend_colors(0x00ff00, background_color, alpha),
-            );
-            draw_aa_line(
-                buffer,
                 screen_width,
+                screen_height,
+            ) {
+                draw_aa_line(
+                    buffer,
+                    screen_width,
+                    line_point.0,
+                    line_point.1,
+                    blend_colors(0x00ff00, background_color, alpha),
+                );
+            }
+            if let Some(line_point) = clip_line(
                 cplane_origin_2dpoint,
                 cplane_z_axis_2dpoint,
-                blend_colors(0x0000ff, background_color, alpha),
-            );
+                screen_width,
+                screen_height,
+            ) {
+                draw_aa_line(
+                    buffer,
+                    screen_width,
+                    line_point.0,
+                    line_point.1,
+                    blend_colors(0x0000ff, background_color, alpha),
+                );
+            }
             if draw_arrow {
                 // Draw arrows by axis colors.
                 let mut arrow_x = [
@@ -2996,7 +3008,7 @@ pub mod draw {
                         buffer,
                         screen_width,
                         line_point.0,
-                        line_point.1, 
+                        line_point.1,
                         blend_colors(0xff0000, background_color, alpha),
                     );
                 }

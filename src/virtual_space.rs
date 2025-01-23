@@ -765,6 +765,10 @@ impl DisplayPipeLine {
                     }
                 }
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
+                    // problematic function where inner type overflow when input are at screen
+                    // border (offset computation push x or y usize below zero resulting an
+                    // overflow. the goal is to find a solution with the right data type without 
+                    // too much type casting overhead. 
                     draw::draw_aa_line_with_thickness(
                         &mut buffer,
                         screen_width,
@@ -773,6 +777,8 @@ impl DisplayPipeLine {
                         20,
                         0x964b4b,
                     );
+                    // Draw a dot at the center of the screen 
+                    // to emphasize the rounding issue of even and odd number.
                     draw::draw_disc(
                         &mut buffer,
                         screen_width,
@@ -822,6 +828,7 @@ impl DisplayPipeLine {
                     color,
                 );
                 //Triangle end./////////////////////////////////////////////////
+                // A blurred circle showing gradient alpha fading.
                 draw::draw_circle(
                     &mut buffer,
                     screen_width,
@@ -866,7 +873,6 @@ impl DisplayPipeLine {
                     30,
                     Color::convert_rgb_color(0, 0, 0),
                 );
-                ////////////////////////////////////////////////////////////////
                 /*
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
                     use rust3d::intersection::{Circle, Rectangle};
@@ -979,6 +985,7 @@ impl DisplayPipeLine {
                     0,
                 );
                 */
+                //Draw Sine wave////////////////////////////////////////////////
                 /*
                 for (x, y) in sine_path.iter() {
                     // Without antialiasing
