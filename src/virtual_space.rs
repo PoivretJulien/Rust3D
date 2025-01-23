@@ -771,7 +771,7 @@ impl DisplayPipeLine {
                     draw::draw_aa_line_with_thickness(
                         &mut buffer,
                         screen_width,
-                        (screen_width as f64 / 2.0, screen_height as f64 / 2.0),
+                        (screen_width as f64 / 3.0, screen_height as f64 / 2.0),
                         (pos.0 as f64, pos.1 as f64),
                         20,
                         0x964b4b,
@@ -782,7 +782,7 @@ impl DisplayPipeLine {
                         &mut buffer,
                         screen_width,
                         screen_height,
-                        screen_width / 2,
+                        screen_width / 3,
                         screen_height / 2,
                         1,
                         0xff0000,
