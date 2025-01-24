@@ -842,7 +842,7 @@ impl DisplayPipeLine {
                     screen_width,
                     screen_height,
                     (screen_width / 4) * 3,
-                    (screen_height / 4) * 3,
+                    (screen_height / 4) * 1,
                     30,
                     2,
                     Color::convert_rgb_color(255, 0, 255),
@@ -870,17 +870,7 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(153, 117, 255),
                     1,
                 );
-                //Draw a primitive rectangle ///////////////////////////////////
-                draw::draw_rectangle(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    0,
-                    770,
-                    900,
-                    30,
-                    Color::convert_rgb_color(0, 0, 0),
-                );
+                
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
                     use rust3d::intersection::{Circle, Rectangle};
                     let circle_zone = Circle::new((31, 31), 32.0);
@@ -1024,12 +1014,23 @@ impl DisplayPipeLine {
                         screen_height,
                         pt.0,
                         pt.1,
-                        3,
-                        0xff0000,
+                        2,
+                        0xc445d7,
                         1,
                     );
                 }
                 ////////////////////////////////////////////////////////////////
+                //Draw a primitive rectangle ///////////////////////////////////
+                draw::draw_rectangle(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    0,
+                    770,
+                    900,
+                    30,
+                    Color::convert_rgb_color(0, 0, 0),
+                );
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();
