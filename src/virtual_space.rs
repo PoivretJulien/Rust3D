@@ -35,22 +35,17 @@
 //   (from another thread) the whole virtual_space object list
 //   (by matrix operations from user input and rasterize / raytrace
 //    the virtual_space)
-//  - Before sending to display pipe line iter from LayerVisibility object and
-//    apply related parmeter in function.
+//  - Before sending to display pipe line iter from Layer Visibility object and
+//    apply related parameters in function.
 
 use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::draw::{
-    self, draw_3d_grid, draw_aa_line_with_thickness, draw_disc, draw_plane_gimball_3d,
-    draw_rectangle, draw_unit_grid_system,
-};
-use crate::rust3d::intersection::clip_line;
+use crate::rust3d::draw;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
 use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -726,7 +721,7 @@ impl DisplayPipeLine {
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
                 let p = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
-                draw_unit_grid_system(
+               draw:: draw_unit_grid_system(
                     &mut buffer,
                     screen_width,
                     screen_height,
@@ -870,7 +865,7 @@ impl DisplayPipeLine {
                     Color::convert_rgb_color(153, 117, 255),
                     1,
                 );
-                
+
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
                     use rust3d::intersection::{Circle, Rectangle};
                     let circle_zone = Circle::new((31, 31), 32.0);
@@ -901,7 +896,7 @@ impl DisplayPipeLine {
                     }
                     let rec = Rectangle::new((100, 10), (110, 21));
                     if rec.is_point_inside((pos.0 as usize, pos.1 as usize)) {
-                        draw_rectangle(
+                        draw::draw_rectangle(
                             &mut buffer,
                             screen_width,
                             screen_height,
@@ -912,7 +907,7 @@ impl DisplayPipeLine {
                             Color::convert_rgb_color(255, 25, 255),
                         );
                     } else {
-                        draw_rectangle(
+                        draw::draw_rectangle(
                             &mut buffer,
                             screen_width,
                             screen_height,
@@ -998,15 +993,16 @@ impl DisplayPipeLine {
                     );
                 }
                 ////////////////////////////////////////////////////////////////
-                // Draw a plane x aligned at 45 deg on ZY world plane.
+                // Draw a plane x aligned  and at 45 deg angle on ZY world plane.
                 let pt_origin = Point3d::new(0.3, 0.3, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
                 let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
-                // Project point on grid.
-                let pt_grid = draw::draw_3d_grid(&p3, 0.4, 0.4, 0.05);
+                //  Create 3d grid and Project points on grid.
+                let pt_grid = draw::make_3d_grid_from_center(&p3, 0.4, 0.4, 0.1);
                 let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
+                // Draw disc on each points projected on screen space.
                 for pt in projected_point.iter() {
                     draw::draw_disc(
                         &mut buffer,
@@ -1020,7 +1016,7 @@ impl DisplayPipeLine {
                     );
                 }
                 ////////////////////////////////////////////////////////////////
-                //Draw a primitive rectangle ///////////////////////////////////
+                // Draw a primitive rectangle ///////////////////////////////////
                 draw::draw_rectangle(
                     &mut buffer,
                     screen_width,

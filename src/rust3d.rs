@@ -3082,11 +3082,11 @@ pub mod draw {
         }
     }
 
-    /// Draw a contextual Grid graphing a unit system intervals.
+    /// Make a contextual Grid graphing a unit system intervals.
     /// (the origin point is in the middle of the grid holding
     /// positive and negative domain on each relative sides.)
     use super::geometry::CPlane;
-    pub fn draw_3d_grid(
+    pub fn make_3d_grid_from_center(
         plane: &CPlane,
         x_length: f64,
         y_length: f64,
