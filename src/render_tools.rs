@@ -159,7 +159,7 @@ pub mod visualization_v3 {
 
             Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
         }
-        
+
         #[inline(always)]
         /// Project a vertex in a 2d camera space projection.
         pub fn project_maybe_outside(&self, point: Vertex) -> (f64, f64) {
@@ -1043,7 +1043,7 @@ pub mod visualization_v3 {
                 let r = ((((color >> 16) & 0xFF) as f32).round() as i32).clamp(0, 255) as u32;
                 let g = ((((color >> 8) & 0xFF) as f32).round() as i32).clamp(0, 255) as u32;
                 let b = (((color & 0xFF) as f32).round() as i32).clamp(0, 255) as u32;
-                (r << 16)  | (g << 8) | b 
+                (r << 16) | (g << 8) | b
             }
 
             /// Convert to 24 bit space.
@@ -1054,10 +1054,15 @@ pub mod visualization_v3 {
                 (r, g, b)
             }
 
-            pub fn buffer_filter_24bit_display_color(buffer: &mut Vec<u32>,screen_width: usize,screen_height:usize){
+            pub fn buffer_filter_24bit_display_color(
+                buffer: &mut Vec<u32>,
+                screen_width: usize,
+                screen_height: usize,
+            ) {
                 for y in 0..screen_height {
                     for x in 0..screen_width {
-                     buffer[y * screen_width + x] = Self::find_closest24bits_color(buffer[y * screen_width + x]);
+                        buffer[y * screen_width + x] =
+                            Self::find_closest24bits_color(buffer[y * screen_width + x]);
                     }
                 }
             }
@@ -1073,7 +1078,9 @@ pub mod visualization_v3 {
  *   - and normal vectors
  */
 pub mod rendering_object {
-    use crate::rust3d::geometry::{Point3d, Vector3d};
+    use crate::rust3d;
+    use crate::rust3d::geometry::{CPlane, Point3d, Vector3d};
+    use crate::rust3d::intersection::clip_line;
     use dashmap::DashMap;
     use iter::{IntoParallelRefMutIterator, ParallelIterator};
     use rayon::prelude::*; // For parallel processing
@@ -1849,6 +1856,87 @@ pub mod rendering_object {
             }
         }
     }
+    ////////////////////////////////////////////////////////////////////////////
+    //A temporary object representing a parametric object.
+    //(this object will be merge in the implementation of a classic mesh once designed)
+    pub struct MeshPlane {
+        pub vertices: Vec<Vertex>,
+        pub triangles: Vec<Triangle>,
+    }
+
+    impl MeshPlane {
+        // Construct a plane mesh.
+        pub fn new(
+            buffer: &mut Vec<u32>,
+            screen_width: usize,
+            screen_height: usize,
+            camera: &super::visualization_v3::Camera,
+            matrix: Option<&[[f64; 4]; 3]>,
+            construction_plane: &CPlane,
+            u_length: f64,
+            v_length: f64,
+            spacing_unit: f64,
+        ) {
+            // Make a grid of points decribing the plane and it's sides length
+            // vertices count number.
+            let mut grid_points = Vec::new();
+            let mut u = 0.0;
+            let mut v = 0.0;
+            let mut uv_length = (0usize, 0usize);
+            while u <= (u_length + std::f64::EPSILON) {
+                while v <= (v_length + std::f64::EPSILON) {
+                    grid_points.push((*construction_plane).point_on_plane_uv(u, v).to_vertex());
+                    v += spacing_unit;
+                    uv_length.1 += 1;
+                }
+                u += spacing_unit;
+                uv_length.0 += 1;
+                if v >= v_length {
+                    v = 0.0;
+                }
+            }
+            uv_length.1 /= uv_length.0;
+            // Apply transformations if needed.
+            if let Some(m) = matrix {
+                grid_points = rust3d::transformation::transform_points_4x3(m, &grid_points);
+            }
+            // my memrory block assignation should match my indexing pattern i will sheck it
+            // tommorow
+            let mut plane_vector_u =
+                (grid_points[0 + uv_length.0 * 1] - grid_points[0 + uv_length.0 * 0]).normalize();
+            let mut plane_vector_v =
+                (grid_points[1 + uv_length.0 * 0] - grid_points[0 + uv_length.0 * 0]).normalize();
+            // Build Triangles.
+            println!("grid size:{:?}", uv_length);
+            for u in 0..(uv_length.0 - 1) {
+                for v in 0..(uv_length.1 - 1) {
+                    // for u.
+                    let vert_a = grid_points[v * uv_length.0 + u] + (plane_vector_u * spacing_unit);
+                    // for diagonal u+v.
+                    let vert_b = grid_points[v * uv_length.0 + u]
+                        + ((plane_vector_u + plane_vector_v) * spacing_unit);
+                    // for v.
+                    let vert_c = grid_points[v * uv_length.0 + u] + (plane_vector_v * spacing_unit);
+                    // for design display (temporary).
+                    let p1 = camera.project_maybe_outside(vert_a);
+                    let p2 = camera.project_maybe_outside(vert_b);
+                    let p3 = camera.project_maybe_outside(vert_c);
+                    if let Some(pt) = clip_line(p1, p2, screen_width, screen_height) {
+                        rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
+                    }
+                    if let Some(pt) = clip_line(p2, p3, screen_width, screen_height) {
+                        rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
+                    }
+                    if let Some(pt) = clip_line(p3, p1, screen_width, screen_height) {
+                        rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
+                    }
+                }
+            }
+            // let tr = Triangle::with_indices(v0, v1, v2, vertices);
+            //unimplemented!();
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////
 
     #[derive(Debug, Clone)]
     pub struct Ray {

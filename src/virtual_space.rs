@@ -38,7 +38,7 @@
 //  - Before sending to display pipe line iter from Layer Visibility object and
 //    apply related parameters in function.
 
-use crate::render_tools::rendering_object::{Mesh, Vertex};
+use crate::render_tools::rendering_object::{Mesh, MeshPlane, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
 use crate::rust3d::draw;
@@ -721,7 +721,7 @@ impl DisplayPipeLine {
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
                 let p = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
-               draw:: draw_unit_grid_system(
+                draw::draw_unit_grid_system(
                     &mut buffer,
                     screen_width,
                     screen_height,
@@ -1015,6 +1015,21 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
+                let pt_origin = Point3d::new(0.2, -0.4, 0.0);
+                let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
+                let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
+                let p4 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
+                let _ = MeshPlane::new(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    &camera,
+                    Some(&matrix),
+                    &p4,
+                    0.4,
+                    0.4,
+                    0.1,
+                );
                 ////////////////////////////////////////////////////////////////
                 // Draw a primitive rectangle ///////////////////////////////////
                 draw::draw_rectangle(
