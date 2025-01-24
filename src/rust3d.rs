@@ -2671,16 +2671,16 @@ pub mod draw {
     ///    to be computed form there ).
     ////////////////////////////////////////////////////////////////////////////
     pub fn draw_unit_grid_system(
-        camera: &Camera,
         buffer: &mut Vec<u32>,
         screen_width: usize,
         screen_height: usize,
         background_color: u32,
         grid_plane: &CPlane,
+        camera: &Camera,
+        matrix: Option<&[[f64; 4]; 3]>,
         grid_x_length: f64,
         grid_y_length: f64,
         grid_spacing_unit: f64,
-        matrix: Option<&[[f64; 4]; 3]>,
     ) {
         use super::intersection::clip_line;
         use super::transformation;
@@ -2817,6 +2817,8 @@ pub mod draw {
             draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x4b964b);
         }
     }
+    
+    
     /// Draw a gimball. from a CPlane              //////////////////////
     /// Arrow are optional via boolean toggle (less runtime overhead.)
     /// this his only the graphical part of the incoming
@@ -2828,12 +2830,12 @@ pub mod draw {
         buffer: &mut Vec<u32>,
         screen_width: usize,
         screen_height: usize,
+        background_color: u32,
         plane: &CPlane,
         camera: &Camera,
         matrix: Option<&[[f64; 4]; 3]>,
         scalar: f64,
         alpha: f64,
-        background_color: u32,
         draw_arrow: bool,
     ) {
         if alpha != 0.0 {

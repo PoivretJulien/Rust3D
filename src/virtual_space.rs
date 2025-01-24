@@ -670,7 +670,7 @@ impl DisplayPipeLine {
                 screen_width as f64,
                 screen_height as f64,
                 35.0,  // FOV (Zoom angle increase and you will get a smaller representation)
-                0.5,   // Near clip plane
+                0.5,  // Near clip plane
                 100.0, // Far clip plane
             );
             window.set_target_fps(25); // limit to 25 fps max.
@@ -717,19 +717,19 @@ impl DisplayPipeLine {
                     "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
                     matrix[0], matrix[1], matrix[2]
                 );
-                // Draw a unit grid test.
+                // Draw an Unit grid test.
                 let p = CPlane::new_(Point3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 1.0));
                 draw_unit_grid_system(
-                    &camera,
                     &mut buffer,
                     screen_width,
                     screen_height,
                     background_color,
                     &p,
+                    &camera,
+                    Some(&matrix),
                     1.0,
                     1.0,
                     0.1,
-                    Some(&matrix),
                 );
                 // Test for a gimball graphic position.
                 let o = Point3d::new(0.5, 0.5, 0.0);
@@ -740,12 +740,12 @@ impl DisplayPipeLine {
                     &mut buffer,
                     screen_width,
                     screen_height,
+                    background_color,
                     &p2,
                     &camera,
                     Some(&matrix),
                     0.15,
                     1.0,
-                    background_color,
                     true,
                 );
                 // Get points.
@@ -756,6 +756,8 @@ impl DisplayPipeLine {
                                 let transformed_point =
                                     transformation::transform_points_4x3(&matrix, &mesh.vertices);
                                 let r = camera.project_points(&transformed_point);
+                                // Could have been parallelized i don't know if that would have
+                                // been beneficial...
                                 for projected_point in r.iter() {
                                     buffer[projected_point.1 * screen_width + projected_point.0] =
                                         Color::convert_rgba_color(0, 0, 0, 1.0, background_color);
@@ -776,8 +778,8 @@ impl DisplayPipeLine {
                         20,
                         0x964b4b,
                     );
-                    // Draw a dot at the center of the screen 
-                    // to emphasize the rounding issue of even and odd number.
+                    // Draw a dot at the center of the line to emphasize the rounding issue 
+                    // of the line thickness issue. 
                     draw::draw_disc(
                         &mut buffer,
                         screen_width,
