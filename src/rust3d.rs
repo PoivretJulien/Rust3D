@@ -1592,7 +1592,7 @@ pub mod intersection {
         /// Test if a point is inside the circle zone area.
         pub fn is_point_inside(self, test_point: (usize, usize)) -> bool {
             // Compute distance from circle center.
-            let dx = self.center_point.0  as isize - test_point.0 as isize;
+            let dx = self.center_point.0 as isize - test_point.0 as isize;
             let dy = self.center_point.1 as isize - test_point.1 as isize;
             let squared_ditance = (dx as f64) * (dx as f64) + (dy as f64) * (dy as f64);
             // println!("\x1b[1;1HDistance from circle center: {0:?}",squared_ditance.sqrt());
@@ -2817,8 +2817,7 @@ pub mod draw {
             draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x4b964b);
         }
     }
-    
-    
+
     /// Draw a gimball. from a CPlane              //////////////////////
     /// Arrow are optional via boolean toggle (less runtime overhead.)
     /// this his only the graphical part of the incoming
@@ -3082,10 +3081,12 @@ pub mod draw {
         }
     }
 
+    use super::geometry::CPlane;
     /// Make a contextual Grid graphing a unit system intervals.
     /// (the origin point is in the middle of the grid holding
     /// positive and negative domain on each relative sides.)
-    use super::geometry::CPlane;
+    /// # Returns
+    /// - an os memory allocated list of Vertex.
     pub fn make_3d_grid_from_center(
         plane: &CPlane,
         x_length: f64,
@@ -3097,8 +3098,8 @@ pub mod draw {
         let y_length = y_length / 2.0;
         let mut x = -x_length;
         let mut y = -y_length;
-        while x <= x_length {
-            while y <= y_length {
+        while x <= x_length + std::f64::EPSILON {
+            while y <= y_length + std::f64::EPSILON {
                 grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
                 y += grid_spacing_unit;
             }
@@ -3106,6 +3107,33 @@ pub mod draw {
                 y = -y_length;
             }
             x += grid_spacing_unit;
+        }
+        grid_points
+    }
+
+    /// Make a contextual Grid graphing an unit system intervals.
+    /// (the origin point is in the corner down left of the 2d grid holding
+    /// positive and negative domain on each relative sides.)
+    /// # Returns
+    /// - an os memory allocated list of Vertex.
+    pub fn make_3d_grid_from_corner(
+        plane: &CPlane,
+        x_length: f64,
+        y_length: f64,
+        grid_spacing_unit: f64,
+    ) -> Vec<Vertex> {
+        let mut grid_points = Vec::new();
+        let mut x = 0.0;
+        let mut y = 0.0;
+        while x <= (x_length + std::f64::EPSILON) {
+            while y <= (y_length + std::f64::EPSILON) {
+                grid_points.push((*plane).point_on_plane_uv(x, y).to_vertex());
+                y += grid_spacing_unit;
+            }
+            x += grid_spacing_unit;
+            if y >= y_length {
+                y = 0.0;
+            }
         }
         grid_points
     }
@@ -3238,7 +3266,10 @@ pub mod draw {
         let faa_offset = aa_offset as f64;
         // Define the boundary (x,y) limit of circle computation.
         let boundary_points_array = [
-            (center_x.saturating_sub(radius_aa), center_y.saturating_sub(radius_aa)),
+            (
+                center_x.saturating_sub(radius_aa),
+                center_y.saturating_sub(radius_aa),
+            ),
             (center_x + radius_aa, center_y + radius_aa),
         ];
         ///////////////////////////////////////////////////////
@@ -3316,7 +3347,10 @@ pub mod draw {
         let faa_offset = aa_offset as f64;
         // Define the boundary (x,y) limit of circle computation.
         let boundary_points_array = [
-            (center_x.saturating_sub(radius_aa), center_y.saturating_sub(radius_aa)),
+            (
+                center_x.saturating_sub(radius_aa),
+                center_y.saturating_sub(radius_aa),
+            ),
             (center_x + radius_aa, center_y + radius_aa),
         ];
         ///////////////////////////////////////////////////////
