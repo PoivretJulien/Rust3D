@@ -42,13 +42,15 @@ use crate::render_tools::rendering_object::{Mesh, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
 use crate::rust3d::draw::{
-    self, draw_aa_line_with_thickness, draw_plane_gimball_3d, draw_rectangle, draw_unit_grid_system,
+    self, draw_3d_grid, draw_aa_line_with_thickness, draw_disc, draw_plane_gimball_3d,
+    draw_rectangle, draw_unit_grid_system,
 };
 use crate::rust3d::intersection::clip_line;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
 use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -670,7 +672,7 @@ impl DisplayPipeLine {
                 screen_width as f64,
                 screen_height as f64,
                 35.0,  // FOV (Zoom angle increase and you will get a smaller representation)
-                0.5,  // Near clip plane
+                0.5,   // Near clip plane
                 100.0, // Far clip plane
             );
             window.set_target_fps(25); // limit to 25 fps max.
@@ -698,7 +700,8 @@ impl DisplayPipeLine {
                 if window.is_key_pressed(Key::Down, minifb::KeyRepeat::No) {
                     println!("\x1b[1;0H\x1b[2K\rkey Down pressed");
                     x_angle += 25.0;
-                } ////////////////////////////////////////////////////////////////
+                }
+                ////////////////////////////////////////////////////////////////
                 let matrix = transformation::rotation_matrix_from_angles_4x3(x_angle, 0.0, z_angle);
                 let scale_matrix = transformation::scaling_matrix_from_center_4x3(
                     Vertex::new(0.0, 0.0, 0.0),
@@ -713,12 +716,16 @@ impl DisplayPipeLine {
                     scale_matrix,
                     translation_matrix,
                 ]);
+                // Display matrix on std out console.
                 println!(
                     "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
                     matrix[0], matrix[1], matrix[2]
                 );
                 // Draw an Unit grid test.
-                let p = CPlane::new_(Point3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 1.0));
+                let o = Point3d::new(0.0, 0.0, 0.0);
+                let x = o + Point3d::new(0.1, 0.0, 0.0);
+                let y = o + Point3d::new(0.0, 0.1, 0.0);
+                let p = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
                 draw_unit_grid_system(
                     &mut buffer,
                     screen_width,
@@ -732,7 +739,7 @@ impl DisplayPipeLine {
                     0.1,
                 );
                 // Test for a gimball graphic position.
-                let o = Point3d::new(0.5, 0.5, 0.0);
+                let o = Point3d::new(0.5, 0.3, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
                 let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
@@ -778,8 +785,8 @@ impl DisplayPipeLine {
                         20,
                         0x964b4b,
                     );
-                    // Draw a dot at the center of the line to emphasize the rounding issue 
-                    // of the line thickness issue. 
+                    // Draw a dot at the center of the line to emphasize the rounding issue
+                    // of the line thickness issue.
                     draw::draw_disc(
                         &mut buffer,
                         screen_width,
@@ -1000,6 +1007,29 @@ impl DisplayPipeLine {
                         Color::convert_rgb_color(255, 241, 0),
                     );
                 }
+                ////////////////////////////////////////////////////////////////
+                // Draw a plane x aligned at 45 deg on ZY world plane.
+                let pt_origin = Point3d::new(0.1, 0.1, 0.0);
+                let pt_x = Point3d::new(0.1, 0.0, 0.0);
+                let pt_y = Point3d::new(0.0, 0.1, 0.1);
+                let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
+                // Project point on grid.
+                let pt_grid = draw::draw_3d_grid(&p3, 0.3, 0.3, 0.05);
+                let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
+                let projected_point = camera.project_points(&pt_grid);
+                for pt in projected_point.iter() {
+                    draw::draw_disc(
+                        &mut buffer,
+                        screen_width,
+                        screen_height,
+                        pt.0,
+                        pt.1,
+                        3,
+                        0xff0000,
+                        1,
+                    );
+                }
+                ////////////////////////////////////////////////////////////////
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();
