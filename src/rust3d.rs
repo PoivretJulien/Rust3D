@@ -3238,7 +3238,7 @@ pub mod draw {
         let faa_offset = aa_offset as f64;
         // Define the boundary (x,y) limit of circle computation.
         let boundary_points_array = [
-            (center_x - radius_aa, center_y - radius_aa),
+            (center_x.saturating_sub(radius_aa), center_y.saturating_sub(radius_aa)),
             (center_x + radius_aa, center_y + radius_aa),
         ];
         ///////////////////////////////////////////////////////
@@ -3316,7 +3316,7 @@ pub mod draw {
         let faa_offset = aa_offset as f64;
         // Define the boundary (x,y) limit of circle computation.
         let boundary_points_array = [
-            (center_x - radius_aa, center_y - radius_aa),
+            (center_x.saturating_sub(radius_aa), center_y.saturating_sub(radius_aa)),
             (center_x + radius_aa, center_y + radius_aa),
         ];
         ///////////////////////////////////////////////////////

@@ -1009,12 +1009,12 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned at 45 deg on ZY world plane.
-                let pt_origin = Point3d::new(0.1, 0.1, 0.0);
-                let pt_x = Point3d::new(0.1, 0.0, 0.0);
-                let pt_y = Point3d::new(0.0, 0.1, 0.1);
+                let pt_origin = Point3d::new(0.3, 0.3, 0.0);
+                let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
+                let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
                 let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
                 // Project point on grid.
-                let pt_grid = draw::draw_3d_grid(&p3, 0.3, 0.3, 0.05);
+                let pt_grid = draw::draw_3d_grid(&p3, 0.4, 0.4, 0.05);
                 let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
                 for pt in projected_point.iter() {
