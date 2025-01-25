@@ -1016,6 +1016,15 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
+                /*
+                 Beffore refining quality display aspect (at some point the api should implement GPU acceleration)
+                 i want to focus on quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
+                 and for doing so i need a way to graph what i design without any problem of portability for instance for designing
+                 a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose 
+                 and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
+                 and efficiency
+                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obsure api ...
+                 */
                 let _ = MeshPlane::new(
                     &mut buffer,
                     screen_width,
