@@ -1023,7 +1023,7 @@ impl DisplayPipeLine {
                  a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose 
                  and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
                  and efficiency
-                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obsure api ...
+                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
                  */
                 let _ = MeshPlane::new(
                     &mut buffer,
