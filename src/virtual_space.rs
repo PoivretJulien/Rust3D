@@ -766,6 +766,8 @@ impl DisplayPipeLine {
                                 // so i'm just testing "my littel pride" with my new methods ... 
                                 // originally that was just my first gimball version"  
                                 // so for now let's do some smurf ...
+                                // obscurentism is the dark magic of science 
+                                // chalanges, skills, freedom to work hard and humanism is more my cup of thea !  
                                 let transformed_point =
                                     transformation::transform_points_4x3(&matrix, &mesh.vertices);
                                 let r = camera.project_points(&transformed_point);
