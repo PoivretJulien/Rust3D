@@ -1935,18 +1935,14 @@ pub mod rendering_object {
                     mesh_plane_result.vertices.push(vert_d);
                     mesh_plane_result.triangles.push(Triangle::with_indices(indices , indices+1, indices+2,&mesh_plane_result.vertices));
                     indices += 3; 
+                    // Add second triangle.
                     // index logic 2,3,4 
                     mesh_plane_result.vertices.push(vert_b);
                     mesh_plane_result.vertices.push(vert_c);
                     mesh_plane_result.vertices.push(vert_d);
                     mesh_plane_result.triangles.push(Triangle::with_indices(indices , indices+1, indices+2,&mesh_plane_result.vertices));
                     indices += 3; 
-                    // evaluate borders positions.
-                    
-
-
-
-                    // temporary display of the indexing logic.
+                    // temporary display of the indexing logic./////////////////
                     let p1 = camera.project_maybe_outside(vert_a);
                     let p2 = camera.project_maybe_outside(vert_b);
                     let p3 = camera.project_maybe_outside(vert_c);
@@ -1961,8 +1957,22 @@ pub mod rendering_object {
                     if let Some(pt) = clip_line(p4, p1, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
+                    ////////////////////////////////////////////////////////////
                 }
             }
+            // Write stitching logic in a StichLogic Object,
+            // since borders indices are know and don't need to be evaluated.
+            // Stitching logic:
+            // |-------------|
+            // |      C      |
+            // |D           B|
+            // |      A      |
+            // |-------------|
+            // for borders A & C.
+            for u in 0..uv_length.0{}
+            // for border D & B.
+            for v in 0..uv_length.1{}
+            
             // return the parametric mesh plane.
             mesh_plane_result
         }
