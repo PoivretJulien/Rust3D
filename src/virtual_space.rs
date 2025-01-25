@@ -978,7 +978,7 @@ impl DisplayPipeLine {
                     8,
                     Color::convert_rgb_color(104, 104, 104),
                 );
-                // Update buffer.
+                // Graph some primitive text.
                 draw::draw_text(
                     &mut buffer,
                     screen_height,
@@ -989,7 +989,7 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
-                //Draw Sine wave////////////////////////////////////////////////
+                //Draw a Sine wave////////////////////////////////////////////////
                 for (x, y) in sine_path.iter() {
                     // Without antialiasing
                     buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
@@ -1012,7 +1012,30 @@ impl DisplayPipeLine {
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
                 let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
-                //  Create 3d grid and Project points on grid.
+                
+                /*
+                 Before refining the quality display aspect (at some point the api should implement GPU acceleration)
+                 i want to focus on a quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
+                 and for doing so i need a way to graph what i design without any problem of portability for instance for designing
+                 a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose 
+                 and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
+                 and efficiency
+                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
+                 */
+                // First parametric Mesh Plane object 
+                // some parameters are temporary for graphing the logic.
+                let _ = MeshPlane::new(
+                    &mut buffer,
+                    screen_width,
+                    screen_height,
+                    &camera,
+                    Some(&matrix),
+                    &p3,
+                    UV_DIM.0,
+                    UV_DIM.1,
+                    0.1,
+                );
+                // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_grid_from_corner(&p3, UV_DIM.0,UV_DIM.1, 0.1);
                 let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
@@ -1029,28 +1052,9 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
-                /*
-                 Before refining the quality display aspect (at some point the api should implement GPU acceleration)
-                 i want to focus on a quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
-                 and for doing so i need a way to graph what i design without any problem of portability for instance for designing
-                 a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose 
-                 and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
-                 and efficiency
-                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
-                 */
-                let _ = MeshPlane::new(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    &camera,
-                    Some(&matrix),
-                    &p3,
-                    UV_DIM.0,
-                    UV_DIM.1,
-                    0.1,
-                );
                 ////////////////////////////////////////////////////////////////
-                // Draw a primitive rectangle ///////////////////////////////////
+                // Draw a primitive rectangle //////////////////////////////////
+                ////////////////////////////////////////////////////////////////
                 draw::draw_rectangle(
                     &mut buffer,
                     screen_width,

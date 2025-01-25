@@ -1857,8 +1857,11 @@ pub mod rendering_object {
         }
     }
     ////////////////////////////////////////////////////////////////////////////
-    //A temporary object representing a parametric object.
-    //(this object will be merge in the implementation of a classic mesh once designed)
+    // A temporary object representing a parametric object.
+    // (this object will be merge in the implementation 
+    //                                          of a classic mesh once designed )
+    // maybe...
+    ////////////////////////////////////////////////////////////////////////////
     pub struct MeshPlane {
         pub vertices: Vec<Vertex>,
         pub triangles: Vec<Triangle>,
@@ -1901,8 +1904,10 @@ pub mod rendering_object {
             }
             // Apply transformations if needed.
             if let Some(m) = matrix {
-                grid_points = rust3d::transformation::transform_points_4x3(m, &grid_points);
+                grid_points = 
+                    rust3d::transformation::transform_points_4x3(m, &grid_points);
             }
+            // Compute base vectors u and v for the actual plane.
             let plane_vector_u =
                 grid_points[0 * uv_length.0 + 1] - grid_points[0 * uv_length.0 + 0];
             let plane_vector_v =
@@ -1910,19 +1915,21 @@ pub mod rendering_object {
             // Build Triangles.
             for u in 0..uv_length.0 {
                 for v in 0..uv_length.1{
+                    // quad origin point.
                     let vert_a = grid_points[v * uv_length.0 + u];
-                    // for u.
+                    // quad point on u direction.
                     let vert_b = vert_a + plane_vector_u;
-                    // for diagonal u+v.
+                    // quad point diagonal u+v direction.
                     let vert_c =
                         grid_points[v * uv_length.0 + u] + (plane_vector_u + plane_vector_v);
-                    // for v.
+                    // quad point on v direction.
                     let vert_d = grid_points[v * uv_length.0 + u] + (plane_vector_v);
-                    // for design display (temporary).
+                    // temporary display of the indexing logic.
                     let p1 = camera.project_maybe_outside(vert_a);
                     let p2 = camera.project_maybe_outside(vert_b);
                     let p3 = camera.project_maybe_outside(vert_c);
                     let p4 = camera.project_maybe_outside(vert_d);
+                    // Graph point projection on screen space (only one triangle for now).
                     if let Some(pt) = clip_line(p1, p2, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
@@ -1932,7 +1939,6 @@ pub mod rendering_object {
                     if let Some(pt) = clip_line(p4, p1, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
-                    
                 }
             }
             // let tr = Triangle::with_indices(v0, v1, v2, vertices);
