@@ -755,6 +755,17 @@ impl DisplayPipeLine {
                     if let Some(obj) = mesh.data.clone() {
                         if let Ok(mut m) = obj.lock() {
                             if let Displayable::Mesh(ref mut mesh) = *m {
+                                // apply transformations to geometry(s) instead of camera (for testing
+                                // coherent behaviors between the diferent methods) 
+                                // im still in the same body frame than my first alpha fading gimball
+                                // version so yhea, things have allready changed and will keep changing 
+                                // if i keep working hard... 
+                                // please im not an engineer i'm just doing my best to have a clear
+                                // sight of what im doing with fun and passion, now transformation module use
+                                // an interface trait object and can handle several sort of objects type
+                                // so i'm just testing "my littel pride" with my new methods ... 
+                                // originally that was just my first gimball version"  
+                                // so for now let's do some smurf ...
                                 let transformed_point =
                                     transformation::transform_points_4x3(&matrix, &mesh.vertices);
                                 let r = camera.project_points(&transformed_point);
@@ -771,7 +782,7 @@ impl DisplayPipeLine {
                 if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
                     // Some problems remain on the accuracy of the line position due to the rounding of
                     // the data type usize may be an average display from float weight may be
-                    // implemented like with the aa of point method.
+                    // implemented like with the aa of point method...
                     draw::draw_aa_line_with_thickness(
                         &mut buffer,
                         screen_width,
@@ -994,7 +1005,7 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM:(f64,f64) = (0.3,0.5);
+                const UV_DIM:(f64,f64) = (0.2,0.4);
                 let pt_origin = Point3d::new(0.2, -0.4, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
@@ -1017,8 +1028,8 @@ impl DisplayPipeLine {
                     );
                 }
                 /*
-                 Beffore refining quality display aspect (at some point the api should implement GPU acceleration)
-                 i want to focus on quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
+                 Before refining the quality display aspect (at some point the api should implement GPU acceleration)
+                 i want to focus on a quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
                  and for doing so i need a way to graph what i design without any problem of portability for instance for designing
                  a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose 
                  and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm

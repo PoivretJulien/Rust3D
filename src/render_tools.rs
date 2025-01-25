@@ -1881,7 +1881,7 @@ pub mod rendering_object {
             // vertices count number.
             let uv_length = (
                 ((u_length / spacing_unit) + std::f64::EPSILON) as usize,
-                ((v_length / spacing_unit) + std::f64::EPSILON) as usize
+                ((v_length / spacing_unit) + std::f64::EPSILON) as usize,
             );
             //println!("grid size:{:?}", uv_length,);
             let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); uv_length.0 * uv_length.1];
@@ -1893,7 +1893,7 @@ pub mod rendering_object {
                         .point_on_plane_uv(pt_u, pt_v)
                         .to_vertex();
                     pt_u += spacing_unit;
-                    if u == uv_length.0 -1 {
+                    if u == uv_length.0 - 1 {
                         pt_u = 0.0;
                     }
                 }
@@ -1904,32 +1904,35 @@ pub mod rendering_object {
                 grid_points = rust3d::transformation::transform_points_4x3(m, &grid_points);
             }
             let plane_vector_u =
-                grid_points[0 + uv_length.0 * 1] - grid_points[0 + uv_length.0 * 0];
+                grid_points[0 * uv_length.0 + 1] - grid_points[0 * uv_length.0 + 0];
             let plane_vector_v =
-                grid_points[1 + uv_length.0 * 0] - grid_points[0 + uv_length.0 * 0];
+                grid_points[1 * uv_length.0 + 0] - grid_points[0 * uv_length.0 + 0];
             // Build Triangles.
-            for u in 0..(uv_length.0) {
-                for v in 0..(uv_length.1) {
+            for u in 0..uv_length.0 {
+                for v in 0..uv_length.1{
+                    let vert_a = grid_points[v * uv_length.0 + u];
                     // for u.
-                    let vert_a = grid_points[v * uv_length.0 + u] + (plane_vector_u);
+                    let vert_b = vert_a + plane_vector_u;
                     // for diagonal u+v.
-                    let vert_b =
+                    let vert_c =
                         grid_points[v * uv_length.0 + u] + (plane_vector_u + plane_vector_v);
                     // for v.
-                    let vert_c = grid_points[v * uv_length.0 + u] + (plane_vector_v);
+                    let vert_d = grid_points[v * uv_length.0 + u] + (plane_vector_v);
                     // for design display (temporary).
                     let p1 = camera.project_maybe_outside(vert_a);
                     let p2 = camera.project_maybe_outside(vert_b);
                     let p3 = camera.project_maybe_outside(vert_c);
+                    let p4 = camera.project_maybe_outside(vert_d);
                     if let Some(pt) = clip_line(p1, p2, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
-                    if let Some(pt) = clip_line(p2, p3, screen_width, screen_height) {
+                    if let Some(pt) = clip_line(p2, p4, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
-                    if let Some(pt) = clip_line(p3, p1, screen_width, screen_height) {
+                    if let Some(pt) = clip_line(p4, p1, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
+                    
                 }
             }
             // let tr = Triangle::with_indices(v0, v1, v2, vertices);
