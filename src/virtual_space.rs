@@ -994,12 +994,13 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
+                const UV_DIM:(f64,f64) = (0.3,0.5);
                 let pt_origin = Point3d::new(0.2, -0.4, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
                 let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
                 //  Create 3d grid and Project points on grid.
-                let pt_grid = draw::make_3d_grid_from_corner(&p3, 0.4, 0.4, 0.1);
+                let pt_grid = draw::make_3d_grid_from_corner(&p3, UV_DIM.0,UV_DIM.1, 0.1);
                 let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
                 // Draw disc on each points projected on screen space.
@@ -1015,19 +1016,15 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
-                let pt_origin = Point3d::new(0.2, -0.4, 0.0);
-                let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
-                let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
-                let p4 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
                 let _ = MeshPlane::new(
                     &mut buffer,
                     screen_width,
                     screen_height,
                     &camera,
                     Some(&matrix),
-                    &p4,
-                    0.4,
-                    0.4,
+                    &p3,
+                    UV_DIM.0,
+                    UV_DIM.1,
                     0.1,
                 );
                 ////////////////////////////////////////////////////////////////
