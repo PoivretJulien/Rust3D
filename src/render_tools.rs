@@ -1877,46 +1877,46 @@ pub mod rendering_object {
             v_length: f64,
             spacing_unit: f64,
         ) {
-            // Make a grid of points decribing the plane and it's sides length
+            // Make a grid of points describing the plane and it's sides length
             // vertices count number.
-            let mut grid_points = Vec::new();
-            let mut u = 0.0;
-            let mut v = 0.0;
-            let mut uv_length = (0usize, 0usize);
-            while u <= (u_length + std::f64::EPSILON) {
-                while v <= (v_length + std::f64::EPSILON) {
-                    grid_points.push((*construction_plane).point_on_plane_uv(u, v).to_vertex());
-                    v += spacing_unit;
-                    uv_length.1 += 1;
+            let uv_length = (
+                ((u_length / spacing_unit) + std::f64::EPSILON) as usize,
+                ((v_length / spacing_unit) + std::f64::EPSILON) as usize
+            );
+            //println!("grid size:{:?}", uv_length,);
+            let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); uv_length.0 * uv_length.1];
+            let mut pt_u = 0.0;
+            let mut pt_v = 0.0;
+            for v in 0..uv_length.1 {
+                for u in 0..uv_length.0 {
+                    grid_points[v * uv_length.0 + u] = (*construction_plane)
+                        .point_on_plane_uv(pt_u, pt_v)
+                        .to_vertex();
+                    pt_u += spacing_unit;
+                    if u == uv_length.0 -1 {
+                        pt_u = 0.0;
+                    }
                 }
-                u += spacing_unit;
-                uv_length.0 += 1;
-                if v >= v_length {
-                    v = 0.0;
-                }
+                pt_v += spacing_unit;
             }
-            uv_length.1 /= uv_length.0;
             // Apply transformations if needed.
             if let Some(m) = matrix {
                 grid_points = rust3d::transformation::transform_points_4x3(m, &grid_points);
             }
-            // my memrory block assignation should match my indexing pattern i will sheck it
-            // tommorow
-            let mut plane_vector_u =
-                (grid_points[0 + uv_length.0 * 1] - grid_points[0 + uv_length.0 * 0]).normalize();
-            let mut plane_vector_v =
-                (grid_points[1 + uv_length.0 * 0] - grid_points[0 + uv_length.0 * 0]).normalize();
+            let plane_vector_u =
+                grid_points[0 + uv_length.0 * 1] - grid_points[0 + uv_length.0 * 0];
+            let plane_vector_v =
+                grid_points[1 + uv_length.0 * 0] - grid_points[0 + uv_length.0 * 0];
             // Build Triangles.
-            println!("grid size:{:?}", uv_length);
-            for u in 0..(uv_length.0 - 1) {
-                for v in 0..(uv_length.1 - 1) {
+            for u in 0..(uv_length.0) {
+                for v in 0..(uv_length.1) {
                     // for u.
-                    let vert_a = grid_points[v * uv_length.0 + u] + (plane_vector_u * spacing_unit);
+                    let vert_a = grid_points[v * uv_length.0 + u] + (plane_vector_u);
                     // for diagonal u+v.
-                    let vert_b = grid_points[v * uv_length.0 + u]
-                        + ((plane_vector_u + plane_vector_v) * spacing_unit);
+                    let vert_b =
+                        grid_points[v * uv_length.0 + u] + (plane_vector_u + plane_vector_v);
                     // for v.
-                    let vert_c = grid_points[v * uv_length.0 + u] + (plane_vector_v * spacing_unit);
+                    let vert_c = grid_points[v * uv_length.0 + u] + (plane_vector_v);
                     // for design display (temporary).
                     let p1 = camera.project_maybe_outside(vert_a);
                     let p2 = camera.project_maybe_outside(vert_b);
