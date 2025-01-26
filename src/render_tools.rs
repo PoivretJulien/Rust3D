@@ -1127,6 +1127,14 @@ pub mod rendering_object {
                 z: self.z / mag,
             }
         }
+        /// Reverse the vertex as a vector.
+        pub fn reverse(&self) -> Self {
+            Self {
+                x: -self.x,
+                y: -self.y,
+                z: -self.z,
+            }
+        }
         /// Test if a point is inside a given mesh.
         pub fn is_inside_a_mesh(&self, mesh_to_test: &Mesh) -> bool {
             let direction = Vertex::new(1.0, 0.0, 0.0);
@@ -1865,6 +1873,10 @@ pub mod rendering_object {
     pub struct MeshPlane {
         pub vertices: Vec<Vertex>,
         pub triangles: Vec<Triangle>,
+        pub stitch_logic_side_a: Vec<usize>,
+        pub stitch_logic_side_b: Vec<usize>,
+        pub stitch_logic_side_c: Vec<usize>,
+        pub stitch_logic_side_d: Vec<usize>,
     }
 
     impl MeshPlane {
@@ -1916,6 +1928,10 @@ pub mod rendering_object {
             let mut mesh_plane_result = MeshPlane {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
+                stitch_logic_side_a: Vec::new(),
+                stitch_logic_side_b: Vec::new(),
+                stitch_logic_side_c: Vec::new(),
+                stitch_logic_side_d: Vec::new(),
             };
             // Build Triangles.
             let mut indices = 0;
@@ -1941,6 +1957,30 @@ pub mod rendering_object {
                         indices + 2,
                         &mesh_plane_result.vertices,
                     ));
+                    // Stitching logic:
+                    // |-------------|
+                    // |      C      |
+                    // |D           B|
+                    // |      A      |
+                    // |-------------|
+                    // First corner logic.
+                    if (u == 0) && (v == 0) {
+                        mesh_plane_result.stitch_logic_side_a.push(indices);
+                        mesh_plane_result.stitch_logic_side_d.push(indices);
+                    }
+                    // Second Corner logic.
+                    if (v == 0) && (u == divide_count_u - 1) {
+                        mesh_plane_result.stitch_logic_side_a.push(indices + 1);
+                        mesh_plane_result.stitch_logic_side_b.push(indices + 1);
+                    }
+                    // inner  side A.
+                    if (v == 0) && (u != divide_count_u - 1) {
+                        mesh_plane_result.stitch_logic_side_a.push(indices + 1);
+                    }
+                    // inner side D
+                    if (u == 0) && (v != divide_count_v - 1) {
+                        mesh_plane_result.stitch_logic_side_d.push(indices + 2);
+                    }
                     indices += 3;
                     // Add second triangle.
                     // index logic 2,3,4
@@ -1953,8 +1993,27 @@ pub mod rendering_object {
                         indices + 2,
                         &mesh_plane_result.vertices,
                     ));
+                    // Third Corner logic.
+                    if (u == divide_count_u - 1) && (v == divide_count_v - 1) {
+                        mesh_plane_result.stitch_logic_side_c.push(indices + 1);
+                        mesh_plane_result.stitch_logic_side_b.push(indices + 1);
+                    }
+                    // Last Corner logic.
+                    if (u == 0) && v == (divide_count_v - 1) {
+                        mesh_plane_result.stitch_logic_side_c.push(indices + 2);
+                        mesh_plane_result.stitch_logic_side_d.push(indices + 2);
+                    }
+                    // inner side B.
+                    if (u == divide_count_u - 1) && (v != divide_count_v - 1) {
+                        mesh_plane_result.stitch_logic_side_b.push(indices + 1);
+                    }
+                    // inner side C
+                    if (v == divide_count_v - 1) && (u != divide_count_u - 1) {
+                        mesh_plane_result.stitch_logic_side_c.push(indices + 1);
+                    }
                     indices += 3;
-                    // temporary display of the indexing logic./////////////////
+
+                    // Temporary display of the indexing logic./////////////////
                     let p1 = camera.project_maybe_outside(vert_a);
                     let p2 = camera.project_maybe_outside(vert_b);
                     let p3 = camera.project_maybe_outside(vert_c);
@@ -1972,24 +2031,88 @@ pub mod rendering_object {
                     ////////////////////////////////////////////////////////////
                 }
             }
-            // Write stitching logic in a StichLogic Object,
-            // since borders indices are know and don't need to be evaluated.
-            // Stitching logic:
-            // |-------------|
-            // |      C      |
-            // |D           B|
-            // |      A      |
-            // |-------------|
-            // for borders A & C.
-            for u in 0..divide_count_u {}
-            // for border D & B.
-            for v in 0..divide_count_v {}
-
             // return the parametric mesh plane.
             mesh_plane_result
         }
     }
+    /*
+     * Step 1 merge all the 4 lists by offsetting each components.
+     * Step 2 Process the merging of each stitching logic(s)
+     */
     ////////////////////////////////////////////////////////////////////////////
+    pub struct MeshCube {
+        pub vertices: Vec<Vertex>,
+        pub triangles: Vec<Triangle>,
+    }
+    impl MeshCube {
+        pub fn new(
+            origin: &Vertex,
+            mut direction_u: &mut Vertex,
+            mut direction_v: &mut Vertex,
+            u_length: f64,
+            v_length: f64,
+            w_length: f64,
+        ) -> Self {
+
+            // Compute the basis vectors direction. 
+            let direction_w = direction_u.cross(direction_v).normalize();
+            *direction_u = direction_u.normalize();
+            *direction_v = direction_v.normalize();
+
+            // Compute the 4 anchors points of the cube face
+            // (where CPlane origin will be positioned).
+            let anchor_sud = origin.to_point3d();
+            let anchor_est = (*origin + (*direction_u * u_length)).to_point3d();
+            let anchor_north = (*origin + (*direction_v * v_length)).to_point3d();
+            let anchor_west = anchor_north;
+            let anchor_bottom = anchor_sud;
+            let anchor_top = (*origin + (direction_w * w_length)).to_point3d();
+
+            // Create the 6 CPlane(s) of each faces of the cube from user inputs.
+            // the logic is 1 Sud , 2 Est, 3 North, 4 West, 5 Bottom and 6 Top.
+
+            // Cube face 1 (Sud).
+            let sud_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_sud,
+                &direction_u.to_point3d(),
+                &direction_w.to_point3d(),
+            );
+            // Cube face 2 (Est).
+            let est_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_est,
+                &direction_v.to_point3d(),
+                &direction_w.to_point3d(),
+            );
+            // Cube face 3 (North).
+            let north_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_north,
+                &direction_u.to_point3d(),
+                &direction_w.to_point3d(),
+            );
+            // Cube face 4 (west)
+            let west_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_west,
+                &direction_v.reverse().to_point3d(),
+                &direction_w.to_point3d(),
+            );
+            // Cube face 5 (bottom)
+            let bottom_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_bottom,
+                &direction_u.to_point3d(),
+                &direction_v.to_point3d(),
+            );
+            // Cube face 6 (top)
+            let top_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_top,
+                &direction_u.to_point3d(),
+                &direction_v.to_point3d(),
+            );
+            Self {
+                vertices: Vec::new(),
+                triangles: Vec::new(),
+            }
+        }
+    }
 
     #[derive(Debug, Clone)]
     pub struct Ray {

@@ -1007,8 +1007,8 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM: (f64, f64) = (0.3, 0.2);
-                const UV_COUNT: (usize, usize) = (3, 2);
+                const UV_DIM: (f64, f64) = (0.5, 0.3);
+                const UV_COUNT: (usize, usize) = (5, 3);
                 let pt_origin = Point3d::new(0.2, -0.4, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
@@ -1025,7 +1025,7 @@ impl DisplayPipeLine {
                 */
                 // First parametric Mesh Plane object
                 // some parameters are temporary for graphing the logic.
-                let _ = MeshPlane::new(
+                let mesh_pln = MeshPlane::new(
                     &mut buffer,
                     screen_width,
                     screen_height,
@@ -1037,6 +1037,12 @@ impl DisplayPipeLine {
                     UV_COUNT.0,
                     UV_COUNT.1,
                 );
+                println!("\x1b[5;0H\x1b[2KStich Logic-> A:{:?},B{:?},C{:?},D{:?}",
+                    mesh_pln.stitch_logic_side_a,
+                    mesh_pln.stitch_logic_side_b,
+                    mesh_pln.stitch_logic_side_c,
+                    mesh_pln.stitch_logic_side_d,
+                    );
                 // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_divided_grid_from_corner(
                     &p3, UV_DIM.0 + 0.1, UV_DIM.1+0.1, UV_COUNT.0+1, UV_COUNT.1+1,
