@@ -1007,8 +1007,8 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM: (f64, f64) = (0.2, 0.4);
-                const UV_COUNT: (usize, usize) = (2, 4);
+                const UV_DIM: (f64, f64) = (0.3, 0.2);
+                const UV_COUNT: (usize, usize) = (3, 2);
                 let pt_origin = Point3d::new(0.2, -0.4, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
