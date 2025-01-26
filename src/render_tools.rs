@@ -1127,6 +1127,7 @@ pub mod rendering_object {
                 z: self.z / mag,
             }
         }
+        #[inline(always)]
         /// Reverse the vertex as a vector.
         pub fn reverse(&self) -> Self {
             Self {
@@ -2040,21 +2041,31 @@ pub mod rendering_object {
      * Step 2 Process the merging of each stitching logic(s)
      */
     ////////////////////////////////////////////////////////////////////////////
-    pub struct MeshCube {
+    pub struct MeshBox {
         pub vertices: Vec<Vertex>,
         pub triangles: Vec<Triangle>,
     }
-    impl MeshCube {
+    impl MeshBox {
+        /// Create a parametric mesh box
+        /// this object will be designed
+        /// to behave exactly like a regular mesh
         pub fn new(
+            buffer: &mut Vec<u32>,
+            screen_width: usize,
+            screen_height: usize,
+            camera: &super::visualization_v3::Camera,
+            matrix: Option<&[[f64; 4]; 3]>,
             origin: &Vertex,
             mut direction_u: &mut Vertex,
             mut direction_v: &mut Vertex,
             u_length: f64,
             v_length: f64,
             w_length: f64,
+            divide_count_u: usize,
+            divide_count_v: usize,
+            divide_count_w: usize,
         ) -> Self {
-
-            // Compute the basis vectors direction. 
+            // Compute the basis vectors direction.
             let direction_w = direction_u.cross(direction_v).normalize();
             *direction_u = direction_u.normalize();
             *direction_v = direction_v.normalize();
@@ -2077,35 +2088,102 @@ pub mod rendering_object {
                 &direction_u.to_point3d(),
                 &direction_w.to_point3d(),
             );
+            let face1 = MeshPlane::new(
+                buffer,
+                screen_width,
+                screen_height,
+                camera,
+                matrix,
+                &sud_cplane,
+                u_length,
+                w_length,
+                divide_count_u,
+                divide_count_w,
+            );
             // Cube face 2 (Est).
-            let est_cplane = CPlane::new_origin_x_aligned_y_oriented(
-                &anchor_est,
-                &direction_v.to_point3d(),
-                &direction_w.to_point3d(),
+            let pt_dir_v = anchor_est + direction_v.to_point3d();
+            let pt_dir_w = anchor_est + direction_w.to_point3d();
+            let est_cplane =
+                CPlane::new_origin_x_aligned_y_oriented(&anchor_est, &pt_dir_v, &pt_dir_w);
+            let face2 = MeshPlane::new(
+                buffer,
+                screen_width,
+                screen_height,
+                camera,
+                matrix,
+                &est_cplane,
+                v_length,
+                w_length,
+                divide_count_v,
+                divide_count_w,
             );
             // Cube face 3 (North).
-            let north_cplane = CPlane::new_origin_x_aligned_y_oriented(
-                &anchor_north,
-                &direction_u.to_point3d(),
-                &direction_w.to_point3d(),
+            let pt_dir_u = anchor_north + direction_u.to_point3d();
+            let pt_dir_w = anchor_north + direction_w.to_point3d();
+            let north_cplane =
+                CPlane::new_origin_x_aligned_y_oriented(&anchor_north, &pt_dir_u, &pt_dir_w);
+            let face3 = MeshPlane::new(
+                buffer,
+                screen_width,
+                screen_height,
+                camera,
+                matrix,
+                &north_cplane,
+                u_length,
+                w_length,
+                divide_count_u,
+                divide_count_w,
             );
             // Cube face 4 (west)
-            let west_cplane = CPlane::new_origin_x_aligned_y_oriented(
-                &anchor_west,
-                &direction_v.reverse().to_point3d(),
-                &direction_w.to_point3d(),
+            let pt_dir_v = anchor_west + direction_v.reverse().to_point3d();
+            let pt_dir_w = anchor_west + direction_w.to_point3d();
+            let west_cplane =
+                CPlane::new_origin_x_aligned_y_oriented(&anchor_west, &pt_dir_v, &pt_dir_w);
+            let face4 = MeshPlane::new(
+                buffer,
+                screen_width,
+                screen_height,
+                camera,
+                matrix,
+                &west_cplane,
+                v_length,
+                w_length,
+                divide_count_v,
+                divide_count_w,
             );
             // Cube face 5 (bottom)
-            let bottom_cplane = CPlane::new_origin_x_aligned_y_oriented(
-                &anchor_bottom,
-                &direction_u.to_point3d(),
-                &direction_v.to_point3d(),
+            let pt_dir_u = anchor_bottom + direction_u.to_point3d();
+            let pt_dir_v = anchor_bottom + direction_v.to_point3d();
+            let bottom_cplane =
+                CPlane::new_origin_x_aligned_y_oriented(&anchor_bottom, &pt_dir_u, &pt_dir_v);
+            let face5 = MeshPlane::new(
+                buffer,
+                screen_width,
+                screen_height,
+                camera,
+                matrix,
+                &bottom_cplane,
+                u_length,
+                v_length,
+                divide_count_u,
+                divide_count_v,
             );
             // Cube face 6 (top)
-            let top_cplane = CPlane::new_origin_x_aligned_y_oriented(
-                &anchor_top,
-                &direction_u.to_point3d(),
-                &direction_v.to_point3d(),
+            let pt_dir_u = anchor_top + direction_u.to_point3d();
+            let pt_dir_v = anchor_top + direction_v.to_point3d();
+            let top_cplane =
+                CPlane::new_origin_x_aligned_y_oriented(&anchor_top, &pt_dir_u, &pt_dir_v);
+            let face6 = MeshPlane::new(
+                buffer,
+                screen_width,
+                screen_height,
+                camera,
+                matrix,
+                &top_cplane,
+                u_length,
+                v_length,
+                divide_count_u,
+                divide_count_v,
             );
             Self {
                 vertices: Vec::new(),

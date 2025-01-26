@@ -38,7 +38,7 @@
 //  - Before sending to display pipe line iter from Layer Visibility object and
 //    apply related parameters in function.
 
-use crate::render_tools::rendering_object::{Mesh, MeshCube, MeshPlane, Vertex};
+use crate::render_tools::rendering_object::{Mesh, MeshBox, MeshPlane, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
 use crate::rust3d::draw;
@@ -1037,15 +1037,20 @@ impl DisplayPipeLine {
                     UV_COUNT.0,
                     UV_COUNT.1,
                 );
-                println!("\x1b[5;0H\x1b[2KStich Logic-> A:{:?},B{:?},C{:?},D{:?}",
+                println!(
+                    "\x1b[5;0H\x1b[2KStich Logic-> A:{:?},B{:?},C{:?},D{:?}",
                     mesh_pln.stitch_logic_side_a,
                     mesh_pln.stitch_logic_side_b,
                     mesh_pln.stitch_logic_side_c,
                     mesh_pln.stitch_logic_side_d,
-                    );
+                );
                 // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_divided_grid_from_corner(
-                    &p3, UV_DIM.0 + 0.1, UV_DIM.1+0.1, UV_COUNT.0+1, UV_COUNT.1+1,
+                    &p3,
+                    UV_DIM.0 + 0.1,
+                    UV_DIM.1 + 0.1,
+                    UV_COUNT.0 + 1,
+                    UV_COUNT.1 + 1,
                 );
                 let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
@@ -1064,24 +1069,24 @@ impl DisplayPipeLine {
                 }
                 ////// Draw a parametric block mesh.
                 let origin = Vertex::new(0.0, 0.0, 0.0);
-                let mut dir_u =Vertex::new(1.0,0.0,0.0); 
-                let mut dir_v =Vertex::new(0.0,1.0,0.0); 
-                let _ = MeshCube::new(
-                    &mut buffer, 
+                let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
+                let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
+                let _ = MeshBox::new(
+                    &mut buffer,
                     screen_width,
-                    screen_height, 
-                    &camera, 
-                    Some(&matrix), 
-                    &origin, 
+                    screen_height,
+                    &camera,
+                    Some(&matrix),
+                    &origin,
                     &mut dir_u,
-                    &mut dir_v, 
+                    &mut dir_v,
                     0.5,
                     0.3,
                     0.2,
                     2,
                     3,
-                    );
-
+                    5,
+                );
 
                 ////////////////////////////////////////////////////////////////
                 // Draw a primitive rectangle //////////////////////////////////
