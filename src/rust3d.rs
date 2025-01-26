@@ -2297,9 +2297,7 @@ pub mod draw {
 
     /// Xiaolin Wu's line algorithm
     /// A good function for drawing clean
-    /// anti-aliased line
-    /// - in rare case The start and the end may have to be cap with
-    /// two overlaping half disc if line is to tick.
+    /// anti-aliased line.
     pub fn draw_aa_line_with_thickness(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -2552,7 +2550,7 @@ pub mod draw {
         }
     }
 
-    /// Draw an antialiased point designed for iteration from list
+    /// Draw an antialiased point designed for iteration writing from list
     /// 0.8 as aa_offset work well.
     pub fn draw_anti_aliased_point(
         buffer: &mut Vec<u32>,
@@ -2601,7 +2599,7 @@ pub mod draw {
         }
     }
 
-    /// Draw a very basic text for minimal feedback infrormations
+    /// Draw a very basic text for minimal feedback informations
     /// caution ! not all characters are implemented yet (see the list just bellow).
     /// but numerical values are.
     pub fn draw_text(
@@ -2824,7 +2822,7 @@ pub mod draw {
     /// gimball object.
     /// TODO: make a gimbal object with some selectable parts and translation
     /// and rotation vector output when deplaced by user.
-    /// also add sircle for ratation handles.
+    /// also add circle for rotation handles.
     pub fn draw_gimball_from_plane(
         buffer: &mut Vec<u32>,
         screen_width: usize,
@@ -3082,11 +3080,14 @@ pub mod draw {
     }
 
     use super::geometry::CPlane;
-    /// Make a contextual Grid graphing a unit system intervals.
+    /// Make a contextual Grid of Vertex a unit system intervals.
     /// (the origin point is in the middle of the grid holding
     /// positive and negative domain on each relative sides.)
+    /// - this produce an grid of point 3d focusing on unit sub sqare dimension
+    /// rather than the sides overall length which may be not reached if sides length are
+    /// not dividable by the unit spacing length.
     /// # Returns
-    /// - an os memory allocated list of Vertex.
+    /// - an os memory allocated list of Vertex describing the UV grid in 3d space.
     pub fn make_3d_grid_from_center(
         plane: &CPlane,
         x_length: f64,
@@ -3111,11 +3112,13 @@ pub mod draw {
         grid_points
     }
 
-    /// Make a contextual Grid graphing an unit system intervals.
-    /// (the origin point is in the corner down left of the 2d grid holding
-    /// positive and negative domain on each relative sides.)
+    /// Make a contextual Grid of Vertex from Construction Plane orientation.
+    /// (the origin point is in the corner down left of the UV grid.)
+    /// - the UV side dimension is divided equaly on u and v by a distance number
+    /// unit system resulting a squared grid focussing on unit system sub square 
+    /// rather than the (maybe) non dividable overal sides length.
     /// # Returns
-    /// - an os memory allocated list of Vertex.
+    /// - an os memory allocated list of Vertex describing the UV grid in 3d space.
     pub fn make_3d_grid_from_corner(
         plane: &CPlane,
         x_length: f64,
@@ -3138,11 +3141,18 @@ pub mod draw {
         grid_points
     }
 
-    /// Make a contextual Grid graphing an unit system intervals.
-    /// (the origin point is in the corner down left of the 2d grid holding
-    /// positive and negative domain on each relative sides.)
+    /// Make a contextual Grid of Vertex from Construction Plane orientation.
+    /// # Arguments
+    /// - from CPlane
+    /// - from sides UV dimensions length (f64) divided 
+    ///   by count integer numbers (usize) for U and V
+    /// - this respect sides dimensions rather than unit grid cell.
+    ///   the unit grid cell are divisions of each sides count numbers
+    ///   respectivelly).
+    /// -  the origin point is in the corner down left of the UV grid).
     /// # Returns
-    /// - an os memory allocated list of Vertex.
+    /// - an os memory allocated list of Vertex describing the UV grid in 3d space
+    ///   from construction plane.
     pub fn make_3d_divided_grid_from_corner(
         plane: &CPlane,
         u_length: f64,
@@ -3154,7 +3164,6 @@ pub mod draw {
             let mut spacing_unit_u = u_length / (divide_count_u as f64);
             let mut spacing_unit_v = v_length / (divide_count_v as f64);
 
-            // println!("grid size:{:?}", uv_length,);
             // Define memory components.
             let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); divide_count_u * divide_count_v];
             let mut pt_u = 0.0;
@@ -3174,7 +3183,8 @@ pub mod draw {
             }
         grid_points
     }
-    /// Draw a very basic rectangle very fast.
+
+    /// Draw a very basic rectangle very fast for screen space.
     pub fn draw_rectangle(
         buffer: &mut Vec<u32>,
         buffer_width: usize,
