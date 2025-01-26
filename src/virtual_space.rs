@@ -38,7 +38,7 @@
 //  - Before sending to display pipe line iter from Layer Visibility object and
 //    apply related parameters in function.
 
-use crate::render_tools::rendering_object::{Mesh, MeshPlane, Vertex};
+use crate::render_tools::rendering_object::{Mesh, MeshCube, MeshPlane, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
 use crate::rust3d::draw;
@@ -1062,6 +1062,27 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
+                ////// Draw a parametric block mesh.
+                let origin = Vertex::new(0.0, 0.0, 0.0);
+                let mut dir_u =Vertex::new(1.0,0.0,0.0); 
+                let mut dir_v =Vertex::new(0.0,1.0,0.0); 
+                let _ = MeshCube::new(
+                    &mut buffer, 
+                    screen_width,
+                    screen_height, 
+                    &camera, 
+                    Some(&matrix), 
+                    &origin, 
+                    &mut dir_u,
+                    &mut dir_v, 
+                    0.5,
+                    0.3,
+                    0.2,
+                    2,
+                    3,
+                    );
+
+
                 ////////////////////////////////////////////////////////////////
                 // Draw a primitive rectangle //////////////////////////////////
                 ////////////////////////////////////////////////////////////////
