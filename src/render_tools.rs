@@ -1082,7 +1082,7 @@ pub mod rendering_object {
     use crate::rust3d::geometry::{CPlane, Point3d, Vector3d};
     use crate::rust3d::intersection::clip_line;
     use dashmap::DashMap;
-    use iter::{IntoParallelRefMutIterator, ParallelIterator};
+    use iter::{walk_tree, IntoParallelRefMutIterator, ParallelIterator};
     use rayon::prelude::*; // For parallel processing
     use rayon::*;
     use std::collections::HashMap;
@@ -1858,7 +1858,7 @@ pub mod rendering_object {
     }
     ////////////////////////////////////////////////////////////////////////////
     // A temporary object representing a parametric object.
-    // (this object will be merge in the implementation 
+    // (this object will be merge in the implementation
     //                                          of a classic mesh once designed )
     // maybe...
     ////////////////////////////////////////////////////////////////////////////
@@ -1879,69 +1879,81 @@ pub mod rendering_object {
             construction_plane: &CPlane,
             u_length: f64,
             v_length: f64,
-            spacing_unit: f64,
-        ) -> Self{
+            divide_count_u: usize,
+            divide_count_v: usize,
+        ) -> Self {
             // Evaluate from (u,v) dimension of the grid.
-            let uv_length = (
-                ((u_length / spacing_unit) + std::f64::EPSILON) as usize,
-                ((v_length / spacing_unit) + std::f64::EPSILON) as usize,
-            );
+            let mut spacing_unit_u = u_length / (divide_count_u as f64);
+            let mut spacing_unit_v = v_length / (divide_count_v as f64);
+
             // println!("grid size:{:?}", uv_length,);
             // Define memory components.
-            let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); uv_length.0 * uv_length.1];
+            let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); divide_count_u * divide_count_v];
             let mut pt_u = 0.0;
             let mut pt_v = 0.0;
-            // Make a grid of points describing the plane. 
-            for v in 0..uv_length.1 {
-                for u in 0..uv_length.0 {
-                    grid_points[v * uv_length.0 + u] = (*construction_plane)
+            // Make a grid of points describing the plane.
+            for v in 0..divide_count_v {
+                for u in 0..divide_count_u {
+                    grid_points[v * divide_count_u + u] = (*construction_plane)
                         .point_on_plane_uv(pt_u, pt_v)
                         .to_vertex();
-                    pt_u += spacing_unit;
-                    if u == uv_length.0 - 1 {
+                    pt_u += spacing_unit_u;
+                    if u == divide_count_u - 1 {
                         pt_u = 0.0;
                     }
                 }
-                pt_v += spacing_unit;
+                pt_v += spacing_unit_v;
             }
             // Apply transformations if needed.
             if let Some(m) = matrix {
-                grid_points = 
-                    rust3d::transformation::transform_points_4x3(m, &grid_points);
+                grid_points = rust3d::transformation::transform_points_4x3(m, &grid_points);
             }
             // Compute base vectors u and v for the actual plane (he may be transformed at this stage).
             let plane_vector_u =
-                grid_points[0 * uv_length.0 + 1] - grid_points[0 * uv_length.0 + 0];
+                grid_points[0 * divide_count_u + 1] - grid_points[0 * divide_count_u + 0];
             let plane_vector_v =
-                grid_points[1 * uv_length.0 + 0] - grid_points[0 * uv_length.0 + 0];
-            let mut mesh_plane_result = MeshPlane {vertices:Vec::new(),triangles:Vec::new()};
+                grid_points[1 * divide_count_u + 0] - grid_points[0 * divide_count_u + 0];
+            let mut mesh_plane_result = MeshPlane {
+                vertices: Vec::new(),
+                triangles: Vec::new(),
+            };
             // Build Triangles.
             let mut indices = 0;
-            for u in 0..uv_length.0 {
-                for v in 0..uv_length.1{
+            for u in 0..divide_count_u {
+                for v in 0..divide_count_v {
                     // quad origin point.
-                    let vert_a = grid_points[v * uv_length.0 + u];
+                    let vert_a = grid_points[v * divide_count_u + u];
                     // quad point on u direction.
                     let vert_b = vert_a + plane_vector_u;
                     // quad point diagonal u+v direction.
                     let vert_c =
-                        grid_points[v * uv_length.0 + u] + (plane_vector_u + plane_vector_v);
+                        grid_points[v * divide_count_u + u] + (plane_vector_u + plane_vector_v);
                     // quad point on v direction.
-                    let vert_d = grid_points[v * uv_length.0 + u] + (plane_vector_v);
+                    let vert_d = grid_points[v * divide_count_u + u] + (plane_vector_v);
                     // Add first triangle.
                     // index logic 1,2,4
                     mesh_plane_result.vertices.push(vert_a);
                     mesh_plane_result.vertices.push(vert_b);
                     mesh_plane_result.vertices.push(vert_d);
-                    mesh_plane_result.triangles.push(Triangle::with_indices(indices , indices+1, indices+2,&mesh_plane_result.vertices));
-                    indices += 3; 
+                    mesh_plane_result.triangles.push(Triangle::with_indices(
+                        indices,
+                        indices + 1,
+                        indices + 2,
+                        &mesh_plane_result.vertices,
+                    ));
+                    indices += 3;
                     // Add second triangle.
-                    // index logic 2,3,4 
+                    // index logic 2,3,4
                     mesh_plane_result.vertices.push(vert_b);
                     mesh_plane_result.vertices.push(vert_c);
                     mesh_plane_result.vertices.push(vert_d);
-                    mesh_plane_result.triangles.push(Triangle::with_indices(indices , indices+1, indices+2,&mesh_plane_result.vertices));
-                    indices += 3; 
+                    mesh_plane_result.triangles.push(Triangle::with_indices(
+                        indices,
+                        indices + 1,
+                        indices + 2,
+                        &mesh_plane_result.vertices,
+                    ));
+                    indices += 3;
                     // temporary display of the indexing logic./////////////////
                     let p1 = camera.project_maybe_outside(vert_a);
                     let p2 = camera.project_maybe_outside(vert_b);
@@ -1969,10 +1981,10 @@ pub mod rendering_object {
             // |      A      |
             // |-------------|
             // for borders A & C.
-            for u in 0..uv_length.0{}
+            for u in 0..divide_count_u {}
             // for border D & B.
-            for v in 0..uv_length.1{}
-            
+            for v in 0..divide_count_v {}
+
             // return the parametric mesh plane.
             mesh_plane_result
         }

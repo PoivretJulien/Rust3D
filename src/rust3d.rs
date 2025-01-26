@@ -3138,6 +3138,42 @@ pub mod draw {
         grid_points
     }
 
+    /// Make a contextual Grid graphing an unit system intervals.
+    /// (the origin point is in the corner down left of the 2d grid holding
+    /// positive and negative domain on each relative sides.)
+    /// # Returns
+    /// - an os memory allocated list of Vertex.
+    pub fn make_3d_divided_grid_from_corner(
+        plane: &CPlane,
+        u_length: f64,
+        v_length: f64,
+        divide_count_u:usize,
+        divide_count_v:usize
+    ) -> Vec<Vertex> {
+            // Evaluate from (u,v) dimension of the grid.
+            let mut spacing_unit_u = u_length / (divide_count_u as f64);
+            let mut spacing_unit_v = v_length / (divide_count_v as f64);
+
+            // println!("grid size:{:?}", uv_length,);
+            // Define memory components.
+            let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); divide_count_u * divide_count_v];
+            let mut pt_u = 0.0;
+            let mut pt_v = 0.0;
+            // Make a grid of points describing the plane.
+            for v in 0..divide_count_v {
+                for u in 0..divide_count_u {
+                    grid_points[v * divide_count_u + u] = (*plane)
+                        .point_on_plane_uv(pt_u, pt_v)
+                        .to_vertex();
+                    pt_u += spacing_unit_u;
+                    if u == divide_count_u - 1 {
+                        pt_u = 0.0;
+                    }
+                }
+                pt_v += spacing_unit_v;
+            }
+        grid_points
+    }
     /// Draw a very basic rectangle very fast.
     pub fn draw_rectangle(
         buffer: &mut Vec<u32>,

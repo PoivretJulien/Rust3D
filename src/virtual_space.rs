@@ -756,18 +756,18 @@ impl DisplayPipeLine {
                         if let Ok(mut m) = obj.lock() {
                             if let Displayable::Mesh(ref mut mesh) = *m {
                                 // apply transformations to geometry(s) instead of camera (for testing
-                                // coherent behaviors between the diferent methods) 
+                                // coherent behaviors between the diferent methods)
                                 // im still in the same body frame than my first alpha fading gimball
-                                // version so yhea, things have allready changed and will keep changing 
-                                // if i keep working hard... 
+                                // version so yhea, things have allready changed and will keep changing
+                                // if i keep working hard...
                                 // please im not an engineer i'm just doing my best to have a clear
                                 // sight of what im doing with fun and passion, now transformation module use
                                 // an interface trait object and can handle several sort of objects type
-                                // so i'm just testing "my littel pride" with my new methods ... 
-                                // originally that was just my first gimball version"  
+                                // so i'm just testing "my littel pride" with my new methods ...
+                                // originally that was just my first gimball version"
                                 // so for now let's do some smurf ...
-                                // obscurentism is the dark magic of science 
-                                // chalanges, skills, freedom to work hard and humanism is more my cup of thea !  
+                                // obscurentism is the dark magic of science
+                                // chalanges, skills, freedom to work hard and humanism is more my cup of thea !
                                 let transformed_point =
                                     transformation::transform_points_4x3(&matrix, &mesh.vertices);
                                 let r = camera.project_points(&transformed_point);
@@ -1007,22 +1007,23 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM:(f64,f64) = (0.2,0.4);
+                const UV_DIM: (f64, f64) = (0.2, 0.4);
+                const UV_COUNT: (usize, usize) = (2, 4);
                 let pt_origin = Point3d::new(0.2, -0.4, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
                 let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
-                
+
                 /*
-                 Before refining the quality display aspect (at some point the api should implement GPU acceleration)
-                 i want to focus on a quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
-                 and for doing so i need a way to graph what i design without any problem of portability for instance for designing
-                 a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose 
-                 and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
-                 and efficiency
-                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
-                 */
-                // First parametric Mesh Plane object 
+                Before refining the quality display aspect (at some point the api should implement GPU acceleration)
+                i want to focus on a quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
+                and for doing so i need a way to graph what i design without any problem of portability for instance for designing
+                a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose
+                and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
+                and efficiency
+                ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
+                */
+                // First parametric Mesh Plane object
                 // some parameters are temporary for graphing the logic.
                 let _ = MeshPlane::new(
                     &mut buffer,
@@ -1033,10 +1034,13 @@ impl DisplayPipeLine {
                     &p3,
                     UV_DIM.0,
                     UV_DIM.1,
-                    0.1,
+                    UV_COUNT.0,
+                    UV_COUNT.1,
                 );
                 // Create 3d grid and Project points on grid.
-                let pt_grid = draw::make_3d_grid_from_corner(&p3, UV_DIM.0,UV_DIM.1, 0.1);
+                let pt_grid = draw::make_3d_divided_grid_from_corner(
+                    &p3, UV_DIM.0 + 0.1, UV_DIM.1+0.1, UV_COUNT.0+1, UV_COUNT.1+1,
+                );
                 let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
                 // Draw disc on each points projected on screen space.
