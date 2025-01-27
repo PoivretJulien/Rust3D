@@ -2230,10 +2230,38 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_v,
             );
-            Self {
+            // Allocate memory for the result.
+            let mut result = MeshBox {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
+            };
+            // Merge Face into a single list.
+            let faces_list = vec![face1, face2, face3, face4, face5, face6];
+            // for each faces...
+            for face in faces_list.iter() {
+                // Compute the actual offset indices cursor position.
+                let offset = result.vertices.len();
+                // Push vertex in memory pool.
+                for vertex in face.vertices.iter() {
+                    result.vertices.push(*vertex);
+                }
+                //... Offset the triangle indices from the merged
+                //vertex memory pool length.
+                for tri in face.triangles.iter() {
+                    let vertex_indices = [
+                        tri.vertex_indices[0] + offset,
+                        tri.vertex_indices[1] + offset,
+                        tri.vertex_indices[2] + offset,
+                    ];
+                    result
+                        .triangles
+                        .push(Triangle::new(&result.vertices, vertex_indices));
+                }
             }
+            // Clean duplicate vertex by tracking vertex equality
+            // via hashmap.
+            result.remove_duplicate_vertices();
+            result
         }
 
         /// Removes duplicate vertices and updates triangles indices efficiently.
@@ -2241,8 +2269,8 @@ pub mod rendering_object {
             let mut unique_vertices = Vec::new();
             let mut index_map: HashMap<Vertex, usize> = HashMap::new();
 
-            // Iterate through old vertices list and create an indices mapping 
-            // without duplicate value. 
+            // Iterate through old vertices list and create an indices mapping
+            // without duplicate value.
             for &vertex in self.vertices.iter() {
                 if let Some(&new_index) = index_map.get(&vertex) {
                     // if Vertex hashmap key already exist, update the hashmap value with the new_index.
