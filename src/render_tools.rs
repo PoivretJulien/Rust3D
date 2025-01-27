@@ -1874,10 +1874,10 @@ pub mod rendering_object {
     pub struct MeshPlane {
         pub vertices: Vec<Vertex>,
         pub triangles: Vec<Triangle>,
-        pub stitch_logic_side_a: Vec<usize>,
-        pub stitch_logic_side_b: Vec<usize>,
-        pub stitch_logic_side_c: Vec<usize>,
-        pub stitch_logic_side_d: Vec<usize>,
+        //pub stitch_logic_side_a: Vec<usize>,
+        //pub stitch_logic_side_b: Vec<usize>,
+        //pub stitch_logic_side_c: Vec<usize>,
+        //pub stitch_logic_side_d: Vec<usize>,
     }
 
     impl MeshPlane {
@@ -1924,8 +1924,10 @@ pub mod rendering_object {
             ////////////////////////////////////////////////////////////////////
             // if the grid cell length is equal to 1.
             let plane_vector_u = if divide_count_u == 1 {
-                let mut v_u = construction_plane.point_on_plane_uv(spacing_unit_u, 0.0).to_vertex();
-                if let Some(m) = matrix{
+                let mut v_u = construction_plane
+                    .point_on_plane_uv(spacing_unit_u, 0.0)
+                    .to_vertex();
+                if let Some(m) = matrix {
                     v_u = transformation::transform_point_4x3(m, &v_u);
                 }
                 v_u - grid_points[0 * divide_count_u + 0]
@@ -1936,8 +1938,10 @@ pub mod rendering_object {
             ////////////////////////////////////////////
             // if the grid cell length is equal to 1.
             let plane_vector_v = if divide_count_v == 1 {
-                let mut v_v = construction_plane.point_on_plane_uv(0.0, spacing_unit_v).to_vertex();
-                if let Some(m) = matrix{
+                let mut v_v = construction_plane
+                    .point_on_plane_uv(0.0, spacing_unit_v)
+                    .to_vertex();
+                if let Some(m) = matrix {
                     v_v = transformation::transform_point_4x3(m, &v_v);
                 }
                 v_v - grid_points[0 * divide_count_u + 0]
@@ -1950,10 +1954,10 @@ pub mod rendering_object {
             let mut mesh_plane_result = MeshPlane {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
-                stitch_logic_side_a: Vec::new(),
-                stitch_logic_side_b: Vec::new(),
-                stitch_logic_side_c: Vec::new(),
-                stitch_logic_side_d: Vec::new(),
+                //stitch_logic_side_a: Vec::new(),
+                //stitch_logic_side_b: Vec::new(),
+                //stitch_logic_side_c: Vec::new(),
+                //stitch_logic_side_d: Vec::new(),
             };
             // Build Triangles.
             let mut indices = 0;
@@ -1973,12 +1977,14 @@ pub mod rendering_object {
                     mesh_plane_result.vertices.push(vert_a);
                     mesh_plane_result.vertices.push(vert_b);
                     mesh_plane_result.vertices.push(vert_d);
+
                     mesh_plane_result.triangles.push(Triangle::with_indices(
                         indices,
                         indices + 1,
                         indices + 2,
                         &mesh_plane_result.vertices,
                     ));
+                    /*
                     // Stitching logic:
                     // |-------------|
                     // |      C      |
@@ -2003,6 +2009,7 @@ pub mod rendering_object {
                     if (u == 0) && (v != divide_count_v - 1) {
                         mesh_plane_result.stitch_logic_side_d.push(indices + 2);
                     }
+                    */
                     indices += 3;
                     // Add second triangle.
                     // index logic 2,3,4
@@ -2015,6 +2022,7 @@ pub mod rendering_object {
                         indices + 2,
                         &mesh_plane_result.vertices,
                     ));
+                    /*
                     // Third Corner logic.
                     if (u == divide_count_u - 1) && (v == divide_count_v - 1) {
                         mesh_plane_result.stitch_logic_side_c.push(indices + 1);
@@ -2033,6 +2041,7 @@ pub mod rendering_object {
                     if (v == divide_count_v - 1) && (u != divide_count_u - 1) {
                         mesh_plane_result.stitch_logic_side_c.push(indices + 1);
                     }
+                    */
                     indices += 3;
 
                     // Temporary display of the indexing logic./////////////////
@@ -2225,6 +2234,39 @@ pub mod rendering_object {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
             }
+        }
+
+        /// Removes duplicate vertices and updates triangles indices efficiently.
+        pub fn remove_duplicate_vertices(&mut self) {
+            let mut unique_vertices = Vec::new();
+            let mut index_map: HashMap<Vertex, usize> = HashMap::new();
+
+            // Iterate through old vertices list and create an indices mapping 
+            // without duplicate value. 
+            for &vertex in self.vertices.iter() {
+                if let Some(&new_index) = index_map.get(&vertex) {
+                    // if Vertex hashmap key already exist, update the hashmap value with the new_index.
+                    index_map.insert(vertex, new_index);
+                } else {
+                    // New unique vertex, add it to new unique version list
+                    // and update the key value pair
+                    let new_index = unique_vertices.len();
+                    unique_vertices.push(vertex);
+                    index_map.insert(vertex, new_index);
+                }
+            }
+
+            // Update triangle indices
+            for triangle in &mut self.triangles {
+                for i in 0..3 {
+                    triangle.vertex_indices[i] = *index_map
+                        .get(&self.vertices[triangle.vertex_indices[i]])
+                        .unwrap();
+                }
+            }
+
+            // Replace old vertex list with the unique one
+            self.vertices = unique_vertices;
         }
     }
 

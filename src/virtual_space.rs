@@ -1037,13 +1037,6 @@ impl DisplayPipeLine {
                     UV_COUNT.0,
                     UV_COUNT.1,
                 );
-                println!(
-                    "\x1b[5;0H\x1b[2KStich Logic-> A:{:?},B{:?},C{:?},D{:?}",
-                    mesh_pln.stitch_logic_side_a,
-                    mesh_pln.stitch_logic_side_b,
-                    mesh_pln.stitch_logic_side_c,
-                    mesh_pln.stitch_logic_side_d,
-                );
                 // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_divided_grid_from_corner(
                     &p3,
