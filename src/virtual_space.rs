@@ -1061,7 +1061,8 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
-                ////// Draw a parametric block mesh.
+                // Draw a parametric block mesh (not usally the object to create at each frames).
+                // but that a good test.
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
@@ -1077,7 +1078,7 @@ impl DisplayPipeLine {
                     0.5,
                     0.25,
                     0.2,
-                    1,
+                    10,
                     1,
                     1,
                 );
