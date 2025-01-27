@@ -1024,7 +1024,7 @@ impl DisplayPipeLine {
                 ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
                 */
                 // First parametric Mesh Plane object
-                // some parameters are temporary for graphing the logic.
+                // Some parameters are temporary for graphing the logic.
                 let mesh_pln = MeshPlane::new(
                     &mut buffer,
                     screen_width,
@@ -1052,7 +1052,8 @@ impl DisplayPipeLine {
                     UV_COUNT.0 + 1,
                     UV_COUNT.1 + 1,
                 );
-                let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
+                let pt_grid = 
+                    transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
                 // Draw disc on each points projected on screen space.
                 for pt in projected_point.iter() {
@@ -1083,11 +1084,10 @@ impl DisplayPipeLine {
                     0.5,
                     0.3,
                     0.2,
-                    2,
-                    3,
-                    5,
+                    1,
+                    1,
+                    1,
                 );
-
                 ////////////////////////////////////////////////////////////////
                 // Draw a primitive rectangle //////////////////////////////////
                 ////////////////////////////////////////////////////////////////

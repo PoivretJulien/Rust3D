@@ -1078,9 +1078,9 @@ pub mod visualization_v3 {
  *   - and normal vectors
  */
 pub mod rendering_object {
-    use crate::rust3d;
     use crate::rust3d::geometry::{CPlane, Point3d, Vector3d};
     use crate::rust3d::intersection::clip_line;
+    use crate::rust3d::{self, transformation};
     use dashmap::DashMap;
     use iter::{walk_tree, IntoParallelRefMutIterator, ParallelIterator};
     use rayon::prelude::*; // For parallel processing
@@ -1919,13 +1919,34 @@ pub mod rendering_object {
             }
             // Apply transformations if needed.
             if let Some(m) = matrix {
-                grid_points = rust3d::transformation::transform_points_4x3(m, &grid_points);
+                grid_points = transformation::transform_points_4x3(m, &grid_points);
             }
-            // Compute base vectors u and v for the actual plane (he may be transformed at this stage).
-            let plane_vector_u =
-                grid_points[0 * divide_count_u + 1] - grid_points[0 * divide_count_u + 0];
-            let plane_vector_v =
-                grid_points[1 * divide_count_u + 0] - grid_points[0 * divide_count_u + 0];
+            ////////////////////////////////////////////////////////////////////
+            // if the grid cell length is equal to 1.
+            let plane_vector_u = if divide_count_u == 1 {
+                let mut v_u = construction_plane.point_on_plane_uv(spacing_unit_u, 0.0).to_vertex();
+                if let Some(m) = matrix{
+                    v_u = transformation::transform_point_4x3(m, &v_u);
+                }
+                v_u - grid_points[0 * divide_count_u + 0]
+            } else {
+                // Compute base vectors u for the actual plane
+                grid_points[0 * divide_count_u + 1] - grid_points[0 * divide_count_u + 0]
+            };
+            ////////////////////////////////////////////
+            // if the grid cell length is equal to 1.
+            let plane_vector_v = if divide_count_v == 1 {
+                let mut v_v = construction_plane.point_on_plane_uv(0.0, spacing_unit_v).to_vertex();
+                if let Some(m) = matrix{
+                    v_v = transformation::transform_point_4x3(m, &v_v);
+                }
+                v_v - grid_points[0 * divide_count_u + 0]
+            } else {
+                // Compute base vectors u for the actual plane
+                grid_points[1 * divide_count_u + 0] - grid_points[0 * divide_count_u + 0]
+            };
+            ////////////////////////////////////////////////////////////////////
+
             let mut mesh_plane_result = MeshPlane {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
@@ -2061,10 +2082,19 @@ pub mod rendering_object {
             u_length: f64,
             v_length: f64,
             w_length: f64,
-            divide_count_u: usize,
-            divide_count_v: usize,
-            divide_count_w: usize,
+            mut divide_count_u: usize,
+            mut divide_count_v: usize,
+            mut divide_count_w: usize,
         ) -> Self {
+            if divide_count_u == 0 {
+                divide_count_u = 1;
+            }
+            if divide_count_v == 0 {
+                divide_count_v = 1;
+            }
+            if divide_count_w == 0 {
+                divide_count_w = 1;
+            }
             // Compute the basis vectors direction.
             let direction_w = direction_u.cross(direction_v).normalize();
             *direction_u = direction_u.normalize();
