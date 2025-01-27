@@ -2249,7 +2249,7 @@ pub mod rendering_object {
                     index_map.insert(vertex, new_index);
                 } else {
                     // New unique vertex, add it to new unique version list
-                    // and update the key value pair
+                    // and update the (key,value) pair.
                     let new_index = unique_vertices.len();
                     unique_vertices.push(vertex);
                     index_map.insert(vertex, new_index);
