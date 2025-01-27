@@ -2083,8 +2083,8 @@ pub mod rendering_object {
     }
     impl MeshBox {
         /// Create a parametric mesh box
-        /// this object will be designed
-        /// to behave exactly like a regular mesh
+        /// this object can be copied into a mesh
+        /// via a dedicated method.
         pub fn new(
             buffer: &mut Vec<u32>,
             screen_width: usize,
@@ -2263,7 +2263,13 @@ pub mod rendering_object {
             result.remove_duplicate_vertices();
             result
         }
-
+        #[inline(always)]
+        pub fn to_mesh(&self)->Mesh{
+            Mesh{
+                vertices:self.vertices.clone(),
+                triangles:self.triangles.clone(),
+            }
+        }
         /// Removes duplicate vertices and updates triangles indices efficiently.
         pub fn remove_duplicate_vertices(&mut self) {
             let mut unique_vertices = Vec::new();

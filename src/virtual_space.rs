@@ -1075,7 +1075,7 @@ impl DisplayPipeLine {
                     &mut dir_u,
                     &mut dir_v,
                     0.5,
-                    0.3,
+                    0.25,
                     0.2,
                     1,
                     1,
