@@ -2123,33 +2123,10 @@ pub mod rendering_object {
 
             // Create the 6 CPlane(s) of each faces of the cube from user inputs.
             // the logic is 1 Sud , 2 Est, 3 North, 4 West, 5 Bottom and 6 Top.
-
-            let mut faces_list = [
-                MeshPlane {
+            let mut faces_list:[MeshPlane;6] = std::array::from_fn(|_|MeshPlane {
                     vertices: Vec::new(),
                     triangles: Vec::new(),
-                },
-                MeshPlane {
-                    vertices: Vec::new(),
-                    triangles: Vec::new(),
-                },
-                MeshPlane {
-                    vertices: Vec::new(),
-                    triangles: Vec::new(),
-                },
-                MeshPlane {
-                    vertices: Vec::new(),
-                    triangles: Vec::new(),
-                },
-                MeshPlane {
-                    vertices: Vec::new(),
-                    triangles: Vec::new(),
-                },
-                MeshPlane {
-                    vertices: Vec::new(),
-                    triangles: Vec::new(),
-                },
-            ];
+                });
             // Cube face 1 (Sud).
             let sud_cplane = CPlane::new_origin_x_aligned_y_oriented(
                 &anchor_sud,
