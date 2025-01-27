@@ -2072,10 +2072,6 @@ pub mod rendering_object {
             mesh_plane_result
         }
     }
-    /*
-     * Step 1 merge all the 4 lists by offsetting each components.
-     * Step 2 Process the merging of each stitching logic(s)
-     */
     ////////////////////////////////////////////////////////////////////////////
     pub struct MeshBox {
         pub vertices: Vec<Vertex>,
@@ -2236,7 +2232,7 @@ pub mod rendering_object {
                 triangles: Vec::new(),
             };
             // Merge Face into a single list.
-            let faces_list = vec![face1, face2, face3, face4, face5, face6];
+            let faces_list = [face1, face2, face3, face4, face5, face6];
             // for each faces...
             for face in faces_list.iter() {
                 // Compute the actual offset indices cursor position.
@@ -2263,7 +2259,10 @@ pub mod rendering_object {
             result.remove_duplicate_vertices();
             result
         }
+
         #[inline(always)]
+        /// Duplicate the MeshBox into a regular mesh 
+        /// copy.
         pub fn to_mesh(&self)->Mesh{
             Mesh{
                 vertices:self.vertices.clone(),
