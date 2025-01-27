@@ -1871,6 +1871,7 @@ pub mod rendering_object {
     //                                          of a classic mesh once designed )
     // maybe...
     ////////////////////////////////////////////////////////////////////////////
+    #[derive(Clone, Debug)]
     pub struct MeshPlane {
         pub vertices: Vec<Vertex>,
         pub triangles: Vec<Triangle>,
@@ -2123,13 +2124,39 @@ pub mod rendering_object {
             // Create the 6 CPlane(s) of each faces of the cube from user inputs.
             // the logic is 1 Sud , 2 Est, 3 North, 4 West, 5 Bottom and 6 Top.
 
+            let mut faces_list = [
+                MeshPlane {
+                    vertices: Vec::new(),
+                    triangles: Vec::new(),
+                },
+                MeshPlane {
+                    vertices: Vec::new(),
+                    triangles: Vec::new(),
+                },
+                MeshPlane {
+                    vertices: Vec::new(),
+                    triangles: Vec::new(),
+                },
+                MeshPlane {
+                    vertices: Vec::new(),
+                    triangles: Vec::new(),
+                },
+                MeshPlane {
+                    vertices: Vec::new(),
+                    triangles: Vec::new(),
+                },
+                MeshPlane {
+                    vertices: Vec::new(),
+                    triangles: Vec::new(),
+                },
+            ];
             // Cube face 1 (Sud).
             let sud_cplane = CPlane::new_origin_x_aligned_y_oriented(
                 &anchor_sud,
                 &direction_u.to_point3d(),
                 &direction_w.to_point3d(),
             );
-            let face1 = MeshPlane::new(
+            faces_list[0] = MeshPlane::new(
                 buffer,
                 screen_width,
                 screen_height,
@@ -2146,7 +2173,7 @@ pub mod rendering_object {
             let pt_dir_w = anchor_est + direction_w.to_point3d();
             let est_cplane =
                 CPlane::new_origin_x_aligned_y_oriented(&anchor_est, &pt_dir_v, &pt_dir_w);
-            let face2 = MeshPlane::new(
+            faces_list[1] = MeshPlane::new(
                 buffer,
                 screen_width,
                 screen_height,
@@ -2163,7 +2190,7 @@ pub mod rendering_object {
             let pt_dir_w = anchor_north + direction_w.to_point3d();
             let north_cplane =
                 CPlane::new_origin_x_aligned_y_oriented(&anchor_north, &pt_dir_u, &pt_dir_w);
-            let face3 = MeshPlane::new(
+            faces_list[2] = MeshPlane::new(
                 buffer,
                 screen_width,
                 screen_height,
@@ -2180,7 +2207,7 @@ pub mod rendering_object {
             let pt_dir_w = anchor_west + direction_w.to_point3d();
             let west_cplane =
                 CPlane::new_origin_x_aligned_y_oriented(&anchor_west, &pt_dir_v, &pt_dir_w);
-            let face4 = MeshPlane::new(
+            faces_list[3] = MeshPlane::new(
                 buffer,
                 screen_width,
                 screen_height,
@@ -2197,7 +2224,7 @@ pub mod rendering_object {
             let pt_dir_v = anchor_bottom + direction_v.to_point3d();
             let bottom_cplane =
                 CPlane::new_origin_x_aligned_y_oriented(&anchor_bottom, &pt_dir_u, &pt_dir_v);
-            let face5 = MeshPlane::new(
+            faces_list[4] = MeshPlane::new(
                 buffer,
                 screen_width,
                 screen_height,
@@ -2214,7 +2241,7 @@ pub mod rendering_object {
             let pt_dir_v = anchor_top + direction_v.to_point3d();
             let top_cplane =
                 CPlane::new_origin_x_aligned_y_oriented(&anchor_top, &pt_dir_u, &pt_dir_v);
-            let face6 = MeshPlane::new(
+            faces_list[5] = MeshPlane::new(
                 buffer,
                 screen_width,
                 screen_height,
@@ -2226,14 +2253,13 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_v,
             );
+
             // Allocate memory for the result.
             let mut result = MeshBox {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
             };
             // Merge Face into a single list.
-            let faces_list = [face1, face2, face3, face4, face5, face6];
-            // for each faces...
             for face in faces_list.iter() {
                 // Compute the actual offset indices cursor position.
                 let offset = result.vertices.len();
@@ -2261,12 +2287,12 @@ pub mod rendering_object {
         }
 
         #[inline(always)]
-        /// Duplicate the MeshBox into a regular mesh 
+        /// Duplicate the MeshBox into a regular mesh
         /// copy.
-        pub fn to_mesh(&self)->Mesh{
-            Mesh{
-                vertices:self.vertices.clone(),
-                triangles:self.triangles.clone(),
+        pub fn to_mesh(&self) -> Mesh {
+            Mesh {
+                vertices: self.vertices.clone(),
+                triangles: self.triangles.clone(),
             }
         }
         /// Removes duplicate vertices and updates triangles indices efficiently.
