@@ -2050,6 +2050,12 @@ pub mod rendering_object {
                     if let Some(pt) = clip_line(p4, p1, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
                     }
+                    if let Some(pt) = clip_line(p3, p4, screen_width, screen_height) {
+                        rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
+                    }
+                    if let Some(pt) = clip_line(p2, p3, screen_width, screen_height) {
+                        rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
+                    }
                     ////////////////////////////////////////////////////////////
                 }
             }
