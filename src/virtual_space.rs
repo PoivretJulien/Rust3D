@@ -774,7 +774,8 @@ impl DisplayPipeLine {
                                 // Could have been parallelized i don't know if that would have
                                 // been beneficial...
                                 for projected_point in r.iter() {
-                                    buffer[projected_point.1 * screen_width + projected_point.0] = 0x00004e;
+                                    buffer[projected_point.1 * screen_width + projected_point.0] =
+                                        0x00004e;
                                 }
                             }
                         }
@@ -1006,8 +1007,8 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM: (f64, f64) = (0.5, 0.3);
-                const UV_COUNT: (usize, usize) = (5, 3);
+                const UV_DIM: (f64, f64) = (0.4, 0.3);
+                const UV_COUNT: (usize, usize) = (4, 3);
                 let pt_origin = Point3d::new(0.2, -0.4, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
@@ -1024,7 +1025,7 @@ impl DisplayPipeLine {
                 */
                 // First parametric Mesh Plane object
                 // Some parameters are temporary for graphing the logic.
-                let mesh_pln = MeshPlane::new(
+                let mut mesh_pln = MeshPlane::new(
                     &mut buffer,
                     screen_width,
                     screen_height,
@@ -1035,7 +1036,21 @@ impl DisplayPipeLine {
                     UV_DIM.1,
                     UV_COUNT.0,
                     UV_COUNT.1,
-                );
+                )
+                .to_mesh();
+                /*
+                println!("vertex count {}", mesh_pln.vertices.len());
+                mesh_pln.remove_duplicate_vertices();
+                mesh_pln.vertices.iter().for_each(|v|{println!("->{v:?}")});
+                println!("vertex count {}", mesh_pln.vertices.len());
+                println!("triangle count {}", mesh_pln.triangles.len());
+
+                let map = mesh_pln.find_shared_edges();
+                for (edge, triangle_indices) in map.iter() {
+                    println!("edge {0:?} share triangle {1:?}", edge, triangle_indices);
+                }
+                panic!();
+                */
                 // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_divided_grid_from_corner(
                     &p3,
@@ -1044,8 +1059,7 @@ impl DisplayPipeLine {
                     UV_COUNT.0 + 1,
                     UV_COUNT.1 + 1,
                 );
-                let pt_grid = 
-                    transformation::transform_points_4x3(&matrix, &pt_grid);
+                let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
                 let projected_point = camera.project_points(&pt_grid);
                 // Draw disc on each points projected on screen space.
                 for pt in projected_point.iter() {
@@ -1065,7 +1079,7 @@ impl DisplayPipeLine {
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
-                let _ = MeshBox::new(
+                let m_box = MeshBox::new(
                     &mut buffer,
                     screen_width,
                     screen_height,

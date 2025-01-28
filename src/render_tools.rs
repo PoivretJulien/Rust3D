@@ -1892,6 +1892,58 @@ pub mod rendering_object {
             }
             map
         }
+        /// Removes duplicate vertices and updates triangles indices efficiently.
+        pub fn remove_duplicate_vertices_old(&mut self) {
+            let mut unique_vertices = Vec::new();
+            let mut index_map: HashMap<Vertex, usize> = HashMap::new();
+
+            // Iterate through old vertices list and create an indices mapping
+            // without duplicate value.
+            for &vertex in self.vertices.iter() {
+                if let Some(&new_index) = index_map.get(&vertex) {
+                    // if Vertex hashmap key already exist, update the hashmap value with the new_index.
+                    index_map.insert(vertex, new_index);
+                } else {
+                    // New unique vertex, add it to new unique version list
+                    // and update the (key,value) pair.
+                    let new_index = unique_vertices.len();
+                    unique_vertices.push(vertex);
+                    index_map.insert(vertex, new_index);
+                }
+            }
+        }
+        /// Remove duplicate vertices of the mesh and update triangles
+        /// vertex indices efficiently.
+        pub fn remove_duplicate_vertices(&mut self) {
+            let mut unique_vertices = Vec::new();
+            let mut index_map: HashMap<Vertex, usize> = HashMap::new();
+            // Create a map tracking vertex key to indices index value.
+            for &vertex in self.vertices.iter() {
+                if let Some(&new_index) = index_map.get(&vertex) {
+                    // Vertex already exists, just update the mapping
+                    index_map.insert(vertex, new_index);
+                } else {
+                    // New unique vertex
+                    let new_index = unique_vertices.len();
+                    unique_vertices.push(vertex);
+                    index_map.insert(vertex, new_index);
+                }
+            }
+
+            // Update triangle indices to reference the deduplicated vertices
+            for triangle in &mut self.triangles {
+                for index in &mut triangle.vertex_indices {
+                    // map the tracked vertex key ,to the new value index from vertices list.
+                    if let Some(&new_index) = index_map.get(&self.vertices[*index]) {
+                        *index = new_index;
+                    }
+                }
+            }
+
+            // Replace original vertex list with deduplicated one
+            self.vertices = unique_vertices;
+        }
+        
     }
     ////////////////////////////////////////////////////////////////////////////
     // A temporary object representing a parametric object.
@@ -2098,6 +2150,7 @@ pub mod rendering_object {
                 }
             }
             // return the parametric mesh plane.
+            mesh_plane_result.remove_duplicate_vertices();
             mesh_plane_result
         }
         #[inline(always)]
@@ -2108,6 +2161,38 @@ pub mod rendering_object {
                 vertices: self.vertices.clone(),
                 triangles: self.triangles.clone(),
             }
+        }
+
+        /// Remove duplicate vertices of the mesh and update triangles
+        /// vertex indices efficiently.
+        pub fn remove_duplicate_vertices(&mut self) {
+            let mut unique_vertices = Vec::new();
+            let mut index_map: HashMap<Vertex, usize> = HashMap::new();
+            // Create a map tracking vertex key to indices index value.
+            for &vertex in self.vertices.iter() {
+                if let Some(&new_index) = index_map.get(&vertex) {
+                    // Vertex already exists, just update the mapping
+                    index_map.insert(vertex, new_index);
+                } else {
+                    // New unique vertex
+                    let new_index = unique_vertices.len();
+                    unique_vertices.push(vertex);
+                    index_map.insert(vertex, new_index);
+                }
+            }
+
+            // Update triangle indices to reference the deduplicated vertices
+            for triangle in &mut self.triangles {
+                for index in &mut triangle.vertex_indices {
+                    // map the tracked vertex key ,to the new value index from vertices list.
+                    if let Some(&new_index) = index_map.get(&self.vertices[*index]) {
+                        *index = new_index;
+                    }
+                }
+            }
+
+            // Replace original vertex list with deduplicated one
+            self.vertices = unique_vertices;
         }
     }
     ////////////////////////////////////////////////////////////////////////////
@@ -2309,38 +2394,37 @@ pub mod rendering_object {
                 triangles: self.triangles.clone(),
             }
         }
-        /// Removes duplicate vertices and updates triangles indices efficiently.
+        /// Remove duplicate vertices of the mesh and update triangles
+        /// vertex indices efficiently.
         pub fn remove_duplicate_vertices(&mut self) {
             let mut unique_vertices = Vec::new();
             let mut index_map: HashMap<Vertex, usize> = HashMap::new();
-
-            // Iterate through old vertices list and create an indices mapping
-            // without duplicate value.
+            // Create a map tracking vertex key to indices index value.
             for &vertex in self.vertices.iter() {
                 if let Some(&new_index) = index_map.get(&vertex) {
-                    // if Vertex hashmap key already exist, update the hashmap value with the new_index.
+                    // Vertex already exists, just update the mapping
                     index_map.insert(vertex, new_index);
                 } else {
-                    // New unique vertex, add it to new unique version list
-                    // and update the (key,value) pair.
+                    // New unique vertex
                     let new_index = unique_vertices.len();
                     unique_vertices.push(vertex);
                     index_map.insert(vertex, new_index);
                 }
             }
 
-            // Update triangle indices
+            // Update triangle indices to reference the deduplicated vertices
             for triangle in &mut self.triangles {
-                for i in 0..3 {
-                    triangle.vertex_indices[i] = *index_map
-                        .get(&self.vertices[triangle.vertex_indices[i]])
-                        .unwrap();
+                for index in &mut triangle.vertex_indices {
+                    // map the tracked vertex key ,to the new value index from vertices list.
+                    if let Some(&new_index) = index_map.get(&self.vertices[*index]) {
+                        *index = new_index;
+                    }
                 }
             }
 
-            // Replace old vertex list with the unique one
+            // Replace original vertex list with deduplicated one
             self.vertices = unique_vertices;
-        }
+        }    
     }
 
     #[derive(Debug, Clone)]
