@@ -1864,6 +1864,34 @@ pub mod rendering_object {
                 });
             }
         }
+        pub fn find_shared_edges(&self) -> HashMap<(usize, usize), Vec<usize>> {
+            // Create an hashmap tracking edge by their vertex indices
+            // created to a vector of a triangle id.
+            let mut map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+            for (triangle_index, triangle) in self.triangles.iter().enumerate() {
+                // Make edges by triangles vertex indices.
+                let edges = [
+                    (triangle.vertex_indices[0], triangle.vertex_indices[1]),
+                    (triangle.vertex_indices[1], triangle.vertex_indices[2]),
+                    (triangle.vertex_indices[2], triangle.vertex_indices[0]),
+                ];
+                for (vertex_indice_a, vertex_indice_b) in edges.iter() {
+                    // normalize triangles edges order by indices number
+                    // for further edges comparisons check.
+                    let edge = if (*vertex_indice_a < *vertex_indice_b) {
+                        (*vertex_indice_a, *vertex_indice_b)
+                    } else {
+                        (*vertex_indice_b, *vertex_indice_a)
+                    };
+                    // Ensure the edge key exist and add a triangle indices as value
+                    // the vector is initialized if needed.
+                    // ( an array would need to track the current local cursor array for each
+                    // edge involving meta data in a struct maybe later...)
+                    map.entry(edge).or_insert(Vec::new()).push(triangle_index);
+                }
+            }
+            map
+        }
     }
     ////////////////////////////////////////////////////////////////////////////
     // A temporary object representing a parametric object.
@@ -2072,6 +2100,15 @@ pub mod rendering_object {
             // return the parametric mesh plane.
             mesh_plane_result
         }
+        #[inline(always)]
+        /// Duplicate the MeshBox into a regular mesh
+        /// copy.
+        pub fn to_mesh(&self) -> Mesh {
+            Mesh {
+                vertices: self.vertices.clone(),
+                triangles: self.triangles.clone(),
+            }
+        }
     }
     ////////////////////////////////////////////////////////////////////////////
     pub struct MeshBox {
@@ -2123,10 +2160,10 @@ pub mod rendering_object {
 
             // Create the 6 CPlane(s) of each faces of the cube from user inputs.
             // the logic is 1 Sud , 2 Est, 3 North, 4 West, 5 Bottom and 6 Top.
-            let mut faces_list:[MeshPlane;6] = std::array::from_fn(|_|MeshPlane {
-                    vertices: Vec::new(),
-                    triangles: Vec::new(),
-                });
+            let mut faces_list: [MeshPlane; 6] = std::array::from_fn(|_| MeshPlane {
+                vertices: Vec::new(),
+                triangles: Vec::new(),
+            });
             // Cube face 1 (Sud).
             let sud_cplane = CPlane::new_origin_x_aligned_y_oriented(
                 &anchor_sud,
