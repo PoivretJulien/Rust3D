@@ -2743,8 +2743,8 @@ pub mod draw {
             //////////////////////////////////////////////////////////////////////
             // Project line Start and End point on screen space.
             let line_point = (
-                camera.project_maybe_outside(line.0),
-                camera.project_maybe_outside(line.1),
+                camera.project_maybe_outside(&line.0),
+                camera.project_maybe_outside(&line.1),
             );
             if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
                 draw_aa_line(
@@ -2761,8 +2761,8 @@ pub mod draw {
             //////////////////////////////////////////////////////////////////////
             // Project line Start and End point on screen space.
             let line_point = (
-                camera.project_maybe_outside(line.0),
-                camera.project_maybe_outside(line.1),
+                camera.project_maybe_outside(&line.0),
+                camera.project_maybe_outside(&line.1),
             );
             if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
                 draw_aa_line(
@@ -2799,8 +2799,8 @@ pub mod draw {
         //////////////////////////////////////////////////////////////////////
         // Project u axis line (from Start and End point)  (red line aligned and clipped on screen space).
         let mut line_point = (
-            camera.project_maybe_outside(u_points[0].to_vertex()),
-            camera.project_maybe_outside(u_points[1].to_vertex()),
+            camera.project_maybe_outside(&u_points[0].to_vertex()),
+            camera.project_maybe_outside(&u_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
             draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x964b4b);
@@ -2808,8 +2808,8 @@ pub mod draw {
         //////////////////////////////////////////////////////////////////////
         // Project v axis line (from Start and End point)  (green line aligned and clipped on screen space).
         line_point = (
-            camera.project_maybe_outside(v_points[0].to_vertex()),
-            camera.project_maybe_outside(v_points[1].to_vertex()),
+            camera.project_maybe_outside(&v_points[0].to_vertex()),
+            camera.project_maybe_outside(&v_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
             draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x4b964b);
@@ -2851,10 +2851,10 @@ pub mod draw {
                 cplane_z_axis = transformation::transform_point_4x3(matrix, &cplane_z_axis);
             }
             // Project Cplane system on screen space.
-            let cplane_origin_2dpoint = camera.project_maybe_outside(cplane_origin);
-            let cplane_x_axis_2dpoint = camera.project_maybe_outside(cplane_x_axis);
-            let cplane_y_axis_2dpoint = camera.project_maybe_outside(cplane_y_axis);
-            let cplane_z_axis_2dpoint = camera.project_maybe_outside(cplane_z_axis);
+            let cplane_origin_2dpoint = camera.project_maybe_outside(&cplane_origin);
+            let cplane_x_axis_2dpoint = camera.project_maybe_outside(&cplane_x_axis);
+            let cplane_y_axis_2dpoint = camera.project_maybe_outside(&cplane_y_axis);
+            let cplane_z_axis_2dpoint = camera.project_maybe_outside(&cplane_z_axis);
             // Draw antialiased lines for each base axis colors.
             // TODO: make a refined layer aproch for alpha channel.
             if let Some(line_point) = clip_line(
@@ -2950,19 +2950,19 @@ pub mod draw {
                 // Project 3d points from local CPlane coordinates to 2d
                 // screen place.
                 let arrow_x_2d = (
-                    camera.project_maybe_outside(arrow_x[0]),
-                    camera.project_maybe_outside(arrow_x[1]),
-                    camera.project_maybe_outside(arrow_x[2]),
+                    camera.project_maybe_outside(&arrow_x[0]),
+                    camera.project_maybe_outside(&arrow_x[1]),
+                    camera.project_maybe_outside(&arrow_x[2]),
                 );
                 let arrow_y_2d = (
-                    camera.project_maybe_outside(arrow_y[0]),
-                    camera.project_maybe_outside(arrow_y[1]),
-                    camera.project_maybe_outside(arrow_y[2]),
+                    camera.project_maybe_outside(&arrow_y[0]),
+                    camera.project_maybe_outside(&arrow_y[1]),
+                    camera.project_maybe_outside(&arrow_y[2]),
                 );
                 let arrow_z_2d = (
-                    camera.project_maybe_outside(arrow_z[0]),
-                    camera.project_maybe_outside(arrow_z[1]),
-                    camera.project_maybe_outside(arrow_z[2]),
+                    camera.project_maybe_outside(&arrow_z[0]),
+                    camera.project_maybe_outside(&arrow_z[1]),
+                    camera.project_maybe_outside(&arrow_z[2]),
                 );
                 // Clip line on 2d screen space for arrow x.
                 if let Some(line_point) =
@@ -3495,8 +3495,8 @@ pub mod draw {
         scalar: f64,
     ) {
         // Check if the CPlane sytem is in the camera frame if yes draw bsis axis vectors of the system.
-        if let Some(origin) = camera.project(plane.origin.to_vertex()) {
-            if let Some(x_axis) = camera.project((plane.origin + (plane.u * scalar)).to_vertex()) {
+        if let Some(origin) = camera.project(&plane.origin.to_vertex()) {
+            if let Some(x_axis) = camera.project(&(plane.origin + (plane.u * scalar)).to_vertex()) {
                 draw_line(
                     &mut buffer,
                     width,
@@ -3505,7 +3505,7 @@ pub mod draw {
                     Color::convert_rgba_color(255, 0, 0, alpha, background_color),
                 );
             }
-            if let Some(y_axis) = camera.project((plane.origin + (plane.v * scalar)).to_vertex()) {
+            if let Some(y_axis) = camera.project(&(plane.origin + (plane.v * scalar)).to_vertex()) {
                 draw_line(
                     &mut buffer,
                     width,
@@ -3515,7 +3515,7 @@ pub mod draw {
                 );
             }
             if let Some(z_axis) =
-                camera.project((plane.origin + (plane.normal * scalar)).to_vertex())
+                camera.project(&(plane.origin + (plane.normal * scalar)).to_vertex())
             {
                 draw_line(
                     &mut buffer,
@@ -3564,7 +3564,7 @@ pub mod draw {
         ///////////////////////////////////////////////////////////////////////////////////////
         let mut arrow_x_pt: Vec<(usize, usize)> = Vec::new();
         for i in 0..3usize {
-            if let Some(pt) = camera.project(arrow_x[i]) {
+            if let Some(pt) = camera.project(&arrow_x[i]) {
                 arrow_x_pt.push((pt.0, pt.1));
             }
         }
@@ -3593,7 +3593,7 @@ pub mod draw {
         }
         let mut arrow_y_pt: Vec<(usize, usize)> = Vec::new();
         for i in 0..3usize {
-            if let Some(pt) = camera.project(arrow_y[i]) {
+            if let Some(pt) = camera.project(&arrow_y[i]) {
                 arrow_y_pt.push((pt.0, pt.1));
             }
         }
@@ -3622,7 +3622,7 @@ pub mod draw {
         }
         let mut arrow_z_pt: Vec<(usize, usize)> = Vec::new();
         for i in 0..3usize {
-            if let Some(pt) = camera.project(arrow_z[i]) {
+            if let Some(pt) = camera.project(&arrow_z[i]) {
                 arrow_z_pt.push((pt.0, pt.1));
             }
         }

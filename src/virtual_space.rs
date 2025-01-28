@@ -41,7 +41,8 @@
 use crate::render_tools::rendering_object::{Mesh, MeshBox, MeshPlane, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::draw;
+use crate::rust3d::draw::{self, draw_aa_line, draw_aa_line_with_thickness};
+use crate::rust3d::intersection::clip_line;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
 use core::f64;
@@ -1038,23 +1039,36 @@ impl DisplayPipeLine {
                     UV_COUNT.1,
                 )
                 .to_mesh();
-                if false {
-                    println!("vertex count {}", mesh_pln.vertices.len());
-                    mesh_pln.remove_duplicate_vertices();
-                    mesh_pln
-                        .vertices
-                        .iter()
-                        .enumerate()
-                        .for_each(|v| println!("->{v:?}"));
-                    println!("triangle count {}", mesh_pln.triangles.len());
+                if true {
                     let camera_direction = (camera.target - camera.position).to_vertex();
-                    mesh_pln.extract_silhouette(&camera_direction);
+                    let border_edges = mesh_pln.extract_silhouette(&camera_direction);
+                    for edge in border_edges.iter() {
+                        let pt1 = camera.project_maybe_outside(&edge.0);
+                        let pt2 = camera.project_maybe_outside(&edge.1);
+                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                            draw_aa_line_with_thickness(
+                                &mut buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                3,
+                                0x0000FF,
+                            );
+                        }
+                    }
                     if false {
+                        println!("vertex count {}", mesh_pln.vertices.len());
+                        mesh_pln
+                            .vertices
+                            .iter()
+                            .enumerate()
+                            .for_each(|v| println!("->{v:?}"));
+                        println!("triangle count {}", mesh_pln.triangles.len());
                         mesh_pln
                             .export_to_obj_with_normals_fast("meshplane.obj")
                             .ok();
+                        panic!();
                     }
-                    panic!();
                 }
                 // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_divided_grid_from_corner(

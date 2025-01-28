@@ -65,7 +65,7 @@ pub mod visualization_v3 {
         pub fn project_points(&self, points: &Vec<Vertex>) -> Vec<(usize, usize, f64)> {
             points
                 .par_iter() // Use parallel iterator
-                .filter_map(|point| self.project(*point)) // Apply the project method in parallel
+                .filter_map(|point| self.project(point)) // Apply the project method in parallel
                 .collect() // Collect results into a Vec
         }
 
@@ -131,7 +131,7 @@ pub mod visualization_v3 {
         }
 
         /// Project a vertex in a 2d camera space projection.
-        pub fn project(&self, point: Vertex) -> Option<(usize, usize, f64)> {
+        pub fn project(&self, point: &Vertex) -> Option<(usize, usize, f64)> {
             // Use precomputed matrices
             let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
 
@@ -139,7 +139,7 @@ pub mod visualization_v3 {
             let depth_in_camera_space = camera_space_point.z;
 
             let projected_point =
-                self.multiply_matrix_vector(self.projection_matrix, camera_space_point);
+                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
 
             // Homogeneous divide (perspective divide)
             let x = projected_point.x / projected_point.z;
@@ -159,15 +159,15 @@ pub mod visualization_v3 {
 
             Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
         }
-
+        
         #[inline(always)]
         /// Project a vertex in a 2d camera space projection.
-        pub fn project_maybe_outside(&self, point: Vertex) -> (f64, f64) {
+        pub fn project_maybe_outside(&self, point: &Vertex) -> (f64, f64) {
             // Use precomputed matrices
             let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
 
             let projected_point =
-                self.multiply_matrix_vector(self.projection_matrix, camera_space_point);
+                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
 
             // Homogeneous divide (perspective divide)
             let x = projected_point.x / projected_point.z;
@@ -180,7 +180,7 @@ pub mod visualization_v3 {
             (screen_x as f64, screen_y as f64)
         }
 
-        pub fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: Vertex) -> Vertex {
+        pub fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: &Vertex) -> Vertex {
             Vertex::new(
                 matrix[0][0] * v.x + matrix[0][1] * v.y + matrix[0][2] * v.z + matrix[0][3],
                 matrix[1][0] * v.x + matrix[1][1] * v.y + matrix[1][2] * v.z + matrix[1][3],
@@ -250,7 +250,7 @@ pub mod visualization_v3 {
         ) -> Vec<Vertex> {
             points
                 .iter()
-                .map(|point| self.multiply_matrix_vector(transformation_matrix, *point))
+                .map(|point| self.multiply_matrix_vector(transformation_matrix, point))
                 .collect()
         }
         /// Apply a transformation matrix to a Vec<Vertex> and return the transformed points
@@ -262,7 +262,7 @@ pub mod visualization_v3 {
         ) -> Vec<Vertex> {
             points
                 .par_iter()
-                .map(|point| self.multiply_matrix_vector(transformation_matrix, *point))
+                .map(|point| self.multiply_matrix_vector(transformation_matrix, point))
                 .collect()
         }
 
@@ -273,7 +273,7 @@ pub mod visualization_v3 {
             transformation_matrix: [[f64; 4]; 4],
         ) {
             points.iter_mut().for_each(|point| {
-                *point = self.multiply_matrix_vector(transformation_matrix, *point);
+                *point = self.multiply_matrix_vector(transformation_matrix, point);
             });
         }
         /// Apply a transformation matrix to a mutable Vec<Vertex>
@@ -284,7 +284,7 @@ pub mod visualization_v3 {
             transformation_matrix: [[f64; 4]; 4],
         ) {
             points.par_iter_mut().for_each(|point| {
-                *point = self.multiply_matrix_vector(transformation_matrix, *point);
+                *point = self.multiply_matrix_vector(transformation_matrix, point);
             });
         }
         /// Generate a transformation matrix for panning the camera
@@ -329,7 +329,7 @@ pub mod visualization_v3 {
             // Step 2: Apply the pan transformation to all points
             points
                 .iter()
-                .map(|point| self.multiply_matrix_vector(pan_matrix, *point))
+                .map(|point| self.multiply_matrix_vector(pan_matrix, point))
                 .collect()
         }
 
@@ -340,7 +340,7 @@ pub mod visualization_v3 {
 
             // Step 2: Apply the pan transformation to all points
             points.iter_mut().for_each(|point| {
-                (*point) = self.multiply_matrix_vector(pan_matrix, *point);
+                (*point) = self.multiply_matrix_vector(pan_matrix, point);
             });
         }
 
@@ -1934,17 +1934,21 @@ pub mod rendering_object {
         }
 
         // Extract the edge describing the contour of the mesh.
-        pub fn extract_silhouette(&self, camera_direction: &Vertex) {
+        pub fn extract_silhouette(&self, camera_direction: &Vertex) -> Vec<(Vertex, Vertex)> {
+            let mut result = Vec::new();
+            /*
             println!("Extract silhouette Debug Mode:");
             if self.is_watertight() {
                 println!("The mesh is closed.");
             } else {
                 println!("The mesh is open.");
             }
+            */
             let map = self.find_shared_edges();
             for (edge, triangle_id) in map.iter() {
                 // if edge is shared with two triangles.
                 if triangle_id.len() == 2 {
+                    // Compute visibility from camera direction.
                     let triangle_a_is_visible =
                         if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
                             true
@@ -1958,20 +1962,20 @@ pub mod rendering_object {
                             false
                         };
                     if triangle_a_is_visible != triangle_b_is_visible {
+                        result.push((self.vertices[edge.0], self.vertices[edge.1]));
+                        /*
                         println!(
-                            "Edge ({3:?},{4:?}) is a border, bound to  triangle {0:?} visibility:\"{1:?}\" dot:{2:?}",
+                            "Shared Edge ({6:?},{7:?}) is a border, bound to triangles index:({0:?}&{1:?}), visibility:\"{2:?},{3:?}\" dot:({4:?},{5:?})",
                             triangle_id[0],
-                            triangle_a_is_visible,
-                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
-                            self.vertices[edge.0],
-                            self.vertices[edge.1],
-                        );
-                        println!(
-                            "- triangle {0:?} is visible:\"{1:?}\" dot:{2:?}",
                             triangle_id[1],
                             triangle_a_is_visible,
-                            self.triangles[triangle_id[1]].normal.dot(&camera_direction)
+                            triangle_b_is_visible,
+                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
+                            self.triangles[triangle_id[1]].normal.dot(&camera_direction),
+                            edge.0,
+                            edge.1,
                         );
+                        */
                     }
                 }
                 if triangle_id.len() == 1 {
@@ -1981,16 +1985,20 @@ pub mod rendering_object {
                         } else {
                             false
                         };
+                    result.push((self.vertices[edge.0], self.vertices[edge.1]));
+                    /*
                     println!(
                             "Edge ({3:?},{4:?}) is a border, bound to  triangle {0:?} visibility:\"{1:?}\" dot:{2:?}",
                             triangle_id[0],
                             triangle_a_is_visible,
                             self.triangles[triangle_id[0]].normal.dot(&camera_direction),
-                            self.vertices[edge.0],
-                            self.vertices[edge.1],
+                            edge.0,
+                            edge.1,
                         );
+                    */
                 }
             }
+            result
         }
     }
     ////////////////////////////////////////////////////////////////////////////
@@ -2178,10 +2186,10 @@ pub mod rendering_object {
                     indices += 3;
 
                     // Temporary display of the indexing logic./////////////////
-                    let p1 = camera.project_maybe_outside(vert_a);
-                    let p2 = camera.project_maybe_outside(vert_b);
-                    let p3 = camera.project_maybe_outside(vert_c);
-                    let p4 = camera.project_maybe_outside(vert_d);
+                    let p1 = camera.project_maybe_outside(&vert_a);
+                    let p2 = camera.project_maybe_outside(&vert_b);
+                    let p3 = camera.project_maybe_outside(&vert_c);
+                    let p4 = camera.project_maybe_outside(&vert_d);
                     // Graph point projection on screen space (only one triangle for now).
                     if let Some(pt) = clip_line(p1, p2, screen_width, screen_height) {
                         rust3d::draw::draw_aa_line(buffer, screen_width, pt.0, pt.1, 0xff6abd);
