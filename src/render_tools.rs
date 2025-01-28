@@ -1176,8 +1176,8 @@ pub mod rendering_object {
 
         #[inline(always)]
         /// Stabilize double precision number to a digit scale.
-        ///1e3 will round to 0.001
-        ///1e6 will rount to 0.000001
+        ///  1e3 will round to 0.001
+        ///  1e6 will rount to 0.000001
         pub fn clean_up_digits(&mut self,precision:f64){
             self.x = self.x.trunc() + (self.x.fract() * precision).round() / precision;
             self.y = self.y.trunc() + (self.y.fract() * precision).round() / precision;
