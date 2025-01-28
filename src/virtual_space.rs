@@ -989,7 +989,7 @@ impl DisplayPipeLine {
                     2,
                     0,
                 );
-                //Draw a Sine wave////////////////////////////////////////////////
+                //Draw a Sine wave//////////////////////////////////////////////
                 for (x, y) in sine_path.iter() {
                     // Without antialiasing
                     buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
@@ -1007,9 +1007,9 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM: (f64, f64) = (0.4, 0.3);
-                const UV_COUNT: (usize, usize) = (4, 3);
-                let pt_origin = Point3d::new(0.2, -0.4, 0.0);
+                const UV_DIM: (f64, f64) = (0.2, 0.2);
+                const UV_COUNT: (usize, usize) = (2, 2);
+                let pt_origin = Point3d::new(0.2, -0.1, 0.0);
                 let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
                 let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
                 let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
@@ -1046,15 +1046,14 @@ impl DisplayPipeLine {
                         .iter()
                         .enumerate()
                         .for_each(|v| println!("->{v:?}"));
-                    println!("vertex count {}", mesh_pln.vertices.len());
                     println!("triangle count {}", mesh_pln.triangles.len());
-                    let map = mesh_pln.find_shared_edges();
-                    for (edge, triangle_indices) in map.iter() {
-                        println!("edge {0:?} share triangle {1:?}", edge, triangle_indices);
+                    let camera_direction = (camera.target - camera.position).to_vertex();
+                    mesh_pln.extract_silhouette(&camera_direction);
+                    if false {
+                        mesh_pln
+                            .export_to_obj_with_normals_fast("meshplane.obj")
+                            .ok();
                     }
-                    mesh_pln
-                        .export_to_obj_with_normals_fast("meshplane.obj")
-                        .ok();
                     panic!();
                 }
                 // Create 3d grid and Project points on grid.

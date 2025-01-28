@@ -1178,7 +1178,7 @@ pub mod rendering_object {
         /// Stabilize double precision number to a digit scale.
         ///  1e3 will round to 0.001
         ///  1e6 will rount to 0.000001
-        pub fn clean_up_digits(&mut self,precision:f64){
+        pub fn clean_up_digits(&mut self, precision: f64) {
             self.x = self.x.trunc() + (self.x.fract() * precision).round() / precision;
             self.y = self.y.trunc() + (self.y.fract() * precision).round() / precision;
             self.z = self.z.trunc() + (self.z.fract() * precision).round() / precision;
@@ -1902,26 +1902,6 @@ pub mod rendering_object {
             }
             map
         }
-        /// Removes duplicate vertices and updates triangles indices efficiently.
-        pub fn remove_duplicate_vertices_old(&mut self) {
-            let mut unique_vertices = Vec::new();
-            let mut index_map: HashMap<Vertex, usize> = HashMap::new();
-
-            // Iterate through old vertices list and create an indices mapping
-            // without duplicate value.
-            for &vertex in self.vertices.iter() {
-                if let Some(&new_index) = index_map.get(&vertex) {
-                    // if Vertex hashmap key already exist, update the hashmap value with the new_index.
-                    index_map.insert(vertex, new_index);
-                } else {
-                    // New unique vertex, add it to new unique version list
-                    // and update the (key,value) pair.
-                    let new_index = unique_vertices.len();
-                    unique_vertices.push(vertex);
-                    index_map.insert(vertex, new_index);
-                }
-            }
-        }
         /// Remove duplicate vertices of the mesh and update triangles
         /// vertex indices efficiently.
         pub fn remove_duplicate_vertices(&mut self) {
@@ -1949,9 +1929,68 @@ pub mod rendering_object {
                     }
                 }
             }
-
             // Replace original vertex list with deduplicated one
             self.vertices = unique_vertices;
+        }
+
+        // Extract the edge describing the contour of the mesh.
+        pub fn extract_silhouette(&self, camera_direction: &Vertex) {
+            println!("Extract silhouette Debug Mode:");
+            if self.is_watertight() {
+                println!("The mesh is closed.");
+            } else {
+                println!("The mesh is open.");
+            }
+            let map = self.find_shared_edges();
+            for (edge, triangle_id) in map.iter() {
+                // if edge is shared with two triangles.
+                if triangle_id.len() == 2 {
+                    let triangle_a_is_visible =
+                        if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
+                            true
+                        } else {
+                            false
+                        };
+                    let triangle_b_is_visible =
+                        if self.triangles[triangle_id[1]].normal.dot(&camera_direction) < 0.0 {
+                            true
+                        } else {
+                            false
+                        };
+                    if triangle_a_is_visible != triangle_b_is_visible {
+                        println!(
+                            "Edge ({3:?},{4:?}) is a border, bound to  triangle {0:?} visibility:\"{1:?}\" dot:{2:?}",
+                            triangle_id[0],
+                            triangle_a_is_visible,
+                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
+                            self.vertices[edge.0],
+                            self.vertices[edge.1],
+                        );
+                        println!(
+                            "- triangle {0:?} is visible:\"{1:?}\" dot:{2:?}",
+                            triangle_id[1],
+                            triangle_a_is_visible,
+                            self.triangles[triangle_id[1]].normal.dot(&camera_direction)
+                        );
+                    }
+                }
+                if triangle_id.len() == 1 {
+                    let triangle_a_is_visible =
+                        if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
+                            true
+                        } else {
+                            false
+                        };
+                    println!(
+                            "Edge ({3:?},{4:?}) is a border, bound to  triangle {0:?} visibility:\"{1:?}\" dot:{2:?}",
+                            triangle_id[0],
+                            triangle_a_is_visible,
+                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
+                            self.vertices[edge.0],
+                            self.vertices[edge.1],
+                        );
+                }
+            }
         }
     }
     ////////////////////////////////////////////////////////////////////////////
