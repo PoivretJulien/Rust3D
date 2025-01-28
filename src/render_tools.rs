@@ -159,7 +159,7 @@ pub mod visualization_v3 {
 
             Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
         }
-        
+
         #[inline(always)]
         /// Project a vertex in a 2d camera space projection.
         pub fn project_maybe_outside(&self, point: &Vertex) -> (f64, f64) {

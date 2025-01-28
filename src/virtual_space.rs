@@ -1098,6 +1098,7 @@ impl DisplayPipeLine {
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
+                // the normals of the box face are  not unified i will check this tomorow. 
                 let m_box = MeshBox::new(
                     &mut buffer,
                     screen_width,
