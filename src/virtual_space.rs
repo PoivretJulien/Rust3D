@@ -1038,10 +1038,10 @@ impl DisplayPipeLine {
                     UV_COUNT.1,
                 )
                 .to_mesh();
-                /*
+                if false {
                 println!("vertex count {}", mesh_pln.vertices.len());
                 mesh_pln.remove_duplicate_vertices();
-                mesh_pln.vertices.iter().for_each(|v|{println!("->{v:?}")});
+                mesh_pln.vertices.iter().enumerate().for_each(|v|{println!("->{v:?}")});
                 println!("vertex count {}", mesh_pln.vertices.len());
                 println!("triangle count {}", mesh_pln.triangles.len());
 
@@ -1049,8 +1049,9 @@ impl DisplayPipeLine {
                 for (edge, triangle_indices) in map.iter() {
                     println!("edge {0:?} share triangle {1:?}", edge, triangle_indices);
                 }
+                //mesh_pln.export_to_obj_with_normals_fast("meshplane.obj").ok();
                 panic!();
-                */
+                }
                 // Create 3d grid and Project points on grid.
                 let pt_grid = draw::make_3d_divided_grid_from_corner(
                     &p3,

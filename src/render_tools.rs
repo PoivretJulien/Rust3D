@@ -1173,6 +1173,16 @@ pub mod rendering_object {
         pub fn dot(&self, other: &Vertex) -> f64 {
             self.x * other.x + self.y * other.y + self.z * other.z
         }
+
+        #[inline(always)]
+        /// Stabilize double precision number to a digit scale.
+        ///1e3 will round to 0.001
+        ///1e6 will rount to 0.000001
+        pub fn clean_up_digits(&mut self,precision:f64){
+            self.x = self.x.trunc() + (self.x.fract() * precision).round() / precision;
+            self.y = self.y.trunc() + (self.y.fract() * precision).round() / precision;
+            self.z = self.z.trunc() + (self.z.fract() * precision).round() / precision;
+        }
     }
     impl Sub for Vertex {
         type Output = Self;
@@ -1943,7 +1953,6 @@ pub mod rendering_object {
             // Replace original vertex list with deduplicated one
             self.vertices = unique_vertices;
         }
-        
     }
     ////////////////////////////////////////////////////////////////////////////
     // A temporary object representing a parametric object.
@@ -2045,16 +2054,20 @@ pub mod rendering_object {
             for u in 0..divide_count_u {
                 for v in 0..divide_count_v {
                     // quad origin point.
-                    let vert_a = grid_points[v * divide_count_u + u];
+                    let mut vert_a = grid_points[v * divide_count_u + u];
                     // quad point on u direction.
-                    let vert_b = vert_a + plane_vector_u;
+                    let mut vert_b = vert_a + plane_vector_u;
                     // quad point diagonal u+v direction.
-                    let vert_c =
+                    let mut vert_c =
                         grid_points[v * divide_count_u + u] + (plane_vector_u + plane_vector_v);
                     // quad point on v direction.
-                    let vert_d = grid_points[v * divide_count_u + u] + (plane_vector_v);
+                    let mut vert_d = grid_points[v * divide_count_u + u] + (plane_vector_v);
                     // Add first triangle.
                     // index logic 1,2,4
+                    vert_a.clean_up_digits(1e6);
+                    vert_b.clean_up_digits(1e6);
+                    vert_c.clean_up_digits(1e6);
+                    vert_d.clean_up_digits(1e6);
                     mesh_plane_result.vertices.push(vert_a);
                     mesh_plane_result.vertices.push(vert_b);
                     mesh_plane_result.vertices.push(vert_d);
@@ -2149,8 +2162,8 @@ pub mod rendering_object {
                     ////////////////////////////////////////////////////////////
                 }
             }
-            // return the parametric mesh plane.
             mesh_plane_result.remove_duplicate_vertices();
+            // return the parametric mesh plane.
             mesh_plane_result
         }
         #[inline(always)]
@@ -2424,7 +2437,7 @@ pub mod rendering_object {
 
             // Replace original vertex list with deduplicated one
             self.vertices = unique_vertices;
-        }    
+        }
     }
 
     #[derive(Debug, Clone)]

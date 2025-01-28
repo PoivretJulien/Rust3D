@@ -4166,6 +4166,16 @@ pub mod utillity {
 
         y
     }
+
+    #[inline(always)]
+    /// Round digit number to a precision scale.
+    /// precision of 1_000.0 will round digit at 0.001
+    /// precision of 1e6 will round at 0.000001 
+    /// the non fractional part is untouched.
+    pub fn round_at_scale(input_value:f64,precision:f64)->f64{
+        input_value.trunc() + (input_value.fract() * precision).round() / precision
+    }
+   
     /// Remap range 1 to range 2 from s value at the scale of range 1.
     pub fn remap(from_range: (f64, f64), to_range: (f64, f64), s: f64) -> f64 {
         to_range.0 + (s - from_range.0) * (to_range.1 - to_range.0) / (from_range.1 - from_range.0)
