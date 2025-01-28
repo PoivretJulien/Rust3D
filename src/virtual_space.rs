@@ -774,8 +774,7 @@ impl DisplayPipeLine {
                                 // Could have been parallelized i don't know if that would have
                                 // been beneficial...
                                 for projected_point in r.iter() {
-                                    buffer[projected_point.1 * screen_width + projected_point.0] =
-                                        Color::convert_rgba_color(0, 0, 0, 1.0, background_color);
+                                    buffer[projected_point.1 * screen_width + projected_point.0] = 0x00004e;
                                 }
                             }
                         }
@@ -1062,7 +1061,7 @@ impl DisplayPipeLine {
                     );
                 }
                 // Draw a parametric block mesh (not usally the object to create at each frames).
-                // but that a good test.
+                // but that's a good test.
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
