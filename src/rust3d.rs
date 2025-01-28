@@ -182,6 +182,16 @@ pub mod geometry {
         pub fn to_tuple(self) -> (f64, f64, f64) {
             (self.X, self.Y, self.Z)
         }
+        
+        #[inline(always)]
+        /// Stabilize double precision number to a digit scale.
+        ///  1e3 will round to 0.001
+        ///  1e6 will rount to 0.000001
+        pub fn clean_up_digits(&mut self, precision: f64) {
+            self.X = self.X.trunc() + (self.X.fract() * precision).round() / precision;
+            self.Y = self.Y.trunc() + (self.Y.fract() * precision).round() / precision;
+            self.Z = self.Z.trunc() + (self.Z.fract() * precision).round() / precision;
+        }
     }
 
     // Vector 3d definition.
@@ -235,6 +245,18 @@ pub mod geometry {
         }
         pub fn get_Z(&self) -> f64 {
             self.Z
+        }
+
+
+        #[inline(always)]
+        /// Stabilize double precision number to a digit scale.
+        ///  1e3 will round to 0.001
+        ///  1e6 will rount to 0.000001
+        pub fn clean_up_digits(&mut self, precision: f64) {
+            self.X = self.X.trunc() + (self.X.fract() * precision).round() / precision;
+            self.Y = self.Y.trunc() + (self.Y.fract() * precision).round() / precision;
+            self.Z = self.Z.trunc() + (self.Z.fract() * precision).round() / precision;
+            self.update_length();
         }
 
         /// Return the read only length

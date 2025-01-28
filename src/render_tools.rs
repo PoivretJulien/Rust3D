@@ -1092,7 +1092,7 @@ pub mod rendering_object {
     use std::io::{BufRead, BufReader};
     use std::io::{BufWriter, Write};
     use std::marker::Copy;
-    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub};
+    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub,Neg};
     use std::sync::{Arc, Mutex};
     /// A 3D vertex or point.
     #[derive(Debug, Clone, Copy, PartialOrd)]
@@ -1253,6 +1253,16 @@ pub mod rendering_object {
             let v_y = self.y * scalar;
             let v_z = self.z * scalar;
             Vertex::new(v_x, v_y, v_z)
+        }
+    }
+    impl Neg for Vertex {
+        type Output = Self;
+        fn neg(self) -> Self::Output {
+            Self {
+                x: -self.x,
+                y: -self.y,
+                z: -self.z,
+            }
         }
     }
     /// A triangle that references vertices in the shared vertex pool.
