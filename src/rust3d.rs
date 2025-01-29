@@ -2031,8 +2031,33 @@ pub mod transformation {
         }
         result
     }
-
+    
     /// Apply a transformations matrix to a point
+    /// input data can be Point3d Vector3d or a Vertex
+    pub fn transform_point<T: Coordinate3d + Send + Sync>(
+        tranform_matrix: &[[f64; 4]; 4],
+        point_to_process: &T,
+    ) -> T
+    where
+        T: Coordinate3d<Output = T>,
+    {
+                T::new(
+                    tranform_matrix[0][0] * (*point_to_process).get_x()
+                        + tranform_matrix[0][1] * (*point_to_process).get_y()
+                        + tranform_matrix[0][2] * (*point_to_process).get_z()
+                        + tranform_matrix[0][3] * 1.0,
+                    tranform_matrix[1][0] * (*point_to_process).get_x()
+                        + tranform_matrix[1][1] * (*point_to_process).get_y()
+                        + tranform_matrix[1][2] * (*point_to_process).get_z()
+                        + tranform_matrix[1][3] * 1.0,
+                    tranform_matrix[2][0] * (*point_to_process).get_x()
+                        + tranform_matrix[2][1] * (*point_to_process).get_y()
+                        + tranform_matrix[2][2] * (*point_to_process).get_z()
+                        + tranform_matrix[2][3] * 1.0,
+                )
+    }
+
+    /// Apply a transformations matrix to a list of points
     /// input data can be Point3d Vector3d or a Vertex
     pub fn transform_points<T: Coordinate3d + Send + Sync>(
         tranform_matrix: &[[f64; 4]; 4],
@@ -2680,7 +2705,7 @@ pub mod draw {
             }
         }
     }
-
+    use crate::render_tools::visualization_v4::Camera;
     /// Draw a unit Grid System with anti aliased lines for visual reference of the unit system.
     /// note:
     ///    - unid grid spacing should be always a multiple of the overall
@@ -3504,175 +3529,7 @@ pub mod draw {
     }
 
     use crate::render_tools::rendering_object::Vertex;
-    use crate::render_tools::visualization_v3::Camera;
 
-    ///Deprecated. Draw a Gimball from a CPlane and a scalar value .
-    pub fn draw_plane_gimball_3d(
-        mut buffer: &mut Vec<u32>,
-        width: usize,
-        plane: CPlane,
-        camera: &Camera,
-        alpha: f32,
-        background_color: u32,
-        scalar: f64,
-    ) {
-        // Check if the CPlane sytem is in the camera frame if yes draw bsis axis vectors of the system.
-        if let Some(origin) = camera.project(&plane.origin.to_vertex()) {
-            if let Some(x_axis) = camera.project(&(plane.origin + (plane.u * scalar)).to_vertex()) {
-                draw_line(
-                    &mut buffer,
-                    width,
-                    (origin.0, origin.1),
-                    (x_axis.0, x_axis.1),
-                    Color::convert_rgba_color(255, 0, 0, alpha, background_color),
-                );
-            }
-            if let Some(y_axis) = camera.project(&(plane.origin + (plane.v * scalar)).to_vertex()) {
-                draw_line(
-                    &mut buffer,
-                    width,
-                    (origin.0, origin.1),
-                    (y_axis.0, y_axis.1),
-                    Color::convert_rgba_color(0, 255, 0, alpha, background_color),
-                );
-            }
-            if let Some(z_axis) =
-                camera.project(&(plane.origin + (plane.normal * scalar)).to_vertex())
-            {
-                draw_line(
-                    &mut buffer,
-                    width,
-                    (origin.0, origin.1),
-                    (z_axis.0, z_axis.1),
-                    Color::convert_rgba_color(0, 0, 255, alpha, background_color),
-                );
-            }
-        }
-        // Draw triangles arrows on CPlane (uvn)
-        // below are unit triangles points from normalized basis system.
-        let mut arrow_x = vec![
-            (Vertex::new(0.000, 0.000, -0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
-            (Vertex::new(0.000, -0.000, 0.083) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
-            (Vertex::new(0.250, 0.000, -0.000) + Vertex::new(1.0, 0.0, 0.0)) * scalar,
-        ];
-        // mutate the static data of triangles points on the CPlane location.
-        arrow_x.iter_mut().for_each(|vertex| {
-            *vertex = plane
-                .point_on_plane(vertex.x, vertex.y, vertex.z)
-                .to_vertex()
-        });
-        let mut arrow_y = vec![
-            (Vertex::new(-0.000, 0.000, -0.083) + Vertex::new(0.0, 1.0, 0.0)) * scalar,
-            (Vertex::new(0.000, 0.000, 0.083) + Vertex::new(0.0, 1.0, 0.0)) * scalar,
-            (Vertex::new(0.000, 0.250, -0.000) + Vertex::new(0.0, 1.0, 0.0)) * scalar,
-        ];
-        arrow_y.iter_mut().for_each(|vertex| {
-            *vertex = plane
-                .point_on_plane(vertex.x, vertex.y, vertex.z)
-                .to_vertex()
-        });
-        let mut arrow_z = vec![
-            (Vertex::new(0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
-            (Vertex::new(-0.083, 0.000, 0.000) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
-            (Vertex::new(0.000, 0.000, 0.250) + Vertex::new(0.0, 0.0, 1.0)) * scalar,
-        ];
-        arrow_z.iter_mut().for_each(|vertex| {
-            *vertex = plane
-                .point_on_plane(vertex.x, vertex.y, vertex.z)
-                .to_vertex()
-        });
-        // Project arrows 3d system on 2d screen space.
-        // if arrows are in screen space then draw the triangle with simple 2d lines.
-        ///////////////////////////////////////////////////////////////////////////////////////
-        let mut arrow_x_pt: Vec<(usize, usize)> = Vec::new();
-        for i in 0..3usize {
-            if let Some(pt) = camera.project(&arrow_x[i]) {
-                arrow_x_pt.push((pt.0, pt.1));
-            }
-        }
-        if arrow_x_pt.len() == 3 {
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_x_pt[0].0, arrow_x_pt[0].1),
-                (arrow_x_pt[1].0, arrow_x_pt[1].1),
-                Color::convert_rgba_color(255, 0, 0, alpha, background_color),
-            );
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_x_pt[0].0, arrow_x_pt[0].1),
-                (arrow_x_pt[2].0, arrow_x_pt[2].1),
-                Color::convert_rgba_color(255, 0, 0, alpha, background_color),
-            );
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_x_pt[1].0, arrow_x_pt[1].1),
-                (arrow_x_pt[2].0, arrow_x_pt[2].1),
-                Color::convert_rgba_color(255, 0, 0, alpha, background_color),
-            );
-        }
-        let mut arrow_y_pt: Vec<(usize, usize)> = Vec::new();
-        for i in 0..3usize {
-            if let Some(pt) = camera.project(&arrow_y[i]) {
-                arrow_y_pt.push((pt.0, pt.1));
-            }
-        }
-        if arrow_y_pt.len() == 3 {
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_y_pt[0].0, arrow_y_pt[0].1),
-                (arrow_y_pt[1].0, arrow_y_pt[1].1),
-                Color::convert_rgba_color(0, 255, 0, alpha, background_color),
-            );
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_y_pt[0].0, arrow_y_pt[0].1),
-                (arrow_y_pt[2].0, arrow_y_pt[2].1),
-                Color::convert_rgba_color(0, 255, 0, alpha, background_color),
-            );
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_y_pt[1].0, arrow_y_pt[1].1),
-                (arrow_y_pt[2].0, arrow_y_pt[2].1),
-                Color::convert_rgba_color(0, 255, 0, alpha, background_color),
-            );
-        }
-        let mut arrow_z_pt: Vec<(usize, usize)> = Vec::new();
-        for i in 0..3usize {
-            if let Some(pt) = camera.project(&arrow_z[i]) {
-                arrow_z_pt.push((pt.0, pt.1));
-            }
-        }
-        if arrow_z_pt.len() == 3 {
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_z_pt[0].0, arrow_z_pt[0].1),
-                (arrow_z_pt[1].0, arrow_z_pt[1].1),
-                Color::convert_rgba_color(0, 0, 255, alpha, background_color),
-            );
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_z_pt[0].0, arrow_z_pt[0].1),
-                (arrow_z_pt[2].0, arrow_z_pt[2].1),
-                Color::convert_rgba_color(0, 0, 255, alpha, background_color),
-            );
-            draw_line(
-                &mut buffer,
-                width,
-                (arrow_z_pt[1].0, arrow_z_pt[1].1),
-                (arrow_z_pt[2].0, arrow_z_pt[2].1),
-                Color::convert_rgba_color(0, 0, 255, alpha, background_color),
-            );
-        }
-        ///////////////////////////////////////////////////////////////////////////////////////
-    }
 
     /// Describe a circle With Point 3d (this not draw the circle on buffer a function will be
     /// added soon for that.)

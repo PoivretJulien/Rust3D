@@ -40,8 +40,8 @@
 
 use crate::render_tools::rendering_object::{Mesh, MeshBox, MeshPlane, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
-use crate::render_tools::visualization_v3::Camera;
-use crate::rust3d::draw::{self, draw_aa_line, draw_aa_line_with_thickness};
+use crate::render_tools::visualization_v4::Camera;
+use crate::rust3d::draw::{self, draw_aa_line, draw_aa_line_with_thickness, draw_disc, draw_gimball_from_plane, draw_text};
 use crate::rust3d::intersection::clip_line;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
@@ -617,22 +617,6 @@ impl DisplayPipeLine {
        mutate and update the buffer to the screen.
     */
     pub fn start_display_pipeline(&mut self) {
-        // Draw a sine path... for test.
-        let mut sine_path: Vec<(isize, isize)> = Vec::new();
-        let step = 0.005f32;
-        let mut ct = 0;
-        let mut v = 0.0f32;
-        const SCALAR: f32 = 50.0;
-        const XOFFSET: isize = 100;
-        const YOFFSET: isize = 400;
-        while ct <= 6000 {
-            v += step;
-            sine_path.push((
-                (v * (SCALAR / 2.5)) as isize + XOFFSET,
-                (f32::sin(v) * SCALAR) as isize + YOFFSET,
-            ));
-            ct += 1;
-        }
         // minifb must be lunch in the main thread (i was not aware about that) so the overall
         // runtime will be simply flipped:
         // - a thread will be allocated for virtualspace
@@ -661,7 +645,7 @@ impl DisplayPipeLine {
             // representing the color and the 2d position of points.
             let mut buffer: Vec<u32> = vec![background_color; screen_width * screen_height];
             // Define the Display Unit initial Projection System.
-            let camera = Camera::new(
+            let mut camera = Camera::new(
                 Point3d::new(0.0, -1.0, -0.27), // Camera position (1 is the max value)
                 Point3d::new(0.0, 0.0, 0.0), // Camera target ( relative to position must be 0,0,0 )
                 Vector3d::new(0.0, 0.0, 1.0), // Camera up vector (for inner cross product operation usually Y=1)
@@ -672,8 +656,24 @@ impl DisplayPipeLine {
                 100.0, // Far clip plane
             );
             window.set_target_fps(25); // limit to 25 fps max.
+                                       // Scale transformation for the geometry.
+            let scale_matrix = transformation::scaling_matrix_from_center_4x3(
+                Vertex::new(0.0, 0.0, 0.0),
+                0.5,
+                0.5,
+                0.5,
+            );
             let mut z_angle = 0.0;
             let mut x_angle = 0.0;
+            // Camera matrix transformation.
+            let camera_position = camera.view_matrix;
+            let mut orbit_matrix = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+            let pan_matrix = camera.transform_camera_matrix_pan(0.0, -0.3);
             println!("\x1b[2J");
             println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry.");
             while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -684,39 +684,40 @@ impl DisplayPipeLine {
                 if window.is_key_pressed(Key::Left, minifb::KeyRepeat::No) {
                     println!("\x1b[1;0H\x1b[2K\rkey Left pressed");
                     z_angle -= 25.0;
+                    orbit_matrix =
+                        transformation::rotation_matrix_from_angles(x_angle, 0.0, z_angle);
                 }
                 if window.is_key_pressed(Key::Right, minifb::KeyRepeat::No) {
                     println!("\x1b[1;0H\x1b[2K\rkey Right pressed");
                     z_angle += 25.0;
+                    orbit_matrix =
+                        transformation::rotation_matrix_from_angles(x_angle, 0.0, z_angle);
                 }
                 if window.is_key_pressed(Key::Up, minifb::KeyRepeat::No) {
                     println!("\x1b[1;0H\x1b[2K\rkey Up pressed");
                     x_angle -= 25.0;
+                    orbit_matrix =
+                        transformation::rotation_matrix_from_angles(x_angle, 0.0, z_angle);
                 }
                 if window.is_key_pressed(Key::Down, minifb::KeyRepeat::No) {
                     println!("\x1b[1;0H\x1b[2K\rkey Down pressed");
                     x_angle += 25.0;
+                    orbit_matrix =
+                        transformation::rotation_matrix_from_angles(x_angle, 0.0, z_angle);
                 }
                 ////////////////////////////////////////////////////////////////
-                let matrix = transformation::rotation_matrix_from_angles_4x3(x_angle, 0.0, z_angle);
-                let scale_matrix = transformation::scaling_matrix_from_center_4x3(
-                    Vertex::new(0.0, 0.0, 0.0),
-                    0.5,
-                    0.5,
-                    0.5,
-                );
-                let translation_matrix =
-                    transformation::translation_matrix_4x3(Vertex::new(0.0, 0.0, -0.5));
-                let matrix = transformation::combine_matrices_4x3(vec![
-                    matrix,
-                    scale_matrix,
-                    translation_matrix,
+                // Update Camera Position.
+                camera.view_matrix = transformation::combine_matrices(vec![
+                    camera_position,
+                    pan_matrix,
+                    orbit_matrix,
                 ]);
-                // Display matrix on std out console.
+                // Display camera matrix on std out console.
                 println!(
-                    "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}",
-                    matrix[0], matrix[1], matrix[2]
+                    "\x1b[2;0H\x1b[2K\r{0:?}\x1b[3;0H\x1b[2K\r{1:?}\x1b[4;0H\x1b[2K\r{2:?}\x1b[5;0H\x1b[2K\r{3:?}",
+                    camera.view_matrix[0], camera.view_matrix[1], camera.view_matrix[2],camera.view_matrix[3]
                 );
+                ////////////////////////////////////////////////////////////////
                 // Draw an Unit grid test.
                 let o = Point3d::new(0.0, 0.0, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
@@ -729,13 +730,13 @@ impl DisplayPipeLine {
                     background_color,
                     &p,
                     &camera,
-                    Some(&matrix),
+                    None,
                     1.0,
                     1.0,
                     0.1,
                 );
                 // Test for a gimball graphic position.
-                let o = Point3d::new(0.5, 0.3, 0.0);
+                let o = Point3d::new(0.3, -0.2, 0.0);
                 let x = o + Point3d::new(0.1, 0.0, 0.0);
                 let y = o + Point3d::new(0.0, 0.1, 0.0);
                 let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
@@ -746,382 +747,65 @@ impl DisplayPipeLine {
                     background_color,
                     &p2,
                     &camera,
-                    Some(&matrix),
+                    None,
                     0.15,
                     1.0,
                     true,
                 );
-                // Get points.
-                if let Ok(mesh) = m.object_list[0].lock() {
-                    if let Some(obj) = mesh.data.clone() {
-                        if let Ok(mut m) = obj.lock() {
-                            if let Displayable::Mesh(ref mut mesh) = *m {
-                                // apply transformations to geometry(s) instead of camera (for testing
-                                // coherent behaviors between the diferent methods)
-                                // im still in the same body frame than my first alpha fading gimball
-                                // version so yhea, things have allready changed and will keep changing
-                                // if i keep working hard...
-                                // please im not an engineer i'm just doing my best to have a clear
-                                // sight of what im doing with fun and passion, now transformation module use
-                                // an interface trait object and can handle several sort of objects type
-                                // so i'm just testing "my littel pride" with my new methods ...
-                                // originally that was just my first gimball version"
-                                // so for now let's do some smurf ...
-                                // obscurentism is the dark magic of science
-                                // chalanges, skills, freedom to work hard and humanism is more my cup of thea !
-                                let transformed_point =
-                                    transformation::transform_points_4x3(&matrix, &mesh.vertices);
-                                let r = camera.project_points(&transformed_point);
-                                // Could have been parallelized i don't know if that would have
-                                // been beneficial...
-                                for projected_point in r.iter() {
-                                    buffer[projected_point.1 * screen_width + projected_point.0] =
-                                        0x00004e;
+                ////////////////////////////////////////////////////////////////
+                if false {
+                    // Get points.
+                    if let Ok(mesh) = m.object_list[0].lock() {
+                        if let Some(obj) = mesh.data.clone() {
+                            if let Ok(mut m) = obj.lock() {
+                                if let Displayable::Mesh(ref mut mesh) = *m {
+                                    // Scale the geometry at 0.5.
+                                    let transformed_point = transformation::transform_points_4x3(
+                                        &scale_matrix,
+                                        &mesh.vertices,
+                                    );
+                                    let r = camera.project_a_list_of_points(&transformed_point);
+                                    // Could have been parallelized i don't know if that would have
+                                    // been beneficial... not a big deal for now.
+                                    for projected_point in r.iter() {
+                                        buffer[projected_point.1 * screen_width
+                                            + projected_point.0] = 0x00004e;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
-                    // Some problems remain on the accuracy of the line position due to the rounding of
-                    // the data type usize may be an average display from float weight may be
-                    // implemented like with the aa of point method...
-                    draw::draw_aa_line_with_thickness(
-                        &mut buffer,
-                        screen_width,
-                        (screen_width as f64 / 3.0, screen_height as f64 / 2.0),
-                        (pos.0 as f64, pos.1 as f64),
-                        20,
-                        0x964b4b,
-                    );
-                    // Draw a dot at the center of the line to emphasize the rounding issue
-                    // of the line thickness issue.
-                    draw::draw_disc(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        screen_width / 3,
-                        screen_height / 2,
-                        1,
-                        0xff0000,
-                        1,
-                    );
-                }
-                // Draw a simple triangle for evaluating the line thickness  ///
-                // behavior.  //////////////////////////////////////////////////
-                let tri = [(50.0, 50.0), (50.0, 100.0), (100.0, 100.0), (100.0, 50.0)];
-                let color: u32 = 0x964b4b;
-                let thick = 3;
-                draw::draw_aa_line_with_thickness(
-                    &mut buffer,
-                    screen_width,
-                    tri[0],
-                    tri[1],
-                    thick,
-                    color,
-                );
-                draw::draw_aa_line_with_thickness(
-                    &mut buffer,
-                    screen_width,
-                    tri[1],
-                    tri[2],
-                    thick,
-                    color,
-                );
-                draw::draw_aa_line_with_thickness(
-                    &mut buffer,
-                    screen_width,
-                    tri[2],
-                    tri[0],
-                    thick,
-                    color,
-                );
-                draw::draw_aa_line_with_thickness(
-                    &mut buffer,
-                    screen_width,
-                    tri[1],
-                    tri[3],
-                    thick,
-                    color,
-                );
-                //Triangle end./////////////////////////////////////////////////
-                // A blurred circle showing gradient alpha fading.
-                draw::draw_circle(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    (screen_width / 4) * 3,
-                    (screen_height / 4) * 1,
-                    30,
-                    2,
-                    Color::convert_rgb_color(255, 0, 255),
-                    10,
-                );
-                //Draw a falloff disc like a brush style.///////////////////////
-                draw::draw_disc(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    screen_width / 4,
-                    screen_height / 2,
-                    30,
-                    Color::convert_rgb_color(0, 179, 255),
-                    100,
-                );
-                //Draw a regular disc  /////////////////////////////////////////
-                draw::draw_disc(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    (screen_width / 4) * 3,
-                    (screen_height / 4) * 2,
-                    30,
-                    Color::convert_rgb_color(153, 117, 255),
-                    1,
-                );
-
-                if let Some(pos) = window.get_mouse_pos(MouseMode::Clamp) {
-                    use rust3d::intersection::{Circle, Rectangle};
-                    let circle_zone = Circle::new((31, 31), 32.0);
-                    if circle_zone.is_point_inside((pos.0 as usize, pos.1 as usize)) {
-                        draw::draw_circle(
-                            &mut buffer,
-                            screen_width,
-                            screen_height,
-                            31,
-                            31,
-                            30,
-                            1,
-                            Color::convert_rgb_color(226, 0, 32),
-                            1,
-                        );
-                    } else {
-                        draw::draw_circle(
-                            &mut buffer,
-                            screen_width,
-                            screen_height,
-                            31,
-                            31,
-                            30,
-                            1,
-                            Color::convert_rgb_color(0, 255, 32),
-                            1,
-                        );
-                    }
-                    let rec = Rectangle::new((100, 10), (110, 21));
-                    if rec.is_point_inside((pos.0 as usize, pos.1 as usize)) {
-                        draw::draw_rectangle(
-                            &mut buffer,
-                            screen_width,
-                            screen_height,
-                            100,
-                            10,
-                            10,
-                            10,
-                            Color::convert_rgb_color(255, 25, 255),
-                        );
-                    } else {
-                        draw::draw_rectangle(
-                            &mut buffer,
-                            screen_width,
-                            screen_height,
-                            100,
-                            10,
-                            10,
-                            10,
-                            Color::convert_rgb_color(38, 25, 74),
-                        );
-                    }
-                    draw::draw_thick_line_experimental(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        (200, 150),
-                        (pos.0 as isize, pos.1 as isize),
-                        Color::convert_rgb_color(255, 0, 255),
-                        2,
-                    );
-                    draw::draw_thick_line(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        (145, 90),
-                        (pos.0 as isize, pos.1 as isize),
-                        Color::convert_rgb_color(255, 0, 255),
-                        3,
-                    );
-                    if window.get_mouse_down(MouseButton::Left) {
-                        draw::draw_aa_line_with_thickness(
-                            &mut buffer,
-                            screen_width,
-                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
-                            (pos.0 as f64, pos.1 as f64),
-                            3,
-                            Color::convert_rgb_color(255, 217, 0),
-                        );
-                    } else {
-                        draw::draw_aa_line(
-                            &mut buffer,
-                            screen_width,
-                            ((screen_width as f64 / 3.0), (screen_height as f64 / 2.5)),
-                            (pos.0 as f64, pos.1 as f64),
-                            Color::convert_rgb_color(0, 104, 255),
-                        );
-                    }
-                }
-                draw::draw_rounded_rectangle(
-                    &mut buffer,
-                    screen_width,
-                    screen_width / 2 - 200,
-                    10,
-                    400,
-                    35,
-                    8,
-                    Color::convert_rgb_color(104, 104, 104),
-                );
-                // Graph some primitive text.
-                draw::draw_text(
-                    &mut buffer,
-                    screen_height,
-                    screen_width,
-                    screen_width / 2 - 150,
-                    20,
-                    "Press Arrow Key to rotate",
-                    2,
-                    0,
-                );
-                //Draw a Sine wave//////////////////////////////////////////////
-                for (x, y) in sine_path.iter() {
-                    // Without antialiasing
-                    buffer[(*y as usize + 50 as usize) * screen_width + (*x as usize)] =
-                        Color::convert_rgb_color(255, 241, 0);
-                    // With antialiasing.
-                    draw::draw_anti_aliased_point(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        *x as usize,
-                        *y as usize,
-                        0.8,
-                        Color::convert_rgb_color(255, 241, 0),
-                    );
-                }
                 ////////////////////////////////////////////////////////////////
-                // Draw a plane x aligned and at 45 deg angle on ZY world plane.
-                const UV_DIM: (f64, f64) = (0.2, 0.2);
-                const UV_COUNT: (usize, usize) = (2, 2);
-                let pt_origin = Point3d::new(0.2, -0.1, 0.0);
-                let pt_x = pt_origin + Point3d::new(0.1, 0.0, 0.0);
-                let pt_y = pt_origin + Point3d::new(0.0, 0.1, 0.1);
-                let p3 = CPlane::new_origin_x_aligned_y_oriented(&pt_origin, &pt_x, &pt_y);
-
-                /*
-                Before refining the quality display aspect (at some point the api should implement GPU acceleration)
-                i want to focus on a quality core entity which does not rely neccesserly on display hardware method either gpu or cpu
-                and for doing so i need a way to graph what i design without any problem of portability for instance for designing
-                a parametric solid mesh entity, i need to visualize my indexing logic and my aa line full fill that purpose
-                and so step by step i should build dense layers on dense layers but this involve to focus on critical part of alghorithm
-                and efficiency
-                ...mostly don't trap yourself in over engineering stuff and hang your self in an inconsistant obscure api ...
-                */
-                // First parametric Mesh Plane object
-                // Some parameters are temporary for graphing the logic.
-                let mut mesh_pln = MeshPlane::new(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    &camera,
-                    Some(&matrix),
-                    &p3,
-                    UV_DIM.0,
-                    UV_DIM.1,
-                    UV_COUNT.0,
-                    UV_COUNT.1,
-                )
-                .to_mesh();
-                if true {
-                    let camera_direction = (camera.target - camera.position).to_vertex();
-                    let border_edges = mesh_pln.extract_silhouette(&camera_direction);
-                    for edge in border_edges.iter() {
-                        let pt1 = camera.project_maybe_outside(&edge.0);
-                        let pt2 = camera.project_maybe_outside(&edge.1);
-                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
-                            draw_aa_line_with_thickness(
-                                &mut buffer,
-                                screen_width,
-                                pt.0,
-                                pt.1,
-                                3,
-                                0x0000FF,
-                            );
-                        }
-                    }
-                    if false {
-                        println!("vertex count {}", mesh_pln.vertices.len());
-                        mesh_pln
-                            .vertices
-                            .iter()
-                            .enumerate()
-                            .for_each(|v| println!("->{v:?}"));
-                        println!("triangle count {}", mesh_pln.triangles.len());
-                        mesh_pln
-                            .export_to_obj_with_normals_fast("meshplane.obj")
-                            .ok();
-                        panic!();
-                    }
-                }
-                // Create 3d grid and Project points on grid.
-                let pt_grid = draw::make_3d_divided_grid_from_corner(
-                    &p3,
-                    UV_DIM.0 + 0.1,
-                    UV_DIM.1 + 0.1,
-                    UV_COUNT.0 + 1,
-                    UV_COUNT.1 + 1,
-                );
-                let pt_grid = transformation::transform_points_4x3(&matrix, &pt_grid);
-                let projected_point = camera.project_points(&pt_grid);
-                // Draw disc on each points projected on screen space.
-                for pt in projected_point.iter() {
-                    draw::draw_disc(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        pt.0,
-                        pt.1,
-                        2,
-                        0xc445d7,
-                        1,
-                    );
-                }
-                // Draw a parametric block mesh (not usally the object to create at each frames).
-                // but that's a good test.
+                /////////////////////////////////////////////////////////////////////////////////////
+                // Draw a parametric block mesh
+                /////////////////////////////////////////////////////////////////////////////////////
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
-                // the normals of the box face are  not unified i will check this tomorow.
-                let mut m_box = MeshBox::new(
+                let m_box = MeshBox::new(
                     &mut buffer,
                     screen_width,
                     screen_height,
                     &camera,
-                    Some(&matrix),
+                    None,
                     &origin,
                     &mut dir_u,
                     &mut dir_v,
-                    0.5,
-                    0.25,
-                    0.2,
+                    0.3,
+                    0.3,
+                    0.3,
                     1,
                     1,
                     1,
                 )
                 .to_mesh();
-                 //m_box.recompute_normals();
-                 //m_box.triangles.iter_mut().for_each(|f|{f.normal=-f.normal});
+                /////////////////////////////////////////////////////////////////////////////////////
+                /////////////////////////////////////////////////////////////////////////////////////
                 let box_normals_list = m_box.extract_faces_normals_vectors();
-                for norm in box_normals_list.iter() {
+                for (i, norm) in box_normals_list.iter().enumerate() {
                     let p1 = camera.project_maybe_outside(&norm.0);
-                    let p2 = norm.0 + (norm.1*0.05);
+                    let p2 = norm.0 + (norm.1 * 0.05);
                     let p2 = camera.project_maybe_outside(&p2);
                     if let Some(pt) = clip_line(p1, p2, screen_width, screen_height) {
                         draw_aa_line_with_thickness(
@@ -1132,12 +816,43 @@ impl DisplayPipeLine {
                             3,
                             0x00FF00,
                         );
+                        draw_text(
+                            &mut buffer,
+                            screen_height,
+                            screen_width,
+                            p1.0 as usize,
+                            p1.1 as usize,
+                            format!("{i}").as_str(),
+                            2,
+                            0x0,
+                        );
                     }
                 }
-
-                let camera_direction = (camera.target - camera.position).to_vertex();
-                let border_edges = m_box.extract_silhouette(&camera_direction);
-                for edge in border_edges.iter() {
+                ///////////////////////////////
+                // Compute Camera Point.
+                // let mut camera_point = camera.position.to_vertex();
+                let mut camera_point = Vertex::new(0.0, -1.0, -0.27);
+                camera_point = transformation::transform_point(&camera.view_matrix, &camera_point);
+                // let mut camera_target = camera.target.to_vertex();
+                let mut camera_target = Vertex::new(0.0,0.0,0.0);
+                camera_target = transformation::transform_point(&camera.view_matrix, &camera_target);
+                // Make camera vector
+                let cam_vector_to_test = -(camera_target - camera_point).normalize();
+                let cam_section_plan_o = camera_target + (cam_vector_to_test * 0.2);
+                 if let Some(a)  = camera.project_without_depth(&cam_section_plan_o){
+                     if let Some(b) = camera.project_without_depth(&camera_target){
+                         draw_aa_line(&mut buffer, screen_width, (a.0 as f64 ,a.1 as f64), (b.0 as f64,b.1 as f64), 0x0);
+                     }
+                 }
+                /*
+                let cam_section_plan = CPlane::new_(
+                    cam_section_plan_o.to_point3d(),
+                    cam_vector_to_test.to_vector3d(),
+                );
+                draw_gimball_from_plane(&mut buffer, screen_width, screen_height, background_color, &cam_section_plan, &camera, None, 0.1, 1.0, true);
+                */
+                let border_edges = m_box.extract_silhouette(&camera_point);
+                for (i, edge) in border_edges.iter().enumerate() {
                     let pt1 = camera.project_maybe_outside(&edge.0);
                     let pt2 = camera.project_maybe_outside(&edge.1);
                     if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
@@ -1150,20 +865,40 @@ impl DisplayPipeLine {
                             0x0000FF,
                         );
                     }
+                    println!("\x1b[{0};0H\x1b[2K\r{1} iteration:{2}", i + 6, edge.2, i);
                 }
-                ////////////////////////////////////////////////////////////////
-                // Draw a primitive rectangle //////////////////////////////////
-                ////////////////////////////////////////////////////////////////
-                draw::draw_rectangle(
-                    &mut buffer,
-                    screen_width,
-                    screen_height,
-                    0,
-                    770,
-                    900,
-                    30,
-                    Color::convert_rgb_color(0, 0, 0),
+                // Test triangle indices localization.
+                let triangle_id_to_test = 2;
+                if let Some(pt) = camera.project_without_depth(
+                    &m_box.triangles[triangle_id_to_test].center_to_vertex(&m_box.vertices),
+                ) {
+                    draw_disc(
+                        &mut buffer,
+                        screen_width,
+                        screen_height,
+                        pt.0,
+                        pt.1,
+                        5,
+                        0x0000FF,
+                        1,
+                    );
+                }
+                // solve culling faces orientation.
+                let v = (camera_point - m_box.vertices[m_box.triangles[1].vertex_indices[0]])
+                    .normalize();
+                println!(
+                    "\x1b[2K\r{0:?} dot{1}",
+                    m_box.triangles[1],
+                    m_box.triangles[1].normal.dot(&v)
                 );
+                let v = (camera_point - m_box.vertices[m_box.triangles[2].vertex_indices[0]])
+                    .normalize();
+                println!(
+                    "\x1b[2K\r{0:?} dot{1}",
+                    m_box.triangles[2],
+                    m_box.triangles[2].normal.dot(&v)
+                );
+
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

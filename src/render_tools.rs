@@ -1069,6 +1069,352 @@ pub mod visualization_v3 {
         }
     }
 }
+
+pub mod visualization_v4 {
+    use super::rendering_object::Vertex;
+    use crate::rust3d::geometry::{Point3d, Vector3d};
+    use rayon::prelude::*;
+    pub struct Camera {
+        pub position: Point3d,
+        pub target: Point3d,
+        pub up: Vector3d,
+        pub fov: f64,
+        pub width: f64,
+        pub height: f64,
+        pub near: f64,
+        pub far: f64,
+        pub view_matrix: [[f64; 4]; 4], // Precomputed view matrix
+        pub projection_matrix: [[f64; 4]; 4], // Precomputed projection matrix
+    }
+    impl Camera {
+        pub fn new(
+            position: Point3d,
+            target: Point3d,
+            up: Vector3d,
+            width: f64,
+            height: f64,
+            fov: f64,
+            near: f64,
+            far: f64,
+        ) -> Self {
+            let mut camera = Self {
+                position,
+                target,
+                up,
+                fov,
+                width,
+                height,
+                near,
+                far,
+                view_matrix: [[0.0; 4]; 4], 
+                projection_matrix: [[0.0; 4]; 4], 
+            };
+
+            // Precompute the matrices
+            camera.update_matrices();
+            camera
+        }
+
+        /// Update the view and projection matrices 
+        /// needed if the camera 
+        /// parameters has changed.
+        /// i recomend to aplly a transformation 
+        /// on the matrice itself rather than modifing 
+        /// the camera initial angle of projection reference.
+        pub fn update_matrices(&mut self) {
+            self.view_matrix = self.compute_view_matrix();
+            self.projection_matrix = self.compute_projection_matrix();
+        }
+
+        /// Compute the view matrix
+        pub fn compute_view_matrix(&self) -> [[f64; 4]; 4] {
+            let forward = Vector3d::new(
+                self.position.X - self.target.X,
+                self.position.Y - self.target.Y,
+                self.position.Z - self.target.Z,
+            )
+            .unitize_b();
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+
+            // Vertex as Vector3d to avoid run time penalty.
+            let translation = Vertex::new(-self.position.X, -self.position.Y, -self.position.Z);
+            [
+                [right.get_X(), up.get_X(), forward.get_X(), 0.0],
+                [right.get_Y(), up.get_Y(), forward.get_Y(), 0.0],
+                [right.get_Z(), up.get_Z(), forward.get_Z(), 0.0],
+                [
+                    (right.get_X() * translation.x)
+                        + (right.get_Y() * translation.y)
+                        + (right.get_Z() * translation.z),
+                    (up.get_X() * translation.x)
+                        + (up.get_Y() * translation.y)
+                        + (right.get_Z() * translation.z),
+                    (forward.get_X() * translation.x)
+                        + (forward.get_Y() * translation.y)
+                        + (forward.get_Z() * translation.z),
+                    1.0,
+                ],
+            ]
+        }
+
+        /// Compute the projection matrix
+        pub fn compute_projection_matrix(&self) -> [[f64; 4]; 4] {
+            let aspect_ratio = self.width / self.height;
+            let fov_rad = self.fov.to_radians();
+            let f = 1.0 / (fov_rad / 2.0).tan();
+            [
+                [f / aspect_ratio, 0.0, 0.0, 0.0],
+                [0.0, f, 0.0, 0.0],
+                [
+                    0.0,
+                    0.0,
+                    (self.far + self.near) / (self.near - self.far),
+                    -1.0,
+                ],
+                [
+                    0.0,
+                    0.0,
+                    (2.0 * self.far * self.near) / (self.near - self.far),
+                    0.0,
+                ],
+            ]
+        }
+
+        /// Project a set of Vertex on 2d screen space.
+        /// # Returns
+        /// a vector of tuple (x,y) (usize,usize)
+        pub fn project_a_list_of_points(&self, points: &Vec<Vertex>) -> Vec<(usize, usize)> {
+            points
+                .par_iter() // Use parallel iterator
+                .filter_map(|point| self.project_without_depth(point)) // Apply the project method in parallel
+                .collect() // Collect results into a Vec
+        }
+
+        /// Project a set of Vertex on 2d screen space with 
+        /// an embeded depth value stored by points.
+        /// # Returns
+        /// a vector of tuple (x,y,depth) (usize,usize,f64)
+        pub fn project_a_list_of_points_with_depth(
+            &self,
+            points: &Vec<Vertex>,
+        ) -> Vec<(usize, usize, f64)> {
+            points
+                .par_iter() // Use parallel iterator
+                .filter_map(|point| self.project_with_depth(point)) // Apply the project method in parallel
+                .collect() // Collect results into a Vec
+        }
+
+        /// Project a vertex in a 2d camera space projection.
+        pub fn project_without_depth(&self, point: &Vertex) -> Option<(usize, usize)> {
+            // Use precomputed matrices
+            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+
+            let projected_point =
+                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.x / projected_point.z;
+            let y = projected_point.y / projected_point.z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            if screen_x < 0
+                || screen_x >= self.width as isize
+                || screen_y < 0
+                || screen_y >= self.height as isize
+            {
+                None // Point is out of screen bounds
+            } else {
+                Some((screen_x as usize, screen_y as usize))
+            }
+        }
+
+        /// Project a vertex in a 2d camera space projection with embeded depth value.
+        pub fn project_with_depth(&self, point: &Vertex) -> Option<(usize, usize, f64)> {
+            // Use precomputed matrices
+            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+
+            // Extract depth in camera space (before projection)
+            let depth_in_camera_space = camera_space_point.z;
+
+            let projected_point =
+                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.x / projected_point.z;
+            let y = projected_point.y / projected_point.z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            if screen_x < 0
+                || screen_x >= self.width as isize
+                || screen_y < 0
+                || screen_y >= self.height as isize
+            {
+                return None; // Point is out of screen bounds
+            }
+
+            Some((screen_x as usize, screen_y as usize, depth_in_camera_space))
+        }
+
+        #[inline(always)]
+        /// Project a single vertex in the 2d camera space projection
+        /// where the result projection may be out of the screen limit.
+        /// (usefull for drawing  lines axis).
+        pub fn project_maybe_outside(&self, point: &Vertex) -> (f64, f64) {
+            // Use precomputed matrices
+            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+
+            let projected_point =
+                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
+
+            // Homogeneous divide (perspective divide)
+            let x = projected_point.x / projected_point.z;
+            let y = projected_point.y / projected_point.z;
+
+            // Map the coordinates from [-1, 1] to screen space
+            let screen_x = ((x + 1.0) * 0.5 * self.width) as isize;
+            let screen_y = ((1.0 - y) * 0.5 * self.height) as isize;
+
+            (screen_x as f64, screen_y as f64)
+        }
+        /// Generate a panning transformation matrix
+        /// `dx` and `dy` are the offsets in world space along the right and up directions.
+        pub fn transform_camera_matrix_pan(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
+            // Calculate the right and up vectors based on the camera's orientation
+            let forward = Vector3d::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .unitize_b();
+
+            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
+            let up = Vector3d::cross_product(&right, &forward).unitize_b();
+
+            // Translation in the right and up directions
+            let translation = Vertex::new(
+                dx * right.get_X() + dy * up.get_X(),
+                dx * right.get_Y() + dy * up.get_Y(),
+                dx * right.get_Z() + dy * up.get_Z(),
+            );
+
+            // Construct the transformation matrix
+            [
+                [1.0, 0.0, 0.0, translation.x],
+                [0.0, 1.0, 0.0, translation.y],
+                [0.0, 0.0, 1.0, translation.z],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        }
+
+        /// Generate a transformation matrix for the camera's movement and rotation
+        pub fn transform_camera_matrix_position_4x4(
+            &self,
+            forward_amount: f64,
+            yaw_angle: f64,
+            pitch_angle: f64,
+        ) -> [[f64; 4]; 4] {
+
+            // Step 1: Compute the forward direction vector
+            let forward = Vertex::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .normalize();
+
+            // Step 2: Compute the translation vector for the camera movement
+            let translation = forward * (-forward_amount);
+
+            // Step 3: Compute rotation matrices
+            // Yaw (rotation around the Y-axis)
+            let yaw_cos = yaw_angle.to_radians().cos();
+            let yaw_sin = yaw_angle.to_radians().sin();
+            let yaw_matrix = [
+                [yaw_cos, 0.0, yaw_sin, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [-yaw_sin, 0.0, yaw_cos, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Pitch (rotation around the X-axis)
+            let pitch_cos = pitch_angle.to_radians().cos();
+            let pitch_sin = pitch_angle.to_radians().sin();
+            let pitch_matrix = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, pitch_cos, -pitch_sin, 0.0],
+                [0.0, pitch_sin, pitch_cos, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Step 4: Combine yaw and pitch into a single rotation matrix
+            let rotation_matrix = self.multiply_matrices(&yaw_matrix, &pitch_matrix);
+
+            // Step 5: Create the translation matrix
+            let translation_matrix = [
+                [1.0, 0.0, 0.0, translation.x],
+                [0.0, 1.0, 0.0, translation.y],
+                [0.0, 0.0, 1.0, translation.z],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Step 6: Combine rotation and translation matrices into a single transformation matrix
+            self.multiply_matrices(&rotation_matrix, &translation_matrix)
+        }
+        
+        /// Utility function to apply a translation vector to 4x4 matrix.
+        fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: &Vertex) -> Vertex {
+            Vertex::new(
+                matrix[0][0] * v.x + matrix[0][1] * v.y + matrix[0][2] * v.z + matrix[0][3],
+                matrix[1][0] * v.x + matrix[1][1] * v.y + matrix[1][2] * v.z + matrix[1][3],
+                matrix[2][0] * v.x + matrix[2][1] * v.y + matrix[2][2] * v.z + matrix[2][3],
+            )
+        }
+
+        /// Utility Combine multiple transformation matrices into one
+        /// they have to be call from a stack vector use macro vec! for that.
+        pub fn combine_matrices(&self,matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
+            // Start with the identity matrix
+            let mut result = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Multiply all matrices together in sequence
+            for matrix in matrices {
+                result = self.multiply_matrices(&result, &matrix);
+            }
+
+            result
+        }
+
+        /// Utility function: Multiply two 4x4 matrices.
+        fn multiply_matrices(&self, a: &[[f64; 4]; 4], b: &[[f64; 4]; 4]) -> [[f64; 4]; 4] {
+            let mut result = [[0.0; 4]; 4];
+            for i in 0..4 {
+                for j in 0..4 {
+                    result[i][j] = a[i][0] * b[0][j]
+                        + a[i][1] * b[1][j]
+                        + a[i][2] * b[2][j]
+                        + a[i][3] * b[3][j];
+                }
+            }
+            result
+        }
+
+        
+       
+    }
+}
+
 /*
  *   WORKINPROGRES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  *   New mesh prototype with shared vertices.
@@ -1082,7 +1428,7 @@ pub mod rendering_object {
     use crate::rust3d::intersection::clip_line;
     use crate::rust3d::{self, transformation};
     use dashmap::DashMap;
-    use iter::{walk_tree, IntoParallelRefMutIterator, ParallelIterator};
+    use iter::{IntoParallelRefMutIterator, ParallelIterator};
     use rayon::prelude::*; // For parallel processing
     use rayon::*;
     use std::collections::HashMap;
@@ -1424,7 +1770,7 @@ pub mod rendering_object {
             [centroid.x, centroid.y, centroid.z]
         }
         // Compute the centroid of the triangle
-        pub fn center_to_vertex(&self, vertices: &Vec<Vertex>) -> Vertex{
+        pub fn center_to_vertex(&self, vertices: &Vec<Vertex>) -> Vertex {
             let v0 = vertices[self.vertex_indices[0]];
             let v1 = vertices[self.vertex_indices[1]];
             let v2 = vertices[self.vertex_indices[2]];
@@ -1956,7 +2302,7 @@ pub mod rendering_object {
         }
 
         // Extract the edge describing the contour of the mesh.
-        pub fn extract_silhouette(&self, camera_direction: &Vertex) -> Vec<(Vertex, Vertex)> {
+        pub fn extract_silhouette(&self, camera_origin: &Vertex) -> Vec<(Vertex, Vertex, String)> {
             let mut result = Vec::new();
             /*
             println!("Extract silhouette Debug Mode:");
@@ -1971,53 +2317,65 @@ pub mod rendering_object {
                 // if edge is shared with two triangles.
                 if triangle_id.len() == 2 {
                     // Compute visibility from camera direction.
-                    let triangle_a_is_visible =
-                        if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
-                            true
-                        } else {
-                            false
-                        };
-                    let triangle_b_is_visible =
-                        if self.triangles[triangle_id[1]].normal.dot(&camera_direction) < 0.0 {
-                            true
-                        } else {
-                            false
-                        };
-                    if (triangle_a_is_visible != triangle_b_is_visible) {
-                        result.push((self.vertices[edge.0], self.vertices[edge.1]));
-                        /*
-                        println!(
+                    let camera_direction_a = (*camera_origin
+                        - self.vertices[self.triangles[triangle_id[0]].vertex_indices[0]])
+                        .normalize();
+                    let triangle_a_is_visible = if self.triangles[triangle_id[0]]
+                        .normal
+                        .dot(&camera_direction_a)
+                        > 0.0
+                    {
+                        true
+                    } else {
+                        false
+                    };
+                    let camera_direction_b = (*camera_origin
+                        - self.vertices[self.triangles[triangle_id[1]].vertex_indices[0]])
+                        .normalize();
+                    let triangle_b_is_visible = if self.triangles[triangle_id[1]]
+                        .normal
+                        .dot(&camera_direction_b)
+                        > 0.0
+                    {
+                        true
+                    } else {
+                        false
+                    };
+                    if triangle_a_is_visible != triangle_b_is_visible {
+                        result.push((self.vertices[edge.0], self.vertices[edge.1],
+                        format!(
                             "Shared Edge ({6:?},{7:?}) is a border, bound to triangles index:({0:?}&{1:?}), visibility:\"{2:?},{3:?}\" dot:({4:?},{5:?})",
                             triangle_id[0],
                             triangle_id[1],
                             triangle_a_is_visible,
                             triangle_b_is_visible,
-                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
-                            self.triangles[triangle_id[1]].normal.dot(&camera_direction),
-                            edge.0,
-                            edge.1,
-                        );
-                        */
+                            self.triangles[triangle_id[0]].normal.dot(&camera_direction_a),
+                            self.triangles[triangle_id[1]].normal.dot(&camera_direction_b),
+                            self.vertices[edge.0],
+                            self.vertices[edge.1],
+                        )));
                     }
                 }
                 if triangle_id.len() == 1 {
+                    let camera_direction = (self.vertices
+                        [self.triangles[triangle_id[0]].vertex_indices[0]]
+                        - *camera_origin)
+                        .normalize();
                     let triangle_a_is_visible =
                         if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
                             true
                         } else {
                             false
                         };
-                    result.push((self.vertices[edge.0], self.vertices[edge.1]));
-                    /*
-                    println!(
+                    result.push((self.vertices[edge.0], self.vertices[edge.1],
+                    format!(
                             "Edge ({3:?},{4:?}) is a border, bound to  triangle {0:?} visibility:\"{1:?}\" dot:{2:?}",
                             triangle_id[0],
                             triangle_a_is_visible,
                             self.triangles[triangle_id[0]].normal.dot(&camera_direction),
                             edge.0,
                             edge.1,
-                        );
-                    */
+                        )));
                 }
             }
             result
@@ -2025,11 +2383,11 @@ pub mod rendering_object {
 
         #[inline(always)]
         /// # Returns the center vertex and the normal vector of each faces.
-        pub fn extract_faces_normals_vectors(&self)->Vec<(Vertex,Vertex)>{
-           self.triangles.iter()
-               .map(|triangle|{
-                   (triangle.center_to_vertex(&self.vertices),triangle.normal)
-               }).collect()
+        pub fn extract_faces_normals_vectors(&self) -> Vec<(Vertex, Vertex)> {
+            self.triangles
+                .iter()
+                .map(|triangle| (triangle.center_to_vertex(&self.vertices), triangle.normal))
+                .collect()
         }
     }
     ////////////////////////////////////////////////////////////////////////////
@@ -2055,7 +2413,7 @@ pub mod rendering_object {
             buffer: &mut Vec<u32>,
             screen_width: usize,
             screen_height: usize,
-            camera: &super::visualization_v3::Camera,
+            camera: &super::visualization_v4::Camera,
             matrix: Option<&[[f64; 4]; 3]>,
             construction_plane: &CPlane,
             u_length: f64,
@@ -2064,8 +2422,8 @@ pub mod rendering_object {
             divide_count_v: usize,
         ) -> Self {
             // Evaluate from (u,v) dimension of the grid.
-            let mut spacing_unit_u = u_length / (divide_count_u as f64);
-            let mut spacing_unit_v = v_length / (divide_count_v as f64);
+            let spacing_unit_u = u_length / (divide_count_u as f64);
+            let spacing_unit_v = v_length / (divide_count_v as f64);
 
             // println!("grid size:{:?}", uv_length,);
             // Define memory components.
@@ -2244,7 +2602,7 @@ pub mod rendering_object {
             // return the parametric mesh plane.
             mesh_plane_result
         }
-        
+
         #[inline(always)]
         /// Flip the triangle normal direction.
         pub fn flip_mesh_plane_normals(&mut self) {
@@ -2308,7 +2666,7 @@ pub mod rendering_object {
             buffer: &mut Vec<u32>,
             screen_width: usize,
             screen_height: usize,
-            camera: &super::visualization_v3::Camera,
+            camera: &super::visualization_v4::Camera,
             matrix: Option<&[[f64; 4]; 3]>,
             origin: &Vertex,
             mut direction_u: &mut Vertex,
@@ -2481,7 +2839,7 @@ pub mod rendering_object {
                         tri.vertex_indices[1] + offset,
                         tri.vertex_indices[2] + offset,
                         tri.normal,
-                            ));
+                    ));
                     /*
                     result
                         .triangles
