@@ -1099,7 +1099,7 @@ impl DisplayPipeLine {
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
                 // the normals of the box face are  not unified i will check this tomorow.
-                let m_box = MeshBox::new(
+                let mut m_box = MeshBox::new(
                     &mut buffer,
                     screen_width,
                     screen_height,
@@ -1116,7 +1116,8 @@ impl DisplayPipeLine {
                     1,
                 )
                 .to_mesh();
-
+                 //m_box.recompute_normals();
+                 //m_box.triangles.iter_mut().for_each(|f|{f.normal=-f.normal});
                 let box_normals_list = m_box.extract_faces_normals_vectors();
                 for norm in box_normals_list.iter() {
                     let p1 = camera.project_maybe_outside(&norm.0);

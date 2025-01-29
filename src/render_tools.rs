@@ -1983,7 +1983,7 @@ pub mod rendering_object {
                         } else {
                             false
                         };
-                    if triangle_a_is_visible != triangle_b_is_visible {
+                    if (triangle_a_is_visible != triangle_b_is_visible) {
                         result.push((self.vertices[edge.0], self.vertices[edge.1]));
                         /*
                         println!(
@@ -2247,7 +2247,7 @@ pub mod rendering_object {
         
         #[inline(always)]
         /// Flip the triangle normal direction.
-        pub fn flip_mesh_lane_normals(&mut self) {
+        pub fn flip_mesh_plane_normals(&mut self) {
             self.triangles
                 .iter_mut()
                 .for_each(|triangle| triangle.normal = -triangle.normal);
@@ -2401,7 +2401,7 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_w,
             );
-            faces_list[2].flip_mesh_lane_normals(); 
+            faces_list[2].flip_mesh_plane_normals();
             // Cube face 3 (west)
             let pt_dir_v = anchor_west + direction_v.reverse().to_point3d();
             let pt_dir_w = anchor_west + direction_w.to_point3d();
@@ -2419,8 +2419,7 @@ pub mod rendering_object {
                 divide_count_v,
                 divide_count_w,
             );
-            //faces_list[3].flip_mesh_lane_normals(); 
-            // Cube face 5 (bottom)
+            // Cube face 4 (bottom)
             let pt_dir_u = anchor_bottom + direction_u.to_point3d();
             let pt_dir_v = anchor_bottom + direction_v.to_point3d();
             let bottom_cplane =
@@ -2437,8 +2436,8 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_v,
             );
-            faces_list[4].flip_mesh_lane_normals(); 
-            // Cube face 6 (top)
+            faces_list[4].flip_mesh_plane_normals();
+            // Cube face 5 (top)
             let pt_dir_u = anchor_top + direction_u.to_point3d();
             let pt_dir_v = anchor_top + direction_v.to_point3d();
             let top_cplane =
@@ -2477,9 +2476,17 @@ pub mod rendering_object {
                         tri.vertex_indices[1] + offset,
                         tri.vertex_indices[2] + offset,
                     ];
+                    result.triangles.push(Triangle::with_indices_and_normal(
+                        tri.vertex_indices[0] + offset,
+                        tri.vertex_indices[1] + offset,
+                        tri.vertex_indices[2] + offset,
+                        tri.normal,
+                            ));
+                    /*
                     result
                         .triangles
                         .push(Triangle::new(&result.vertices, vertex_indices));
+                    */
                 }
             }
             // Clean duplicate vertex by tracking vertex equality
