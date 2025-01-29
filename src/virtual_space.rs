@@ -1098,7 +1098,7 @@ impl DisplayPipeLine {
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
-                // the normals of the box face are  not unified i will check this tomorow. 
+                // the normals of the box face are  not unified i will check this tomorow.
                 let m_box = MeshBox::new(
                     &mut buffer,
                     screen_width,
@@ -1114,7 +1114,42 @@ impl DisplayPipeLine {
                     1,
                     1,
                     1,
-                );
+                )
+                .to_mesh();
+
+                let box_normals_list = m_box.extract_faces_normals_vectors();
+                for norm in box_normals_list.iter() {
+                    let p1 = camera.project_maybe_outside(&norm.0);
+                    let p2 = norm.0 + (norm.1*0.05);
+                    let p2 = camera.project_maybe_outside(&p2);
+                    if let Some(pt) = clip_line(p1, p2, screen_width, screen_height) {
+                        draw_aa_line_with_thickness(
+                            &mut buffer,
+                            screen_width,
+                            pt.0,
+                            pt.1,
+                            3,
+                            0x00FF00,
+                        );
+                    }
+                }
+
+                let camera_direction = (camera.target - camera.position).to_vertex();
+                let border_edges = m_box.extract_silhouette(&camera_direction);
+                for edge in border_edges.iter() {
+                    let pt1 = camera.project_maybe_outside(&edge.0);
+                    let pt2 = camera.project_maybe_outside(&edge.1);
+                    if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                        draw_aa_line_with_thickness(
+                            &mut buffer,
+                            screen_width,
+                            pt.0,
+                            pt.1,
+                            3,
+                            0x0000FF,
+                        );
+                    }
+                }
                 ////////////////////////////////////////////////////////////////
                 // Draw a primitive rectangle //////////////////////////////////
                 ////////////////////////////////////////////////////////////////

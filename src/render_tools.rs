@@ -1092,7 +1092,7 @@ pub mod rendering_object {
     use std::io::{BufRead, BufReader};
     use std::io::{BufWriter, Write};
     use std::marker::Copy;
-    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub,Neg};
+    use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
     use std::sync::{Arc, Mutex};
     /// A 3D vertex or point.
     #[derive(Debug, Clone, Copy, PartialOrd)]
@@ -1422,6 +1422,18 @@ pub mod rendering_object {
                 z: (v0.z + v1.z + v2.z) / 3.0,
             };
             [centroid.x, centroid.y, centroid.z]
+        }
+        // Compute the centroid of the triangle
+        pub fn center_to_vertex(&self, vertices: &Vec<Vertex>) -> Vertex{
+            let v0 = vertices[self.vertex_indices[0]];
+            let v1 = vertices[self.vertex_indices[1]];
+            let v2 = vertices[self.vertex_indices[2]];
+            let centroid = Vertex {
+                x: (v0.x + v1.x + v2.x) / 3.0,
+                y: (v0.y + v1.y + v2.y) / 3.0,
+                z: (v0.z + v1.z + v2.z) / 3.0,
+            };
+            Vertex::new(centroid.x, centroid.y, centroid.z)
         }
         /// Tests for intersection between a ray and this triangle.
         /// Returns `Some(t)` where `t` is the distance along the ray to the intersection,
@@ -2010,6 +2022,15 @@ pub mod rendering_object {
             }
             result
         }
+
+        #[inline(always)]
+        /// # Returns the center vertex and the normal vector of each faces.
+        pub fn extract_faces_normals_vectors(&self)->Vec<(Vertex,Vertex)>{
+           self.triangles.iter()
+               .map(|triangle|{
+                   (triangle.center_to_vertex(&self.vertices),triangle.normal)
+               }).collect()
+        }
     }
     ////////////////////////////////////////////////////////////////////////////
     // A temporary object representing a parametric object.
@@ -2223,6 +2244,15 @@ pub mod rendering_object {
             // return the parametric mesh plane.
             mesh_plane_result
         }
+        
+        #[inline(always)]
+        /// Flip the triangle normal direction.
+        pub fn flip_mesh_lane_normals(&mut self) {
+            self.triangles
+                .iter_mut()
+                .for_each(|triangle| triangle.normal = -triangle.normal);
+        }
+
         #[inline(always)]
         /// Duplicate the MeshBox into a regular mesh
         /// copy.
@@ -2319,7 +2349,7 @@ pub mod rendering_object {
                 vertices: Vec::new(),
                 triangles: Vec::new(),
             });
-            // Cube face 1 (Sud).
+            // Cube face 0 (Sud).
             let sud_cplane = CPlane::new_origin_x_aligned_y_oriented(
                 &anchor_sud,
                 &direction_u.to_point3d(),
@@ -2337,7 +2367,7 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_w,
             );
-            // Cube face 2 (Est).
+            // Cube face 1 (Est).
             let pt_dir_v = anchor_est + direction_v.to_point3d();
             let pt_dir_w = anchor_est + direction_w.to_point3d();
             let est_cplane =
@@ -2354,7 +2384,7 @@ pub mod rendering_object {
                 divide_count_v,
                 divide_count_w,
             );
-            // Cube face 3 (North).
+            // Cube face 2 (North).
             let pt_dir_u = anchor_north + direction_u.to_point3d();
             let pt_dir_w = anchor_north + direction_w.to_point3d();
             let north_cplane =
@@ -2371,7 +2401,8 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_w,
             );
-            // Cube face 4 (west)
+            faces_list[2].flip_mesh_lane_normals(); 
+            // Cube face 3 (west)
             let pt_dir_v = anchor_west + direction_v.reverse().to_point3d();
             let pt_dir_w = anchor_west + direction_w.to_point3d();
             let west_cplane =
@@ -2388,6 +2419,7 @@ pub mod rendering_object {
                 divide_count_v,
                 divide_count_w,
             );
+            //faces_list[3].flip_mesh_lane_normals(); 
             // Cube face 5 (bottom)
             let pt_dir_u = anchor_bottom + direction_u.to_point3d();
             let pt_dir_v = anchor_bottom + direction_v.to_point3d();
@@ -2405,6 +2437,7 @@ pub mod rendering_object {
                 divide_count_u,
                 divide_count_v,
             );
+            faces_list[4].flip_mesh_lane_normals(); 
             // Cube face 6 (top)
             let pt_dir_u = anchor_top + direction_u.to_point3d();
             let pt_dir_v = anchor_top + direction_v.to_point3d();
