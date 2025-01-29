@@ -1106,8 +1106,8 @@ pub mod visualization_v4 {
                 height,
                 near,
                 far,
-                view_matrix: [[0.0; 4]; 4], 
-                projection_matrix: [[0.0; 4]; 4], 
+                view_matrix: [[0.0; 4]; 4],
+                projection_matrix: [[0.0; 4]; 4],
             };
 
             // Precompute the matrices
@@ -1115,11 +1115,11 @@ pub mod visualization_v4 {
             camera
         }
 
-        /// Update the view and projection matrices 
-        /// needed if the camera 
+        /// Update the view and projection matrices
+        /// needed if the camera
         /// parameters has changed.
-        /// i recomend to aplly a transformation 
-        /// on the matrice itself rather than modifing 
+        /// i recomend to aplly a transformation
+        /// on the matrice itself rather than modifing
         /// the camera initial angle of projection reference.
         pub fn update_matrices(&mut self) {
             self.view_matrix = self.compute_view_matrix();
@@ -1191,7 +1191,7 @@ pub mod visualization_v4 {
                 .collect() // Collect results into a Vec
         }
 
-        /// Project a set of Vertex on 2d screen space with 
+        /// Project a set of Vertex on 2d screen space with
         /// an embeded depth value stored by points.
         /// # Returns
         /// a vector of tuple (x,y,depth) (usize,usize,f64)
@@ -1208,10 +1208,10 @@ pub mod visualization_v4 {
         /// Project a vertex in a 2d camera space projection.
         pub fn project_without_depth(&self, point: &Vertex) -> Option<(usize, usize)> {
             // Use precomputed matrices
-            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+            let camera_space_point = self.multiply_matrix_vector(&self.view_matrix, point);
 
             let projected_point =
-                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
+                self.multiply_matrix_vector(&self.projection_matrix, &camera_space_point);
 
             // Homogeneous divide (perspective divide)
             let x = projected_point.x / projected_point.z;
@@ -1235,13 +1235,13 @@ pub mod visualization_v4 {
         /// Project a vertex in a 2d camera space projection with embeded depth value.
         pub fn project_with_depth(&self, point: &Vertex) -> Option<(usize, usize, f64)> {
             // Use precomputed matrices
-            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+            let camera_space_point = self.multiply_matrix_vector(&self.view_matrix, point);
 
             // Extract depth in camera space (before projection)
             let depth_in_camera_space = camera_space_point.z;
 
             let projected_point =
-                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
+                self.multiply_matrix_vector(&self.projection_matrix, &camera_space_point);
 
             // Homogeneous divide (perspective divide)
             let x = projected_point.x / projected_point.z;
@@ -1268,10 +1268,10 @@ pub mod visualization_v4 {
         /// (usefull for drawing  lines axis).
         pub fn project_maybe_outside(&self, point: &Vertex) -> (f64, f64) {
             // Use precomputed matrices
-            let camera_space_point = self.multiply_matrix_vector(self.view_matrix, point);
+            let camera_space_point = self.multiply_matrix_vector(&self.view_matrix, point);
 
             let projected_point =
-                self.multiply_matrix_vector(self.projection_matrix, &camera_space_point);
+                self.multiply_matrix_vector(&self.projection_matrix, &camera_space_point);
 
             // Homogeneous divide (perspective divide)
             let x = projected_point.x / projected_point.z;
@@ -1320,7 +1320,6 @@ pub mod visualization_v4 {
             yaw_angle: f64,
             pitch_angle: f64,
         ) -> [[f64; 4]; 4] {
-
             // Step 1: Compute the forward direction vector
             let forward = Vertex::new(
                 self.target.X - self.position.X,
@@ -1367,9 +1366,9 @@ pub mod visualization_v4 {
             // Step 6: Combine rotation and translation matrices into a single transformation matrix
             self.multiply_matrices(&rotation_matrix, &translation_matrix)
         }
-        
+
         /// Utility function to apply a translation vector to 4x4 matrix.
-        fn multiply_matrix_vector(&self, matrix: [[f64; 4]; 4], v: &Vertex) -> Vertex {
+        pub fn multiply_matrix_vector(&self, matrix: &[[f64; 4]; 4], v: &Vertex) -> Vertex {
             Vertex::new(
                 matrix[0][0] * v.x + matrix[0][1] * v.y + matrix[0][2] * v.z + matrix[0][3],
                 matrix[1][0] * v.x + matrix[1][1] * v.y + matrix[1][2] * v.z + matrix[1][3],
@@ -1379,7 +1378,7 @@ pub mod visualization_v4 {
 
         /// Utility Combine multiple transformation matrices into one
         /// they have to be call from a stack vector use macro vec! for that.
-        pub fn combine_matrices(&self,matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
+        pub fn combine_matrices(&self, matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
             // Start with the identity matrix
             let mut result = [
                 [1.0, 0.0, 0.0, 0.0],
@@ -1410,8 +1409,45 @@ pub mod visualization_v4 {
             result
         }
 
-        
-       
+        #[inline(always)]
+        pub fn get_camera_direction(&self) -> Vertex {
+            Vertex::new(
+                -self.view_matrix[0][2],
+                -self.view_matrix[1][2],
+                -self.view_matrix[2][2],
+            )
+        }
+
+        pub fn get_camera_origin(&self) -> Vertex {
+            let right = Vertex::new(
+                self.view_matrix[0][0],
+                self.view_matrix[1][0],
+                self.view_matrix[2][0],
+            );
+            let up = Vertex::new(
+                self.view_matrix[0][1],
+                self.view_matrix[1][1],
+                self.view_matrix[2][1],
+            );
+            let forward = Vertex::new(
+                self.view_matrix[0][2],
+                self.view_matrix[1][2],
+                self.view_matrix[2][2],
+            );
+            let translation = Vertex::new(
+                self.view_matrix[0][3],
+                self.view_matrix[1][3],
+                self.view_matrix[2][3],
+            );
+            // Camera origin is the negation of the transformed translation
+            Vertex::new(
+                -(right.x * translation.x + right.y * translation.y + right.z * translation.z),
+                -(up.x * translation.x + up.y * translation.y + up.z * translation.z),
+                -(forward.x * translation.x
+                    + forward.y * translation.y
+                    + forward.z * translation.z),
+            )
+        }
     }
 }
 
@@ -2302,7 +2338,10 @@ pub mod rendering_object {
         }
 
         // Extract the edge describing the contour of the mesh.
-        pub fn extract_silhouette(&self, camera_origin: &Vertex) -> Vec<(Vertex, Vertex, String)> {
+        pub fn extract_silhouette(
+            &self,
+            camera_direction: &Vertex,
+        ) -> Vec<(Vertex, Vertex, String)> {
             let mut result = Vec::new();
             /*
             println!("Extract silhouette Debug Mode:");
@@ -2317,30 +2356,18 @@ pub mod rendering_object {
                 // if edge is shared with two triangles.
                 if triangle_id.len() == 2 {
                     // Compute visibility from camera direction.
-                    let camera_direction_a = (*camera_origin
-                        - self.vertices[self.triangles[triangle_id[0]].vertex_indices[0]])
-                        .normalize();
-                    let triangle_a_is_visible = if self.triangles[triangle_id[0]]
-                        .normal
-                        .dot(&camera_direction_a)
-                        > 0.0
-                    {
-                        true
-                    } else {
-                        false
-                    };
-                    let camera_direction_b = (*camera_origin
-                        - self.vertices[self.triangles[triangle_id[1]].vertex_indices[0]])
-                        .normalize();
-                    let triangle_b_is_visible = if self.triangles[triangle_id[1]]
-                        .normal
-                        .dot(&camera_direction_b)
-                        > 0.0
-                    {
-                        true
-                    } else {
-                        false
-                    };
+                    let triangle_a_is_visible =
+                        if self.triangles[triangle_id[0]].normal.dot(&camera_direction) > 0.0 {
+                            true
+                        } else {
+                            false
+                        };
+                    let triangle_b_is_visible =
+                        if self.triangles[triangle_id[1]].normal.dot(&camera_direction) > 0.0 {
+                            true
+                        } else {
+                            false
+                        };
                     if triangle_a_is_visible != triangle_b_is_visible {
                         result.push((self.vertices[edge.0], self.vertices[edge.1],
                         format!(
@@ -2349,18 +2376,14 @@ pub mod rendering_object {
                             triangle_id[1],
                             triangle_a_is_visible,
                             triangle_b_is_visible,
-                            self.triangles[triangle_id[0]].normal.dot(&camera_direction_a),
-                            self.triangles[triangle_id[1]].normal.dot(&camera_direction_b),
+                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
+                            self.triangles[triangle_id[1]].normal.dot(&camera_direction),
                             self.vertices[edge.0],
                             self.vertices[edge.1],
                         )));
                     }
                 }
                 if triangle_id.len() == 1 {
-                    let camera_direction = (self.vertices
-                        [self.triangles[triangle_id[0]].vertex_indices[0]]
-                        - *camera_origin)
-                        .normalize();
                     let triangle_a_is_visible =
                         if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
                             true

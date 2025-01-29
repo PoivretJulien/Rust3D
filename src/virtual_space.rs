@@ -41,7 +41,9 @@
 use crate::render_tools::rendering_object::{Mesh, MeshBox, MeshPlane, Vertex};
 use crate::render_tools::visualization_v3::coloring::*;
 use crate::render_tools::visualization_v4::Camera;
-use crate::rust3d::draw::{self, draw_aa_line, draw_aa_line_with_thickness, draw_disc, draw_gimball_from_plane, draw_text};
+use crate::rust3d::draw::{
+    self, draw_aa_line, draw_aa_line_with_thickness, draw_disc, draw_gimball_from_plane, draw_text,
+};
 use crate::rust3d::intersection::clip_line;
 use crate::rust3d::transformation;
 use crate::rust3d::{self, geometry::*};
@@ -673,7 +675,7 @@ impl DisplayPipeLine {
                 [0.0, 0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ];
-            let pan_matrix = camera.transform_camera_matrix_pan(0.0, -0.3);
+            let pan_matrix = camera.transform_camera_matrix_pan(0.0, 0.0);
             println!("\x1b[2J");
             println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry.");
             while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -776,6 +778,7 @@ impl DisplayPipeLine {
                         }
                     }
                 }
+
                 ////////////////////////////////////////////////////////////////
                 /////////////////////////////////////////////////////////////////////////////////////
                 // Draw a parametric block mesh
@@ -792,9 +795,9 @@ impl DisplayPipeLine {
                     &origin,
                     &mut dir_u,
                     &mut dir_v,
-                    0.3,
-                    0.3,
-                    0.3,
+                    0.2,
+                    0.1,
+                    0.1,
                     1,
                     1,
                     1,
@@ -828,30 +831,26 @@ impl DisplayPipeLine {
                         );
                     }
                 }
-                ///////////////////////////////
-                // Compute Camera Point.
-                // let mut camera_point = camera.position.to_vertex();
-                let mut camera_point = Vertex::new(0.0, -1.0, -0.27);
-                camera_point = transformation::transform_point(&camera.view_matrix, &camera_point);
-                // let mut camera_target = camera.target.to_vertex();
-                let mut camera_target = Vertex::new(0.0,0.0,0.0);
-                camera_target = transformation::transform_point(&camera.view_matrix, &camera_target);
-                // Make camera vector
-                let cam_vector_to_test = -(camera_target - camera_point).normalize();
-                let cam_section_plan_o = camera_target + (cam_vector_to_test * 0.2);
-                 if let Some(a)  = camera.project_without_depth(&cam_section_plan_o){
-                     if let Some(b) = camera.project_without_depth(&camera_target){
-                         draw_aa_line(&mut buffer, screen_width, (a.0 as f64 ,a.1 as f64), (b.0 as f64,b.1 as f64), 0x0);
-                     }
-                 }
-                /*
-                let cam_section_plan = CPlane::new_(
-                    cam_section_plan_o.to_point3d(),
-                    cam_vector_to_test.to_vector3d(),
+                ///////////////////////////////////////////////////////////////////////////////////////
+                // TODO: find a way to compute the camera position.
+                let pt1 = -camera.multiply_matrix_vector(&camera.view_matrix,&camera.position.to_vertex());
+                let pt2 = camera.multiply_matrix_vector(&camera.view_matrix,&camera.target.to_vertex());
+                let remap_position = Vertex::new(  -pt1.x, -pt1.z, -pt1.y);
+                println!(
+                    "\x1b[2K\rCam position: {0:?}, remapped position:{1:?}, cam target: {2:?}",
+                    pt1,
+                    remap_position,
+                    pt2,
                 );
-                draw_gimball_from_plane(&mut buffer, screen_width, screen_height, background_color, &cam_section_plan, &camera, None, 0.1, 1.0, true);
-                */
-                let border_edges = m_box.extract_silhouette(&camera_point);
+                let cam_position = pt1;
+                let cam_dir = pt1 - pt2; 
+                let cam_target = pt1 + cam_dir;
+                let pt1 = camera.project_maybe_outside(&remap_position);
+                let pt2 = camera.project_maybe_outside(&cam_target);
+                if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                    draw_aa_line(&mut buffer, screen_width, pt.0, pt.1, 0x0);
+                }
+                let border_edges = m_box.extract_silhouette(&cam_dir);
                 for (i, edge) in border_edges.iter().enumerate() {
                     let pt1 = camera.project_maybe_outside(&edge.0);
                     let pt2 = camera.project_maybe_outside(&edge.1);
@@ -865,10 +864,11 @@ impl DisplayPipeLine {
                             0x0000FF,
                         );
                     }
-                    println!("\x1b[{0};0H\x1b[2K\r{1} iteration:{2}", i + 6, edge.2, i);
+                    //println!("\x1b[{0};0H\x1b[2K\r{1} iteration:{2}", i + 6, edge.2, i);
                 }
+
                 // Test triangle indices localization.
-                let triangle_id_to_test = 2;
+                let triangle_id_to_test = 10;
                 if let Some(pt) = camera.project_without_depth(
                     &m_box.triangles[triangle_id_to_test].center_to_vertex(&m_box.vertices),
                 ) {
@@ -883,22 +883,26 @@ impl DisplayPipeLine {
                         1,
                     );
                 }
-                // solve culling faces orientation.
-                let v = (camera_point - m_box.vertices[m_box.triangles[1].vertex_indices[0]])
-                    .normalize();
+                /*
+                // Solve culling faces orientation.
                 println!(
                     "\x1b[2K\r{0:?} dot{1}",
                     m_box.triangles[1],
-                    m_box.triangles[1].normal.dot(&v)
+                    m_box.triangles[1].normal.dot(&cam_dir)
                 );
-                let v = (camera_point - m_box.vertices[m_box.triangles[2].vertex_indices[0]])
-                    .normalize();
                 println!(
                     "\x1b[2K\r{0:?} dot{1}",
-                    m_box.triangles[2],
-                    m_box.triangles[2].normal.dot(&v)
+                    m_box.triangles[10],
+                    m_box.triangles[10].normal.dot(&cam_dir)
                 );
 
+                println!(
+                    "\x1b[2K\rCam direction: {0:?} cam position: {1:?}",
+                    cam_dir,
+                    cam_position,
+                );
+
+*/
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();
