@@ -1083,8 +1083,8 @@ pub mod visualization_v4 {
         pub height: f64,
         pub near: f64,
         pub far: f64,
-        pub view_matrix: [[f64; 4]; 4], // Precomputed view matrix
-        pub projection_matrix: [[f64; 4]; 4], // Precomputed projection matrix
+        pub view_matrix: [[f64; 4]; 4],
+        pub projection_matrix: [[f64; 4]; 4],
     }
     impl Camera {
         pub fn new(
@@ -1118,12 +1118,11 @@ pub mod visualization_v4 {
         /// Update the view and projection matrices
         /// needed if the camera
         /// parameters has changed.
-        /// i recomend to aplly a transformation
-        /// on the matrice itself rather than modifing
-        /// the camera initial angle of projection reference.
         pub fn update_matrices(&mut self) {
             self.view_matrix = self.compute_view_matrix();
             self.projection_matrix = self.compute_projection_matrix();
+            // Extract camera world position from view matrix
+           // self.position = Self::extract_camera_position_from_view_matrix(&self.view_matrix).to_point3d();
         }
 
         /// Compute the view matrix
@@ -1137,7 +1136,6 @@ pub mod visualization_v4 {
             let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
             let up = Vector3d::cross_product(&right, &forward).unitize_b();
 
-            // Vertex as Vector3d to avoid run time penalty.
             let translation = Vertex::new(-self.position.X, -self.position.Y, -self.position.Z);
             [
                 [right.get_X(), up.get_X(), forward.get_X(), 0.0],
@@ -1440,6 +1438,7 @@ pub mod visualization_v4 {
                 self.view_matrix[2][3],
             );
             // Camera origin is the negation of the transformed translation
+            // The camera's world position is the inverse of the rotation times translation
             Vertex::new(
                 -(right.x * translation.x + right.y * translation.y + right.z * translation.z),
                 -(up.x * translation.x + up.y * translation.y + up.z * translation.z),
@@ -1447,6 +1446,29 @@ pub mod visualization_v4 {
                     + forward.y * translation.y
                     + forward.z * translation.z),
             )
+        }
+
+        
+        pub fn extract_camera_position_from_view_matrix(view_matrix: &[[f64; 4]; 4]) -> Vertex {
+            let right = Vertex::new(view_matrix[0][0], view_matrix[1][0], view_matrix[2][0]);
+            let up = Vertex::new(view_matrix[0][1], view_matrix[1][1], view_matrix[2][1]);
+            let forward = Vertex::new(view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]);
+            let translation = Vertex::new(view_matrix[0][3], view_matrix[1][3], view_matrix[2][3]);
+
+            // The camera's world position is the inverse of the rotation times translation
+            Vertex::new(
+                -(right.x * translation.x + right.y * translation.y + right.z * translation.z),
+                -(up.x * translation.x + up.y * translation.y + up.z * translation.z),
+                -(forward.x * translation.x
+                    + forward.y * translation.y
+                    + forward.z * translation.z),
+            )
+        }
+        
+        pub fn apply_transformations(&mut self, transformations: Vec<[[f64; 4]; 4]>) {
+            self.view_matrix = self.combine_matrices(transformations);
+            //self.update_matrices();
+            self.position = Self::extract_camera_position_from_view_matrix(&self.view_matrix).to_point3d();
         }
     }
 }
