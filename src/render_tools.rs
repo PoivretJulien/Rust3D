@@ -1409,15 +1409,33 @@ pub mod visualization_v4 {
             }
             result
         }
-
+        
+        /*
+        | Right.x   Up.x    Forward.x   0 |
+        | Right.y   Up.y    Forward.y   0 |
+        | Right.z   Up.z    Forward.z   0 |
+        | Tx        Ty      Tz          1 |
+        */
         #[inline(always)]
         pub fn get_camera_direction(&self) -> Vertex {
-            Vertex::new(
+            let id_matrix = 
+                [
+                [self.view_matrix[0][0],self.view_matrix[0][1],0.0,0.0],
+                [self.view_matrix[1][0],self.view_matrix[1][1],0.0,0.0],
+                [0.0,0.0,1.0,0.0],
+                [0.0,0.0,0.0,1.0],
+                ];
+            // Remap the forward direction.
+            let d = Vertex::new(
                 self.view_matrix[0][2],
                 -self.view_matrix[1][2],
                 self.view_matrix[2][2],
-            )
+            );
+            // Apply the rotation part only.
+            let r = self.multiply_matrix_vector(&id_matrix, &d);
+                Vertex::new(r.x,-r.y,r.z)
         }
+        
         /*
         | Right.x   Up.x    Forward.x   0 |
         | Right.y   Up.y    Forward.y   0 |
@@ -1434,7 +1452,7 @@ pub mod visualization_v4 {
         }
         #[inline(always)]
         pub fn get_camera_target(&self) -> Vertex {
-            self.get_camera_position() + self.get_camera_direction()
+            self.get_camera_position() + (self.get_camera_direction().normalize() * (self.target-self.position).Length())
         }
         #[inline(always)]
         pub fn get_camera_right(&self) -> Vertex {
@@ -1533,6 +1551,7 @@ pub mod visualization_v4 {
 
             inv
         }
+        
     }
 }
 

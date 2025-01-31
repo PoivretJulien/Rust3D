@@ -987,11 +987,12 @@ impl DisplayPipeLine {
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFFD700);
                 }
+                // for now only the camera direction is correct.
                 ////////////////////////////////////////////////////////////////
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());
-                println!("\x1b[2K\rCamera Direction: {0} length: ({1})",camera.get_camera_direction(), camera.get_camera_direction().magnitude());
-                println!("\x1b[2K\rCamera Target: ({0:?})",camera.extract_camera_target());
+                println!("\x1b[2K\rCamera Direction: {0}",camera.get_camera_direction());
+                println!("\x1b[2K\rCamera Target: {0}",camera.get_camera_target());
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
