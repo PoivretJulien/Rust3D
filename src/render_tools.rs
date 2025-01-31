@@ -1074,6 +1074,12 @@ pub mod visualization_v4 {
     use super::rendering_object::Vertex;
     use crate::rust3d::geometry::{Point3d, Vector3d};
     use rayon::prelude::*;
+    /*
+    | Right.x   Up.x    Forward.x   0 |
+    | Right.y   Up.y    Forward.y   0 |
+    | Right.z   Up.z    Forward.z   0 |
+    | Tx        Ty      Tz          1 |
+    */
     pub struct Camera {
         pub position: Point3d,
         pub target: Point3d,
@@ -1414,6 +1420,19 @@ pub mod visualization_v4 {
                 -self.view_matrix[2][2],
             )
         }
+        /*
+        | Right.x   Up.x    Forward.x   0 |
+        | Right.y   Up.y    Forward.y   0 |
+        | Right.z   Up.z    Forward.z   0 |
+        | Tx        Ty      Tz          1 |
+        */
+        pub fn get_camera_up(&self) -> Vertex {
+            Vertex::new(
+                self.view_matrix[0][1], // X component of up vector
+                self.view_matrix[1][1], // Y component of up vector
+                self.view_matrix[2][1], // Z component of up vector
+            )
+        }
 
         pub fn get_camera_origin(&self) -> Vertex {
             let right = Vertex::new(
@@ -1447,6 +1466,64 @@ pub mod visualization_v4 {
             )
         }
 
+        pub fn extract_camera_position(&self) -> (f64, f64, f64) {
+            let right = (
+                self.view_matrix[0][0],
+                self.view_matrix[1][0],
+                self.view_matrix[2][0],
+            );
+            let up = (
+                self.view_matrix[0][1],
+                self.view_matrix[1][1],
+                self.view_matrix[2][1],
+            );
+            let forward = (
+                self.view_matrix[0][2],
+                self.view_matrix[1][2],
+                self.view_matrix[2][2],
+            );
+            let translation = (
+                self.view_matrix[0][3],
+                self.view_matrix[1][3],
+                self.view_matrix[2][3],
+            );
+            // Compute world position using the inverse transform
+            let x = -(right.0 * translation.0 + right.1 * translation.1 + right.2 * translation.2);
+            let y = -(up.0 * translation.0 + up.1 * translation.1 + up.2 * translation.2);
+            let z = -(forward.0 * translation.0
+                + forward.1 * translation.1
+                + forward.2 * translation.2);
+            (x, y, z)
+        }
+
+        /// Compute the inverse of a 4x4 matrix
+        pub fn inverse_matrix(&self) -> [[f64; 4]; 4] {
+            let mut inv = [[0.0; 4]; 4];
+            let m = self.view_matrix;
+
+            // Compute inverse using Gaussian elimination or optimized inverse function
+
+            // Extract translation component from the inverse matrix
+            inv[0][3] = -(m[0][0] * m[0][3] + m[1][0] * m[1][3] + m[2][0] * m[2][3]);
+            inv[1][3] = -(m[0][1] * m[0][3] + m[1][1] * m[1][3] + m[2][1] * m[2][3]);
+            inv[2][3] = -(m[0][2] * m[0][3] + m[1][2] * m[1][3] + m[2][2] * m[2][3]);
+
+            inv
+        }
+
+        pub fn extract_camera_target(&self) -> (f64, f64, f64) {
+            let (px, py, pz) = self.extract_camera_position();
+            // Forward vector (negative Z-axis in view space)
+            let forward = (
+                -self.view_matrix[0][2],
+                -self.view_matrix[1][2],
+                -self.view_matrix[2][2],
+            );
+            let target_x = px + forward.0;
+            let target_y = py + forward.1;
+            let target_z = pz + forward.2;
+            (target_x, target_y, target_z)
+        }
     }
 }
 
