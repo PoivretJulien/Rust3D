@@ -666,24 +666,24 @@ impl DisplayPipeLine {
                 0.5,
             );
             // init angles of reference for the view.
-            let mut z_angle = 0.0;
             let mut x_angle = 0.0;
+            let mut zoom = 1.0;
+            let mut z_angle = 0.0;
+            let mut pan_x = 0.0;
+            let mut pan_y = 0.0;
             // Camera matrix transformation.
             // initial position of the camera.
             let camera_position = camera.view_matrix;
             // identity matrix initialization.
             // initial pan adjustment of the camera.
-            let pan_matrix = camera.transform_camera_matrix_pan(0.0, 0.0);
             println!("\x1b[2J");
 
             // Step angle in degrees.
-            let step = 1.0;
+            let step = 1.5;
             ////////////////////////////////////////////////////////////////////
             // Extract initial camera angles.
             let mut cam_position = camera.position.to_vertex();
             let cam_target = camera.target.to_vertex();
-            // Remap camera space z axis.
-            cam_position.z = -cam_position.z;
             // Build Basic Components.
             let cam_dir = cam_target - cam_position;
             let cam_dir_up = camera.get_camera_up().normalize();
@@ -701,29 +701,45 @@ impl DisplayPipeLine {
             cam_target.z);
             // Update Camera.
             let mut update_flg = true;
-            println!("\x1b[2;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry.");
+            println!("\x1b[2;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry. z + Up or z + Down for Zoom ");
             ////////////////////////////////////////////////////////////////////
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 for pixel in buffer.iter_mut() {
                     *pixel = background_color; // Stet the bg color.
                 }
-                // Catch user input keys.
-                if window.is_key_pressed(Key::Left, minifb::KeyRepeat::Yes) {
+                if window.is_key_down(Key::Space) && window.is_key_pressed(Key::Up, minifb::KeyRepeat::No) {
+                    pan_y -= 0.05;
+                    update_flg = true;
+                }else if window.is_key_down(Key::Space) && window.is_key_pressed(Key::Down, minifb::KeyRepeat::No) {
+                    pan_y += 0.05;
+                    update_flg = true;
+                }else if window.is_key_down(Key::Space) && window.is_key_pressed(Key::Left, minifb::KeyRepeat::No) {
+                    pan_x -= 0.05;
+                    update_flg = true;
+                } 
+                else if window.is_key_down(Key::Space) && window.is_key_pressed(Key::Right, minifb::KeyRepeat::No) {
+                    pan_x += 0.05;
+                    update_flg = true;
+                }
+                else if window.is_key_down(Key::Z) && window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
+                    zoom += 0.05;
+                    update_flg = true;
+                }else if window.is_key_down(Key::Z) && window.is_key_pressed(Key::Down, minifb::KeyRepeat::Yes) {
+                    zoom -=  0.05;
+                    update_flg = true;
+                }else if window.is_key_pressed(Key::Left, minifb::KeyRepeat::Yes) {
                     println!("\x1b[2;0H\x1b[2K\rkey Left pressed");
                     z_angle += step;
                     update_flg = true;
-                }
-                if window.is_key_pressed(Key::Right, minifb::KeyRepeat::Yes) {
+                }else if window.is_key_pressed(Key::Right, minifb::KeyRepeat::Yes) {
                     println!("\x1b[2;0H\x1b[2K\rkey Right pressed");
                     z_angle -= step;
                     update_flg = true;
-                }
-                if window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
+                }else if window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes) {
                     println!("\x1b[2;0H\x1b[2K\rkey Up pressed");
                     x_angle += step;
                     update_flg = true;
-                }
-                if window.is_key_pressed(Key::Down, minifb::KeyRepeat::Yes) {
+                }else if window.is_key_pressed(Key::Down, minifb::KeyRepeat::Yes) {
                     println!("\x1b[2;0H\x1b[2K\rkey Down pressed");
                     x_angle -= step;
                     update_flg = true;
@@ -732,15 +748,36 @@ impl DisplayPipeLine {
                 // Update Camera Position.
                 if update_flg {
                     let orbit_x_matrix =
-                        transformation::rotation_matrix_from_angles(x_angle, 0.0, 0.0);
-                    let orbit_y_matrix =
-                        transformation::rotation_matrix_from_angles(0.0, 0.0, z_angle);
+                        transformation::rotation_matrix_on_x(x_angle);
+                    let orbit_z_matrix =
+                        transformation::rotation_matrix_on_z(z_angle);
+                    let pan_matrix = camera.transform_camera_matrix_pan(pan_x, pan_y);
+                    let scale_matrix =
+                        transformation::scaling_matrix_from_center(Vertex::new(0.0, 0.0, 0.0),
+                        zoom, zoom, zoom);
                     camera.view_matrix = transformation::combine_matrices(vec![
-                        camera_position,
-                        pan_matrix,
+                        camera_position, // initial camera system position.
                         orbit_x_matrix,
-                        orbit_y_matrix,
+                        orbit_z_matrix,
+                        pan_matrix,
+                        scale_matrix,
                     ]);
+                    // Reverse order.
+                    let orbit_x_matrix =
+                        transformation::rotation_matrix_on_x(-x_angle);
+                    let orbit_z_matrix =
+                        transformation::rotation_matrix_on_z(-z_angle);
+                    let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
+                    let scale_matrix =
+                        transformation::scaling_matrix_from_center(Vertex::new(0.0, 0.0, 0.0),
+                        1.0/zoom, 1.0/zoom, 1.0/zoom);
+                    let invert_view_matrix = transformation::combine_matrices(vec![
+                        orbit_x_matrix,
+                        orbit_z_matrix,
+                        pan_matrix,
+                        scale_matrix,
+                    ]);
+                    camera.position = camera.multiply_matrix_vector(&invert_view_matrix, &cam_position).to_point3d();
                 }
                 update_flg = false;
                 // Display camera matrix on Console.
@@ -960,7 +997,6 @@ impl DisplayPipeLine {
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0);
                 }
-
                 let trackin_x_matrix =
                     transformation::rotation_matrix_from_angles(x_angle, 0.0, 0.0);
                 let test_m = transformation::rotation_matrix_from_axis_angle(local_x, z_angle);
@@ -971,10 +1007,9 @@ impl DisplayPipeLine {
                     trackin_x_matrix,
                     trackin_z_matrix,
                 ]);
-
                 ////////////////////////////////////////////////////////////////
                 // a try to modify the target vector synchronously. (in Yellow)
-                // (a line i direction of the camera just a dot)
+                // (a line in direction of the camera just a dot)
                 ////////////////////////////////////////////////////////////////
                 let mut m_cam_eval_point = cam_eval_point;
                 m_cam_eval_point.z = -m_cam_eval_point.z;
@@ -987,13 +1022,16 @@ impl DisplayPipeLine {
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFFD700);
                 }
-                // for now only the camera direction is correct.
+                // For now only the camera direction is correct.
                 ////////////////////////////////////////////////////////////////
+                println!("\x1b[2K\rTracking Camera direction V2 -> {0}",camera.position.to_vertex());
+                /*
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());
                 println!("\x1b[2K\rCamera Direction: {0}",camera.get_camera_direction());
                 println!("\x1b[2K\rCamera Target: {0}",camera.get_camera_target());
                 println!("\x1b[2K\r/////////////////////////////////////////////");
+                */
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

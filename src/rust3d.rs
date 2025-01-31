@@ -1913,6 +1913,47 @@ pub mod transformation {
             [0.0, 0.0, 0.0, 1.0],
         ]
     }
+    /// Create a rotation matrix from angle (in degrees) for X
+    pub fn rotation_matrix_on_x(x_angle: f64)-> [[f64; 4]; 4] {
+        // Convert angles from degrees to radians
+        let x_rad = x_angle.to_radians();
+        // Rotation matrix around the X-axis
+        let rotation_x = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, x_rad.cos(), -x_rad.sin(), 0.0],
+            [0.0, x_rad.sin(), x_rad.cos(), 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        rotation_x
+    }
+
+    /// Create a rotation matrix from angle (in degrees) for Y
+    pub fn rotation_matrix_on_y(y_angle: f64)-> [[f64; 4]; 4] {
+        // Convert angles from degrees to radians
+        let y_rad = y_angle.to_radians();
+        // Rotation matrix around the Y-axis
+        let rotation_y = [
+            [y_rad.cos(), 0.0, y_rad.sin(), 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [-y_rad.sin(), 0.0, y_rad.cos(), 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        rotation_y
+    }
+
+    /// Create a rotation matrix from angle (in degrees) for Z
+    pub fn rotation_matrix_on_z(z_angle: f64)-> [[f64; 4]; 4] {
+        // Convert angles from degrees to radians
+        let z_rad = z_angle.to_radians();
+        // Rotation matrix around the Z-axis
+        let rotation_z = [
+            [z_rad.cos(), -z_rad.sin(), 0.0, 0.0],
+            [z_rad.sin(), z_rad.cos(), 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        rotation_z
+    }
 
     /// Create a rotation matrix from angles (in degrees) for X, Y, and Z axis
     pub fn rotation_matrix_from_angles(x_angle: f64, y_angle: f64, z_angle: f64) -> [[f64; 4]; 4] {

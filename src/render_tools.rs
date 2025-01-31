@@ -1075,10 +1075,10 @@ pub mod visualization_v4 {
     use crate::rust3d::geometry::{Point3d, Vector3d};
     use rayon::prelude::*;
     /*
-    | Right.x   Up.x    Forward.x   0 |
-    | Right.y   Up.y    Forward.y   0 |
-    | Right.z   Up.z    Forward.z   0 |
-    | Tx        Ty      Tz          1 |
+    | Right.x   Up.x    Forward.x   Tx |
+    | Right.y   Up.y    Forward.y   Ty |
+    | Right.z   Up.z    Forward.z   Tz |
+    | 0.0        0.0      0.0       1 |
     */
     pub struct Camera {
         pub position: Point3d,
@@ -1122,9 +1122,10 @@ pub mod visualization_v4 {
         }
 
         /// Update the view and projection matrices
-        pub fn update_matrices(&mut self) {
+        fn update_matrices(&mut self) {
             self.view_matrix = self.compute_view_matrix();
             self.projection_matrix = self.compute_projection_matrix();
+            self.position.Z = -self.position.Z; 
         }
 
         /// Compute the view matrix
@@ -1409,38 +1410,78 @@ pub mod visualization_v4 {
             }
             result
         }
-        
         /*
-        | Right.x   Up.x    Forward.x   0 |
-        | Right.y   Up.y    Forward.y   0 |
-        | Right.z   Up.z    Forward.z   0 |
-        | Tx        Ty      Tz          1 |
+               [1.0, 0.0, 0.0, 0.0],
+               [0.0, 1.0, 0.0, 0.0],
+               [0.0, 0.0, 1.0, 0.0],
+               [0.0, 0.0, 0.0, 1.0],
+
         */
         #[inline(always)]
         pub fn get_camera_direction(&self) -> Vertex {
-            let id_matrix = 
-                [
-                [self.view_matrix[0][0],self.view_matrix[0][1],0.0,0.0],
-                [self.view_matrix[1][0],self.view_matrix[1][1],0.0,0.0],
-                [0.0,0.0,1.0,0.0],
-                [0.0,0.0,0.0,1.0],
-                ];
+            // isolate transformation.
+            let matrix_rotation_x = [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, self.view_matrix[1][1], self.view_matrix[1][2], 0.0],
+                [0.0, self.view_matrix[2][1], self.view_matrix[2][2], 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+            let matrix_rotation_y = [
+                [self.view_matrix[0][0], 0.0,self.view_matrix[0][2], 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [self.view_matrix[2][0], 0.0,self.view_matrix[2][2], 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+            let matrix_rotation_z = [
+                [self.view_matrix[0][0], self.view_matrix[0][1], 0.0, 0.0],
+                [self.view_matrix[1][0], self.view_matrix[1][1], 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+            let matrix_translation = [
+                [1.0, 0.0, 0.0,self.view_matrix[0][3]],
+                [0.0, 1.0, 0.0,self.view_matrix[1][3]],
+                [0.0, 0.0, 1.0,self.view_matrix[2][3]],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
+
+            // Remap the forward direction.
+            let d = Vertex::new(
+                self.view_matrix[0][2],
+                self.view_matrix[1][2],
+                -self.view_matrix[2][2],
+            );
+            println!("initial position {d}");
+            // Apply the rotation part only.
+            let r = self.multiply_matrix_vector(&matrix_rotation_z, &d);
+            Vertex::new(r.x, -r.y, r.z)
+        }
+
+        #[inline(always)]
+        pub fn get_camera_direction_bcp(&self) -> Vertex {
+            let matrix_rotation_z = [
+                [self.view_matrix[0][0], self.view_matrix[0][1], 0.0, 0.0],
+                [self.view_matrix[1][0], self.view_matrix[1][1], 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ];
             // Remap the forward direction.
             let d = Vertex::new(
                 self.view_matrix[0][2],
                 -self.view_matrix[1][2],
                 self.view_matrix[2][2],
             );
+            println!("initial position {d}");
             // Apply the rotation part only.
-            let r = self.multiply_matrix_vector(&id_matrix, &d);
-                Vertex::new(r.x,-r.y,r.z)
+            let r = self.multiply_matrix_vector(&matrix_rotation_z, &d);
+            Vertex::new(r.x, -r.y, r.z)
         }
-        
+
         /*
-        | Right.x   Up.x    Forward.x   0 |
-        | Right.y   Up.y    Forward.y   0 |
-        | Right.z   Up.z    Forward.z   0 |
-        | Tx        Ty      Tz          1 |
+        | Right.x   Up.x    Forward.x   Tx |
+        | Right.y   Up.y    Forward.y   Ty |
+        | Right.z   Up.z    Forward.z   Tz |
+        | 0.0        0.0      0.0       1 |
         */
         #[inline(always)]
         pub fn get_camera_up(&self) -> Vertex {
@@ -1452,7 +1493,8 @@ pub mod visualization_v4 {
         }
         #[inline(always)]
         pub fn get_camera_target(&self) -> Vertex {
-            self.get_camera_position() + (self.get_camera_direction().normalize() * (self.target-self.position).Length())
+            self.get_camera_position()
+                + (self.get_camera_direction().normalize() * (self.target - self.position).Length())
         }
         #[inline(always)]
         pub fn get_camera_right(&self) -> Vertex {
@@ -1479,11 +1521,14 @@ pub mod visualization_v4 {
                 self.view_matrix[1][2],
                 self.view_matrix[2][2],
             );
+            /*
             let translation = Vertex::new(
-                self.view_matrix[3][0],
-                self.view_matrix[3][1],
-                self.view_matrix[3][2],
+                self.view_matrix[0][3],
+                self.view_matrix[1][3],
+                self.view_matrix[2][3],
             );
+            */
+            let translation = Vertex::new(1.0, 1.0, 1.0);
             // Camera origin is the negation of the transformed translation
             // The camera's world position is the inverse of the rotation times translation
             Vertex::new(
@@ -1543,15 +1588,12 @@ pub mod visualization_v4 {
             let m = self.view_matrix;
 
             // Compute inverse using Gaussian elimination or optimized inverse function
-
             // Extract translation component from the inverse matrix
             inv[0][3] = -(m[0][0] * m[0][3] + m[1][0] * m[1][3] + m[2][0] * m[2][3]);
             inv[1][3] = -(m[0][1] * m[0][3] + m[1][1] * m[1][3] + m[2][1] * m[2][3]);
             inv[2][3] = -(m[0][2] * m[0][3] + m[1][2] * m[1][3] + m[2][2] * m[2][3]);
-
             inv
         }
-        
     }
 }
 
@@ -3344,6 +3386,3 @@ pub mod rendering_object {
         }
     }
 }
-
-use crate::virtual_space::*;
-use std::sync::Arc;
