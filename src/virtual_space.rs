@@ -981,15 +981,18 @@ impl DisplayPipeLine {
                 let mut c = transformation::transform_point(&trackin_z_matrix, &m_cam_eval_point);
                 c.x = -c.x;
                 c.z = -c.z;
-                println!("Tracking Camera direction -> {c}");
+                println!("\x1b[2K\rTracking Camera direction -> {c}");
                 let pt1 = camera.project_maybe_outside(&c);
                 let pt2 = camera.project_maybe_outside(&cam_target);
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFFD700);
                 }
-
                 ////////////////////////////////////////////////////////////////
-                // println!("{dir_up}");
+                println!("\x1b[2K\r/////////////////////////////////////////////");
+                println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());
+                println!("\x1b[2K\rCamera Direction: {0} length: ({1})",camera.get_camera_direction(), camera.get_camera_direction().magnitude());
+                println!("\x1b[2K\rCamera Target: {0}",camera.get_camera_target());
+                println!("\x1b[2K\r/////////////////////////////////////////////");
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

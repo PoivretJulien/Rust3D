@@ -1415,9 +1415,9 @@ pub mod visualization_v4 {
         #[inline(always)]
         pub fn get_camera_direction(&self) -> Vertex {
             Vertex::new(
-                -self.view_matrix[0][2],
+                self.view_matrix[0][2],
                 -self.view_matrix[1][2],
-                -self.view_matrix[2][2],
+                self.view_matrix[2][2],
             )
         }
         /*
@@ -1426,15 +1426,28 @@ pub mod visualization_v4 {
         | Right.z   Up.z    Forward.z   0 |
         | Tx        Ty      Tz          1 |
         */
+        #[inline(always)]
         pub fn get_camera_up(&self) -> Vertex {
             Vertex::new(
-                self.view_matrix[0][1], // X component of up vector
-                self.view_matrix[1][1], // Y component of up vector
-                self.view_matrix[2][1], // Z component of up vector
+                self.view_matrix[0][1],
+                self.view_matrix[1][1],
+                self.view_matrix[2][1],
             )
         }
-
-        pub fn get_camera_origin(&self) -> Vertex {
+        #[inline(always)]
+        pub fn get_camera_target(&self) -> Vertex {
+            self.get_camera_position() + self.get_camera_direction()
+        }
+        #[inline(always)]
+        pub fn get_camera_right(&self) -> Vertex {
+            Vertex::new(
+                self.view_matrix[0][0],
+                self.view_matrix[1][0],
+                self.view_matrix[2][0],
+            )
+        }
+        #[inline(always)]
+        pub fn get_camera_position(&self) -> Vertex {
             let right = Vertex::new(
                 self.view_matrix[0][0],
                 self.view_matrix[1][0],
@@ -1451,18 +1464,16 @@ pub mod visualization_v4 {
                 self.view_matrix[2][2],
             );
             let translation = Vertex::new(
-                self.view_matrix[0][3],
-                self.view_matrix[1][3],
-                self.view_matrix[2][3],
+                self.view_matrix[3][0],
+                self.view_matrix[3][1],
+                self.view_matrix[3][2],
             );
             // Camera origin is the negation of the transformed translation
             // The camera's world position is the inverse of the rotation times translation
             Vertex::new(
-                -(right.x * translation.x + right.y * translation.y + right.z * translation.z),
-                -(up.x * translation.x + up.y * translation.y + up.z * translation.z),
-                -(forward.x * translation.x
-                    + forward.y * translation.y
-                    + forward.z * translation.z),
+                right.x * translation.x + right.y * translation.y + right.z * translation.z,
+                up.x * translation.x + up.y * translation.y + up.z * translation.z,
+                forward.x * translation.x + forward.y * translation.y + forward.z * translation.z,
             )
         }
 
@@ -1483,9 +1494,9 @@ pub mod visualization_v4 {
                 self.view_matrix[2][2],
             );
             let translation = (
-                self.view_matrix[0][3],
-                self.view_matrix[1][3],
-                self.view_matrix[2][3],
+                self.view_matrix[3][0],
+                self.view_matrix[3][1],
+                self.view_matrix[3][2],
             );
             // Compute world position using the inverse transform
             let x = -(right.0 * translation.0 + right.1 * translation.1 + right.2 * translation.2);
@@ -1493,7 +1504,7 @@ pub mod visualization_v4 {
             let z = -(forward.0 * translation.0
                 + forward.1 * translation.1
                 + forward.2 * translation.2);
-            (x, y, z)
+            (-x, -y, -z)
         }
 
         /// Compute the inverse of a 4x4 matrix
