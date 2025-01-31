@@ -1122,8 +1122,6 @@ pub mod visualization_v4 {
         }
 
         /// Update the view and projection matrices
-        /// needed if the camera
-        /// parameters has changed.
         pub fn update_matrices(&mut self) {
             self.view_matrix = self.compute_view_matrix();
             self.projection_matrix = self.compute_projection_matrix();
@@ -1507,6 +1505,20 @@ pub mod visualization_v4 {
             (-x, -y, -z)
         }
 
+        pub fn extract_camera_target(&self) -> (f64, f64, f64) {
+            let (px, py, pz) = self.extract_camera_position();
+            // Forward vector (negative Z-axis in view space)
+            let forward = (
+                -self.view_matrix[0][2],
+                -self.view_matrix[1][2],
+                -self.view_matrix[2][2],
+            );
+            let target_x = px + forward.0;
+            let target_y = py + forward.1;
+            let target_z = pz + forward.2;
+            (target_x, target_y, target_z)
+        }
+
         /// Compute the inverse of a 4x4 matrix
         pub fn inverse_matrix(&self) -> [[f64; 4]; 4] {
             let mut inv = [[0.0; 4]; 4];
@@ -1520,20 +1532,6 @@ pub mod visualization_v4 {
             inv[2][3] = -(m[0][2] * m[0][3] + m[1][2] * m[1][3] + m[2][2] * m[2][3]);
 
             inv
-        }
-
-        pub fn extract_camera_target(&self) -> (f64, f64, f64) {
-            let (px, py, pz) = self.extract_camera_position();
-            // Forward vector (negative Z-axis in view space)
-            let forward = (
-                -self.view_matrix[0][2],
-                -self.view_matrix[1][2],
-                -self.view_matrix[2][2],
-            );
-            let target_x = px + forward.0;
-            let target_y = py + forward.1;
-            let target_z = pz + forward.2;
-            (target_x, target_y, target_z)
         }
     }
 }

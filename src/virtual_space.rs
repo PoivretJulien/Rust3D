@@ -991,7 +991,7 @@ impl DisplayPipeLine {
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());
                 println!("\x1b[2K\rCamera Direction: {0} length: ({1})",camera.get_camera_direction(), camera.get_camera_direction().magnitude());
-                println!("\x1b[2K\rCamera Target: {0}",camera.get_camera_target());
+                println!("\x1b[2K\rCamera Target: ({0:?})",camera.extract_camera_target());
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
