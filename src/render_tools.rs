@@ -1081,6 +1081,8 @@ pub mod visualization_v4 {
     | 0.0        0.0      0.0       1 |
     */
     pub struct Camera {
+        pub initial_position: Vertex,
+        pub initial_target:Vertex,
         pub position: Point3d,
         pub target: Point3d,
         pub up: Vector3d,
@@ -1104,6 +1106,8 @@ pub mod visualization_v4 {
             far: f64,
         ) -> Self {
             let mut camera = Self {
+                initial_position:position.to_vertex(),
+                initial_target:target.to_vertex(),
                 position,
                 target,
                 up,
@@ -1115,21 +1119,18 @@ pub mod visualization_v4 {
                 view_matrix: [[0.0; 4]; 4],
                 projection_matrix: [[0.0; 4]; 4],
             };
-
-            // Precompute the matrices
-            camera.update_matrices();
+            // remap z for inverse projection in camera space.
+            camera.position.Z = -camera.position.Z;
+            // Precompute the matrices (camera space & projection).
+            camera.view_matrix = camera.compute_view_matrix();
+            camera.projection_matrix = camera.compute_projection_matrix();
+            // Remap the intial camera z system projection to world coordinate. 
+            camera.position.Z = -camera.position.Z;
             camera
         }
 
-        /// Update the view and projection matrices
-        fn update_matrices(&mut self) {
-            self.view_matrix = self.compute_view_matrix();
-            self.projection_matrix = self.compute_projection_matrix();
-            self.position.Z = -self.position.Z; 
-        }
-
         /// Compute the view matrix
-        pub fn compute_view_matrix(&self) -> [[f64; 4]; 4] {
+        fn compute_view_matrix(&self) -> [[f64; 4]; 4] {
             let forward = Vector3d::new(
                 self.position.X - self.target.X,
                 self.position.Y - self.target.Y,
@@ -1160,7 +1161,7 @@ pub mod visualization_v4 {
         }
 
         /// Compute the projection matrix
-        pub fn compute_projection_matrix(&self) -> [[f64; 4]; 4] {
+        fn compute_projection_matrix(&self) -> [[f64; 4]; 4] {
             let aspect_ratio = self.width / self.height;
             let fov_rad = self.fov.to_radians();
             let f = 1.0 / (fov_rad / 2.0).tan();
@@ -1410,15 +1411,13 @@ pub mod visualization_v4 {
             }
             result
         }
-        /*
-               [1.0, 0.0, 0.0, 0.0],
-               [0.0, 1.0, 0.0, 0.0],
-               [0.0, 0.0, 1.0, 0.0],
-               [0.0, 0.0, 0.0, 1.0],
-
-        */
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        /// below function ar in construction.
         #[inline(always)]
-        pub fn get_camera_direction(&self) -> Vertex {
+        /// In construction for the moment not ready to use.
+        fn get_camera_direction(&self) -> Vertex {
             // isolate transformation.
             let matrix_rotation_x = [
                 [1.0, 0.0, 0.0, 0.0],
@@ -1458,7 +1457,7 @@ pub mod visualization_v4 {
         }
 
         #[inline(always)]
-        pub fn get_camera_direction_bcp(&self) -> Vertex {
+        fn get_camera_direction_bcp(&self) -> Vertex {
             let matrix_rotation_z = [
                 [self.view_matrix[0][0], self.view_matrix[0][1], 0.0, 0.0],
                 [self.view_matrix[1][0], self.view_matrix[1][1], 0.0, 0.0],
