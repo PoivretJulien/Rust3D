@@ -193,7 +193,15 @@ pub mod geometry {
             self.Z = self.Z.trunc() + (self.Z.fract() * precision).round() / precision;
         }
     }
-
+    impl fmt::Display for Point3d {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                f,
+                "Point3d(x: {:.3}, y: {:.3}, z: {:.3})",
+                self.X, self.Y, self.Z
+            )
+        }
+    }
     // Vector 3d definition.
     #[allow(non_snake_case)]
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -203,7 +211,15 @@ pub mod geometry {
         Z: f64,
         Length: f64,
     }
-
+    impl fmt::Display for Vector3d {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                f,
+                "Vector3d(x: {:.3}, y: {:.3}, z: {:.3} Length:{:.3})",
+                self.X, self.Y, self.Z,self.Length
+            )
+        }
+    }
     #[allow(non_snake_case)]
     impl Vector3d {
         ///  Create a 3d vector.

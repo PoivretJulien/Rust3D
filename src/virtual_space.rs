@@ -1040,9 +1040,9 @@ impl DisplayPipeLine {
                 );
                     let pt = camera.multiply_matrix_vector(&camera.view_matrix ,&Vertex::new(0.0,-1.0,0.3));
                     println!("\x1b[2K\rA->{pt}");
-                    println!("\x1b[2K\rAngle (x:{0},y:{1})",x_angle,z_angle);
-                    println!("\x1b[2K\rCamera position:{0}, Target:{1}",camera.initial_position,camera.initial_target);
-                    println!("\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",camera.initial_up,camera.initial_right,camera.initial_forward);
+                    println!("\x1b[2K\rAngle (x:{0:>6.1},y:{1:>6.1}) (aware about overflow just a test)",x_angle,z_angle);
+                    println!("\x1b[2K\rCamera position:{0}, Target:{1}",camera.position,camera.target);
+                    println!("\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",camera.cam_up,camera.cam_right,camera.cam_forward);
                 /*
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());
