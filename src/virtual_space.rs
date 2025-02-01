@@ -771,9 +771,13 @@ impl DisplayPipeLine {
                     // Reverse cinematic for camera position tracking.
                     // (panning tracking is not ok for the moment the rotating axis of panning are
                     // not evaluated yet in study.).
+                    camera.cam_right = Quaternion::rotate_point_around_axis(&camera.cam_right.to_vertex(), &Vertex::new(0.0,0.0,1.0), -z_angle).to_vector3d();
                     let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&camera.cam_right.to_vertex(), -x_angle);
                     let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), -z_angle);
-                    let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
+                    // note the pan function need to be updated in function of the updated axis of
+                    // the comera.
+                    let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y); 
+                                                                                
                     let scale_matrix = transformation::scaling_matrix_from_center(
                         Vertex::new(0.0, 0.0, 0.0),
                         1.0 / zoom,
@@ -786,12 +790,9 @@ impl DisplayPipeLine {
                         pan_matrix,
                         scale_matrix,
                     ]);
-                    let transformed_point = Vertex::new(0.0,0.0,0.0);
-                    /*
                     camera.position = camera
                         .multiply_matrix_vector(&invert_view_matrix, &camera.initial_position)
                         .to_point3d();
-                    */
                     
                 }
                 update_flg = false; // Reset flag for next loop.

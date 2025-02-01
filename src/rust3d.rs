@@ -1499,7 +1499,7 @@ pub mod geometry {
             T::new(rotated_q.x, rotated_q.y, rotated_q.z)
         }
         
-        pub fn rotate_point_around_axis<T: Coordinate3d>(point: &T, axis: &T, angle_rad: f64) -> T
+        pub fn rotate_point_around_axis<T: Coordinate3d>(point: &T, axis: &T, angle: f64) -> T
         where
             T: Coordinate3d<Output = T>,
         {
@@ -1515,7 +1515,7 @@ pub mod geometry {
             );
 
             // Create the quaternion for the rotation
-            let half_angle = angle_rad / 2.0;
+            let half_angle = angle.to_radians() / 2.0;
             let sin_half_angle = half_angle.sin();
             let rotation_quat = Quaternion::new(
                 half_angle.cos(),
