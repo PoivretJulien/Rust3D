@@ -677,6 +677,8 @@ impl DisplayPipeLine {
             // Step angle in degrees.
             let step = 1.5;
             ////////////////////////////////////////////////////////////////////
+            ////Experiment part (garbage) //////////////////////////////////////
+            ////////////////////////////////////////////////////////////////////
             // Extract initial camera angles.
             let mut cam_position = camera.position.to_vertex();
             let cam_target = camera.target.to_vertex();
@@ -689,6 +691,9 @@ impl DisplayPipeLine {
             let cam_eval_point = cam_target + -(cam_dir * reduce_factor);
             let cam_eval_local_x = cam_target + (cam_dir_right * reduce_factor);
             let cam_eval_local_z = cam_target + -(cam_dir_up * reduce_factor);
+            ////////////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////////////////
             // Update Camera flg.
             let mut update_flg = true;
             println!("\x1b[2;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry. z + Up or z + Down for Zoom ");
@@ -1033,13 +1038,11 @@ impl DisplayPipeLine {
                     "\x1b[2K\rTracking Camera position V2 -> {0}",
                     camera.position.to_vertex()
                 );
-                    let pt = camera.multiply_matrix_vector(&camera.view_matrix ,&camera.initial_position);
-                    println!("A->{pt}");
-                    let inv = camera.inverse_matrix();
-                    let pt = camera.multiply_matrix_vector(&inv, &pt);
-                    println!("B->{pt}");
+                    let pt = camera.multiply_matrix_vector(&camera.view_matrix ,&Vertex::new(0.0,-1.0,0.3));
+                    println!("\x1b[2K\rA->{pt}");
                     println!("\x1b[2K\rAngle (x:{0},y:{1})",x_angle,z_angle);
-                    println!("\x1b[2K\rCamera orientation: Up:{0} , Right:{1} Forward:{2}",camera.initial_up,camera.initial_right,camera.initial_forward);
+                    println!("\x1b[2K\rCamera position:{0}, Target:{1}",camera.initial_position,camera.initial_target);
+                    println!("\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",camera.initial_up,camera.initial_right,camera.initial_forward);
                 /*
                 println!("\x1b[2K\r/////////////////////////////////////////////");
                 println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());

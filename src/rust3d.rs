@@ -182,7 +182,7 @@ pub mod geometry {
         pub fn to_tuple(self) -> (f64, f64, f64) {
             (self.X, self.Y, self.Z)
         }
-        
+
         #[inline(always)]
         /// Stabilize double precision number to a digit scale.
         ///  1e3 will round to 0.001
@@ -246,7 +246,6 @@ pub mod geometry {
         pub fn get_Z(&self) -> f64 {
             self.Z
         }
-
 
         #[inline(always)]
         /// Stabilize double precision number to a digit scale.
@@ -1474,25 +1473,29 @@ pub mod geometry {
         }
 
         // Rotate a point using the quaternion
-        pub fn rotate_point(&self, point: &Point3d) -> Point3d {
-            let q_point = Quaternion::new(0.0, point.X, point.Y, point.Z);
+        pub fn rotate_point<T: Coordinate3d>(&self, point: &T) -> T
+        where
+            T: Coordinate3d<Output = T>,
+        {
+            let q_point = Quaternion::new(0.0, point.get_x(), point.get_y(), point.get_z());
             let q_conjugate = self.conjugate();
             let rotated_q = self.multiply(&q_point).multiply(&q_conjugate);
-
-            Point3d::new(rotated_q.x, rotated_q.y, rotated_q.z)
+            T::new(rotated_q.x, rotated_q.y, rotated_q.z)
         }
-
-        pub fn rotate_point_around_axis(
-            point: &Point3d,
-            axis: &Point3d,
-            angle_rad: f64,
-        ) -> Point3d {
+        
+        pub fn rotate_point_around_axis<T: Coordinate3d>(point: &T, axis: &T, angle_rad: f64) -> T
+        where
+            T: Coordinate3d<Output = T>,
+        {
             // Normalize the axis vector
-            let axis_length = (axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z).sqrt();
-            let axis_normalized = Point3d::new(
-                axis.X / axis_length,
-                axis.Y / axis_length,
-                axis.Z / axis_length,
+            let axis_length = (axis.get_x() * axis.get_x()
+                + axis.get_y() * axis.get_y()
+                + axis.get_z() * axis.get_z())
+            .sqrt();
+            let axis_normalized = Vertex::new(
+                axis.get_x() / axis_length,
+                axis.get_y() / axis_length,
+                axis.get_z() / axis_length,
             );
 
             // Create the quaternion for the rotation
@@ -1500,20 +1503,16 @@ pub mod geometry {
             let sin_half_angle = half_angle.sin();
             let rotation_quat = Quaternion::new(
                 half_angle.cos(),
-                axis_normalized.X * sin_half_angle,
-                axis_normalized.Y * sin_half_angle,
-                axis_normalized.Z * sin_half_angle,
+                axis_normalized.x * sin_half_angle,
+                axis_normalized.y * sin_half_angle,
+                axis_normalized.z * sin_half_angle,
             )
             .normalize();
-
             // Rotate the point using the quaternion
             rotation_quat.rotate_point(point)
         }
-        
-        pub fn rotate_point_around_axis_to_4x4(
-            axis: &Vertex,
-            angle: f64,
-        ) -> [[f64;4];4] {
+
+        pub fn rotate_point_around_axis_to_4x4(axis: &Vertex, angle: f64) -> [[f64; 4]; 4] {
             // Normalize the axis vector
             let axis = axis.normalize();
             let angle_rad = angle.to_radians();
@@ -1527,7 +1526,7 @@ pub mod geometry {
                 axis.z * sin_half_angle,
             )
             .normalize();
-            // produce a 4x4 matrix. 
+            // produce a 4x4 matrix.
             rotation_quat.to_4x4_matrix()
         }
 
@@ -1559,25 +1558,28 @@ pub mod geometry {
         }
 
         /// Convert the quaternion to a 4x3 transformation matrix
-        pub fn to_4x3_matrix(&self) -> [[f64; 3]; 4] {
+        pub fn to_4x3_matrix(&self) -> [[f64; 4]; 3] {
             let (w, x, y, z) = (self.w, self.x, self.y, self.z);
             [
                 [
                     1.0 - 2.0 * (y * y + z * z),
                     2.0 * (x * y - w * z),
                     2.0 * (x * z + w * y),
+                    0.0, // Translation x part left at zero 
+                         // (quaternion represent only rotation.)
                 ],
                 [
                     2.0 * (x * y + w * z),
                     1.0 - 2.0 * (x * x + z * z),
                     2.0 * (y * z - w * x),
+                    0.0, // Translation y part left at zero.
                 ],
                 [
                     2.0 * (x * z - w * y),
                     2.0 * (y * z + w * x),
                     1.0 - 2.0 * (x * x + y * y),
+                    0.0, // Translation z part left at zero.
                 ],
-                [0.0, 0.0, 0.0], // This row represents translation or is left blank for rotation-only matrices.
             ]
         }
     }
@@ -1935,7 +1937,7 @@ pub mod transformation {
         ]
     }
     /// Create a rotation matrix from angle (in degrees) for X
-    pub fn rotation_matrix_on_x(x_angle: f64)-> [[f64; 4]; 4] {
+    pub fn rotation_matrix_on_x(x_angle: f64) -> [[f64; 4]; 4] {
         // Convert angles from degrees to radians
         let x_rad = x_angle.to_radians();
         // Rotation matrix around the X-axis
@@ -1949,7 +1951,7 @@ pub mod transformation {
     }
 
     /// Create a rotation matrix from angle (in degrees) for Y
-    pub fn rotation_matrix_on_y(y_angle: f64)-> [[f64; 4]; 4] {
+    pub fn rotation_matrix_on_y(y_angle: f64) -> [[f64; 4]; 4] {
         // Convert angles from degrees to radians
         let y_rad = y_angle.to_radians();
         // Rotation matrix around the Y-axis
@@ -1963,7 +1965,7 @@ pub mod transformation {
     }
 
     /// Create a rotation matrix from angle (in degrees) for Z
-    pub fn rotation_matrix_on_z(z_angle: f64)-> [[f64; 4]; 4] {
+    pub fn rotation_matrix_on_z(z_angle: f64) -> [[f64; 4]; 4] {
         // Convert angles from degrees to radians
         let z_rad = z_angle.to_radians();
         // Rotation matrix around the Z-axis
@@ -2093,7 +2095,7 @@ pub mod transformation {
         }
         result
     }
-    
+
     /// Apply a transformations matrix to a point
     /// input data can be Point3d Vector3d or a Vertex
     pub fn transform_point<T: Coordinate3d + Send + Sync>(
@@ -2103,20 +2105,20 @@ pub mod transformation {
     where
         T: Coordinate3d<Output = T>,
     {
-                T::new(
-                    tranform_matrix[0][0] * (*point_to_process).get_x()
-                        + tranform_matrix[0][1] * (*point_to_process).get_y()
-                        + tranform_matrix[0][2] * (*point_to_process).get_z()
-                        + tranform_matrix[0][3] * 1.0,
-                    tranform_matrix[1][0] * (*point_to_process).get_x()
-                        + tranform_matrix[1][1] * (*point_to_process).get_y()
-                        + tranform_matrix[1][2] * (*point_to_process).get_z()
-                        + tranform_matrix[1][3] * 1.0,
-                    tranform_matrix[2][0] * (*point_to_process).get_x()
-                        + tranform_matrix[2][1] * (*point_to_process).get_y()
-                        + tranform_matrix[2][2] * (*point_to_process).get_z()
-                        + tranform_matrix[2][3] * 1.0,
-                )
+        T::new(
+            tranform_matrix[0][0] * (*point_to_process).get_x()
+                + tranform_matrix[0][1] * (*point_to_process).get_y()
+                + tranform_matrix[0][2] * (*point_to_process).get_z()
+                + tranform_matrix[0][3] * 1.0,
+            tranform_matrix[1][0] * (*point_to_process).get_x()
+                + tranform_matrix[1][1] * (*point_to_process).get_y()
+                + tranform_matrix[1][2] * (*point_to_process).get_z()
+                + tranform_matrix[1][3] * 1.0,
+            tranform_matrix[2][0] * (*point_to_process).get_x()
+                + tranform_matrix[2][1] * (*point_to_process).get_y()
+                + tranform_matrix[2][2] * (*point_to_process).get_z()
+                + tranform_matrix[2][3] * 1.0,
+        )
     }
 
     /// Apply a transformations matrix to a list of points
@@ -3224,7 +3226,7 @@ pub mod draw {
     /// Make a contextual Grid of Vertex from Construction Plane orientation.
     /// (the origin point is in the corner down left of the UV grid.)
     /// - the UV side dimension is divided equaly on u and v by a distance number
-    /// unit system resulting a squared grid focussing on unit system sub square 
+    /// unit system resulting a squared grid focussing on unit system sub square
     /// rather than the (maybe) non dividable overal sides length.
     /// # Returns
     /// - an os memory allocated list of Vertex describing the UV grid in 3d space.
@@ -3253,7 +3255,7 @@ pub mod draw {
     /// Make a contextual Grid of Vertex from Construction Plane orientation.
     /// # Arguments
     /// - from CPlane
-    /// - from sides UV dimensions length (f64) divided 
+    /// - from sides UV dimensions length (f64) divided
     ///   by count integer numbers (usize) for U and V
     /// - this respect sides dimensions rather than unit grid cell.
     ///   the unit grid cell are divisions of each sides count numbers
@@ -3266,30 +3268,29 @@ pub mod draw {
         plane: &CPlane,
         u_length: f64,
         v_length: f64,
-        divide_count_u:usize,
-        divide_count_v:usize
+        divide_count_u: usize,
+        divide_count_v: usize,
     ) -> Vec<Vertex> {
-            // Evaluate from (u,v) dimension of the grid.
-            let mut spacing_unit_u = u_length / (divide_count_u as f64);
-            let mut spacing_unit_v = v_length / (divide_count_v as f64);
+        // Evaluate from (u,v) dimension of the grid.
+        let mut spacing_unit_u = u_length / (divide_count_u as f64);
+        let mut spacing_unit_v = v_length / (divide_count_v as f64);
 
-            // Define memory components.
-            let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); divide_count_u * divide_count_v];
-            let mut pt_u = 0.0;
-            let mut pt_v = 0.0;
-            // Make a grid of points describing the plane.
-            for v in 0..divide_count_v {
-                for u in 0..divide_count_u {
-                    grid_points[v * divide_count_u + u] = (*plane)
-                        .point_on_plane_uv(pt_u, pt_v)
-                        .to_vertex();
-                    pt_u += spacing_unit_u;
-                    if u == divide_count_u - 1 {
-                        pt_u = 0.0;
-                    }
+        // Define memory components.
+        let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); divide_count_u * divide_count_v];
+        let mut pt_u = 0.0;
+        let mut pt_v = 0.0;
+        // Make a grid of points describing the plane.
+        for v in 0..divide_count_v {
+            for u in 0..divide_count_u {
+                grid_points[v * divide_count_u + u] =
+                    (*plane).point_on_plane_uv(pt_u, pt_v).to_vertex();
+                pt_u += spacing_unit_u;
+                if u == divide_count_u - 1 {
+                    pt_u = 0.0;
                 }
-                pt_v += spacing_unit_v;
             }
+            pt_v += spacing_unit_v;
+        }
         grid_points
     }
 
@@ -3591,7 +3592,6 @@ pub mod draw {
     }
 
     use crate::render_tools::rendering_object::Vertex;
-
 
     /// Describe a circle With Point 3d (this not draw the circle on buffer a function will be
     /// added soon for that.)
@@ -4111,12 +4111,12 @@ pub mod utillity {
     #[inline(always)]
     /// Round digit number to a precision scale.
     /// precision of 1_000.0 will round digit at 0.001
-    /// precision of 1e6 will round at 0.000001 
+    /// precision of 1e6 will round at 0.000001
     /// the non fractional part is untouched.
-    pub fn round_at_scale(input_value:f64,precision:f64)->f64{
+    pub fn round_at_scale(input_value: f64, precision: f64) -> f64 {
         input_value.trunc() + (input_value.fract() * precision).round() / precision
     }
-   
+
     /// Remap range 1 to range 2 from s value at the scale of range 1.
     pub fn remap(from_range: (f64, f64), to_range: (f64, f64), s: f64) -> f64 {
         to_range.0 + (s - from_range.0) * (to_range.1 - to_range.0) / (from_range.1 - from_range.0)

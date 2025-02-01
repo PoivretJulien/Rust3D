@@ -1081,15 +1081,20 @@ pub mod visualization_v4 {
     | 0.0        0.0      0.0       1 |
     */
     pub struct Camera {
+        // for tracking the delta camera position.
         pub initial_position: Vertex,
         pub initial_target:Vertex,
         pub initial_right:Vertex,
         pub initial_forward:Vertex,
         pub initial_up:Vertex,
-
+        // for caching the camera position.
         pub position: Point3d,
         pub target: Point3d,
         pub up: Vector3d,
+        pub cam_up: Vector3d,
+        pub cam_right: Vector3d,
+        pub cam_forward: Vector3d,
+        // for projection system cuputation.
         pub fov: f64,
         pub width: f64,
         pub height: f64,
@@ -1106,17 +1111,18 @@ pub mod visualization_v4 {
             near: f64,
             far: f64,
         ) -> Self {
-            // Default system settings 
+            // Default system projection settings 
             // User setting will be just an offset of that initial setting.
-            // User setting will be implemented later.
+            // User setting will be implemented later...
             //////////////////////////////////////////////////////////////////
             // Sytem projection initial settings:
-            // wll be offseted by user setting when fully implemented.
+            // will be offseted by user setting 
+            // when fully implemented.
             let position = Point3d::new(0.0, -1.0, 0.3);
             let target = Point3d::new(0.0, 0.0, 0.0);
             let up_system = Vector3d::new(0.0,0.0,1.0); 
             //////////////////////////////////////////////////////////////////
-            // Compute inital component for base tracking components.
+            // Compute inital component for the tracking elements.
             let p = position.to_vertex();
             let t = target.to_vertex();
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
@@ -1133,6 +1139,9 @@ pub mod visualization_v4 {
                 position,
                 target,
                 up:up_system,
+                cam_up : up_direction.to_vector3d(),
+                cam_right : right_direction.to_vector3d(),
+                cam_forward : right_direction.to_vector3d(),
                 fov,
                 width,
                 height,
