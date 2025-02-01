@@ -1502,6 +1502,7 @@ pub mod geometry {
         pub fn rotate_point_around_axis<T: Coordinate3d>(point: &T, axis: &T, angle: f64) -> T
         where
             T: Coordinate3d<Output = T>,
+                //let pt1 = camera.project_maybe_outside(&local_x);
         {
             // Normalize the axis vector
             let axis_length = (axis.get_x() * axis.get_x()

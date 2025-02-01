@@ -771,7 +771,7 @@ impl DisplayPipeLine {
                     // Reverse cinematic for camera position tracking.
                     // (panning tracking is not ok for the moment the rotating axis of panning are
                     // not evaluated yet in study.).
-                    camera.cam_right = Quaternion::rotate_point_around_axis(&camera.cam_right.to_vertex(), &Vertex::new(0.0,0.0,1.0), -z_angle).to_vector3d();
+                    camera.cam_right = (Quaternion::rotate_point_around_axis(&camera.initial_right, &Vertex::new(0.0,0.0,1.0), -z_angle).normalize()*0.2).to_vector3d();
                     let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&camera.cam_right.to_vertex(), -x_angle);
                     let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), -z_angle);
                     // note the pan function need to be updated in function of the updated axis of
@@ -1005,7 +1005,8 @@ impl DisplayPipeLine {
                 let trackin_z_matrix =
                     transformation::rotation_matrix_on_z(-z_angle);
                 let local_x = transformation::transform_point(&trackin_z_matrix, &cam_eval_local_x);
-                let pt1 = camera.project_maybe_outside(&local_x);
+                //let pt1 = camera.project_maybe_outside(&local_x);
+                let pt1 = camera.project_maybe_outside(&camera.cam_right.to_vertex());
                 let pt2 = camera.project_maybe_outside(&cam_target);
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0);
