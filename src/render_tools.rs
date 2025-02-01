@@ -1126,7 +1126,7 @@ pub mod visualization_v4 {
             let p = position.to_vertex();
             let t = target.to_vertex();
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
-            let forward_direction = t-p;
+            let forward_direction = (t-p).normalize();
             let mut up_direction = -forward_direction.cross(&right_direction).normalize();
             up_direction.x = -up_direction.x;
             //////////////////////////////////////////////////////////////////
@@ -1141,7 +1141,7 @@ pub mod visualization_v4 {
                 up:up_system,
                 cam_up : up_direction.to_vector3d(),
                 cam_right : right_direction.to_vector3d(),
-                cam_forward : right_direction.to_vector3d(),
+                cam_forward : forward_direction.to_vector3d(),
                 fov,
                 width,
                 height,

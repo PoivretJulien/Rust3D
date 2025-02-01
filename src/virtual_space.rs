@@ -771,7 +771,7 @@ impl DisplayPipeLine {
                     // Reverse cinematic for camera position tracking.
                     // (panning tracking is not ok for the moment the rotating axis of panning are
                     // not evaluated yet in study.).
-                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(1.0, 0.0, 0.0), -x_angle);
+                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&camera.cam_right.to_vertex(), -x_angle);
                     let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), -z_angle);
                     let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
                     let scale_matrix = transformation::scaling_matrix_from_center(
@@ -787,10 +787,11 @@ impl DisplayPipeLine {
                         scale_matrix,
                     ]);
                     let transformed_point = Vertex::new(0.0,0.0,0.0);
-
+                    /*
                     camera.position = camera
                         .multiply_matrix_vector(&invert_view_matrix, &camera.initial_position)
                         .to_point3d();
+                    */
                     
                 }
                 update_flg = false; // Reset flag for next loop.
@@ -1038,8 +1039,6 @@ impl DisplayPipeLine {
                     "\x1b[2K\rTracking Camera position V2 -> {0}",
                     camera.position.to_vertex()
                 );
-                    let pt = camera.multiply_matrix_vector(&camera.view_matrix ,&Vertex::new(0.0,-1.0,0.3));
-                    println!("\x1b[2K\rA->{pt}");
                     println!("\x1b[2K\rAngle (x:{0:>6.1},y:{1:>6.1}) (aware about overflow just a test)",x_angle,z_angle);
                     println!("\x1b[2K\rCamera position:{0}, Target:{1}",camera.position,camera.target);
                     println!("\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",camera.cam_up,camera.cam_right,camera.cam_forward);
