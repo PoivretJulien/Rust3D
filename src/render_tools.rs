@@ -1083,6 +1083,10 @@ pub mod visualization_v4 {
     pub struct Camera {
         pub initial_position: Vertex,
         pub initial_target:Vertex,
+        pub initial_right:Vertex,
+        pub initial_forward:Vertex,
+        pub initial_up:Vertex,
+
         pub position: Point3d,
         pub target: Point3d,
         pub up: Vector3d,
@@ -1096,21 +1100,39 @@ pub mod visualization_v4 {
     }
     impl Camera {
         pub fn new(
-            position: Point3d,
-            target: Point3d,
-            up: Vector3d,
             width: f64,
             height: f64,
             fov: f64,
             near: f64,
             far: f64,
         ) -> Self {
+            // Default system settings 
+            // User setting will be just an offset of that initial setting.
+            // User setting will be implemented later.
+            //////////////////////////////////////////////////////////////////
+            // Sytem projection initial settings:
+            // wll be offseted by user setting when fully implemented.
+            let position = Point3d::new(0.0, -1.0, 0.3);
+            let target = Point3d::new(0.0, 0.0, 0.0);
+            let up_system = Vector3d::new(0.0,0.0,1.0); 
+            //////////////////////////////////////////////////////////////////
+            // Compute inital component for base tracking components.
+            let p = position.to_vertex();
+            let t = target.to_vertex();
+            let right_direction = Vertex::new(1.0, 0.0, 0.0);
+            let forward_direction = t-p;
+            let mut up_direction = -forward_direction.cross(&right_direction).normalize();
+            up_direction.x = -up_direction.x;
+            //////////////////////////////////////////////////////////////////
             let mut camera = Self {
-                initial_position:position.to_vertex(),
-                initial_target:target.to_vertex(),
+                initial_position:p,
+                initial_target:t,
+                initial_right:right_direction,
+                initial_forward:forward_direction,
+                initial_up:up_direction,
                 position,
                 target,
-                up,
+                up:up_system,
                 fov,
                 width,
                 height,
@@ -1486,7 +1508,7 @@ pub mod visualization_v4 {
         pub fn get_camera_up(&self) -> Vertex {
             Vertex::new(
                 self.view_matrix[0][1],
-                self.view_matrix[1][1],
+                -self.view_matrix[1][1],
                 self.view_matrix[2][1],
             )
         }
@@ -1498,7 +1520,7 @@ pub mod visualization_v4 {
         #[inline(always)]
         pub fn get_camera_right(&self) -> Vertex {
             Vertex::new(
-                self.view_matrix[0][0],
+                -self.view_matrix[0][0],
                 self.view_matrix[1][0],
                 self.view_matrix[2][0],
             )

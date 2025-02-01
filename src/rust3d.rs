@@ -1509,6 +1509,27 @@ pub mod geometry {
             // Rotate the point using the quaternion
             rotation_quat.rotate_point(point)
         }
+        
+        pub fn rotate_point_around_axis_to_4x4(
+            axis: &Vertex,
+            angle: f64,
+        ) -> [[f64;4];4] {
+            // Normalize the axis vector
+            let axis = axis.normalize();
+            let angle_rad = angle.to_radians();
+            // Create the quaternion for the rotation
+            let half_angle = angle_rad / 2.0;
+            let sin_half_angle = half_angle.sin();
+            let rotation_quat = Quaternion::new(
+                half_angle.cos(),
+                axis.x * sin_half_angle,
+                axis.y * sin_half_angle,
+                axis.z * sin_half_angle,
+            )
+            .normalize();
+            // produce a 4x4 matrix. 
+            rotation_quat.to_4x4_matrix()
+        }
 
         /// Convert the quaternion to a 4x4 transformation matrix
         pub fn to_4x4_matrix(&self) -> [[f64; 4]; 4] {
