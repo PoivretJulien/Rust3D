@@ -715,12 +715,12 @@ impl DisplayPipeLine {
                 } else if window.is_key_down(Key::Space)
                     && window.is_key_pressed(Key::Left, minifb::KeyRepeat::No)
                 {
-                    pan_x -= 0.05;
+                    pan_x += 0.05;
                     update_flg = true;
                 } else if window.is_key_down(Key::Space)
                     && window.is_key_pressed(Key::Right, minifb::KeyRepeat::No)
                 {
-                    pan_x += 0.05;
+                    pan_x -= 0.05;
                     update_flg = true;
                 } else if window.is_key_down(Key::Z)
                     && window.is_key_pressed(Key::Up, minifb::KeyRepeat::Yes)
@@ -771,7 +771,9 @@ impl DisplayPipeLine {
                     // Reverse cinematic for camera position tracking.
                     // (panning tracking is not ok for the moment the rotating axis of panning are
                     // not evaluated yet in study.).
+                    // Update the first right component direction of the camera.
                     camera.cam_right = (Quaternion::rotate_point_around_axis(&camera.initial_right, &Vertex::new(0.0,0.0,1.0), -z_angle).normalize()*0.2).to_vector3d();
+                    // Track orbit on x from updated camera right axis from initial state.
                     let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&camera.cam_right.to_vertex(), -x_angle);
                     let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), -z_angle);
                     // note the pan function need to be updated in function of the updated axis of
@@ -1029,7 +1031,7 @@ impl DisplayPipeLine {
                 let mut c = transformation::transform_point(&trackin_z_matrix, &m_cam_eval_point);
                 c.x = -c.x;
                 c.z = -c.z;
-                println!("\x1b[2K\rTracking Camera direction -> {c}");
+                println!("\x1b[2K\rTracking Camera direction (V1)-> {c} (z locked)");
                 let pt1 = camera.project_maybe_outside(&c);
                 let pt2 = camera.project_maybe_outside(&cam_target);
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
@@ -1038,9 +1040,10 @@ impl DisplayPipeLine {
                 ////////////////////////////////////////////////////////////////
                 // the camera position with partial panning.
                 println!(
-                    "\x1b[2K\rTracking Camera position V2 -> {0}",
-                    camera.position.to_vertex()
+                    "\x1b[2K\rTracking Camera position V3 -> {0}",
+                    camera.position
                 );
+                    println!("\x1b[2K\r///////every things are not updated yet.");
                     println!("\x1b[2K\rAngle (x:{0:>6.1},y:{1:>6.1}) (aware about overflow just a test)",x_angle,z_angle);
                     println!("\x1b[2K\rCamera position:{0}, Target:{1}",camera.position,camera.target);
                     println!("\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",camera.cam_up,camera.cam_right,camera.cam_forward);
