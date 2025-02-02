@@ -1146,7 +1146,7 @@ pub mod visualization_v4 {
                 view_matrix: [[0.0; 4]; 4],
                 projection_matrix: [[0.0; 4]; 4],
             };
-            // Reverse z for inverting the projection for the camera view_matrix
+            // Reverse z for inverting the projection of the camera view_matrix
             // point of view from universe (opposit).
             camera.position.z = -camera.position.z;
             //Precompute the two matrix (camera space & projection).
