@@ -1072,13 +1072,14 @@ pub mod visualization_v3 {
 
 pub mod visualization_v4 {
     use super::rendering_object::Vertex;
-    use crate::rust3d::geometry::{Point3d, Vector3d};
+    use crate::rust3d::geometry::Vector3d;
     use rayon::prelude::*;
     /*
-    | Right.x   Up.x    Forward.x   Tx |
-    | Right.y   Up.y    Forward.y   Ty |
-    | Right.z   Up.z    Forward.z   Tz |
-    | 0.0        0.0      0.0       1 |
+    - Camera Space mapping:
+    | Right.x   Right.y   Right.z   Tx |
+    | Up.x      Up.y      Up.z      Ty |
+    | Forward.x Forward.y Forward.z Tz |
+    | 0.0        0.0      0.0        1 |
     */
     pub struct Camera {
         // for tracking the delta camera position.
@@ -1094,7 +1095,7 @@ pub mod visualization_v4 {
         pub cam_up: Vector3d,
         pub cam_right: Vector3d,
         pub cam_forward: Vector3d,
-        // for projection system cuputation.
+        // for projection system computation.
         pub fov: f64,
         pub width: f64,
         pub height: f64,
@@ -1110,18 +1111,21 @@ pub mod visualization_v4 {
             // User setting will be implemented later...
             //////////////////////////////////////////////////////////////////
             // Sytem projection initial settings:
-            // will be offseted by user setting
+            // will be offseted by user setting and (scaled up/or down)
             // when fully implemented.
             let position = Vertex::new(0.0, -1.0, 0.3);
             let target = Vertex::new(0.0, 0.0, 0.0);
             let up_system = Vector3d::new(0.0, 0.0, 1.0);
             //////////////////////////////////////////////////////////////////
-            // Compute inital component for the tracking elements.
+            // Compute inital components for mapping the world sytem orientation 
+            // in the right orientation from intial setting inputs reference (above).
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
             let forward_direction = (target - position).normalize();
             let mut up_direction = -forward_direction.cross(&right_direction).normalize();
-            up_direction.x = -up_direction.x; // to match world coordinate system polarity.
-                                              //////////////////////////////////////////////////////////////////
+            // Orient x right vector from the base setting negative y approache choice.
+            // (Worl y positive should be in the direction of where we are looking)
+            up_direction.x = -up_direction.x;                                 
+            //////////////////////////////////////////////////////////////////
             let mut camera = Self {
                 initial_position: position,
                 initial_target: target,
@@ -1142,7 +1146,8 @@ pub mod visualization_v4 {
                 view_matrix: [[0.0; 4]; 4],
                 projection_matrix: [[0.0; 4]; 4],
             };
-            // Reverse z for inverting the projection of the camera view_matrix.
+            // Reverse z for inverting the projection for the camera view_matrix
+            // point of view from universe (opposit).
             camera.position.z = -camera.position.z;
             //Precompute the two matrix (camera space & projection).
             camera.view_matrix = camera.compute_view_matrix();
@@ -1164,7 +1169,7 @@ pub mod visualization_v4 {
             .normalize()
             .reverse();
             let mut right = forward.cross(&self.up.to_vertex()).normalize();
-            // Remap the (y,z) polarity to match the world space space
+            // map the (y,z) polarity to match the world space space
             // from intial projection.
             right.y = -right.y;
             right.z = -right.z;

@@ -786,7 +786,8 @@ impl DisplayPipeLine {
                         &Vertex::new(0.0, 0.0, 1.0),
                         -z_angle,
                     );
-                    // Pan matrix now need to be apply to the camera target.
+                    // Pan matrix now need to be apply to the camera target i will work on that
+                    // tomorrow.
                     let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
                     let scale_matrix = transformation::scaling_matrix_from_center(
                         Vertex::new(0.0, 0.0, 0.0),
@@ -1050,7 +1051,7 @@ impl DisplayPipeLine {
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFF0000);
                 }
-                // Cam up yellow.
+                // Cam up (yellow).
                 let pt1 = camera.project_maybe_outside(&camera.target);
                 let pt2 = camera.project_maybe_outside(&camera.cam_up.to_vertex());
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
