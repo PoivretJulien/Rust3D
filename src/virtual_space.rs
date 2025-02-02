@@ -812,8 +812,8 @@ impl DisplayPipeLine {
                     camera.position = camera
                         .multiply_matrix_vector(&invert_view_matrix, &camera.initial_position)
                         .to_point3d();
-                    camera.cam_forward = (camera.get_camera_direction().normalize()*0.2).to_vector3d();
-                    camera.cam_up = camera.get_camera_up().to_vector3d();
+                    camera.cam_forward = (camera.get_camera_direction().normalize()*0.1).to_vector3d();
+                    camera.cam_up = (camera.get_camera_up().normalize()*0.1).to_vector3d();
                 }
                 update_flg = false; // Reset flag for next loop.
                 // Display camera matrix on Console.
@@ -1074,11 +1074,20 @@ impl DisplayPipeLine {
                     camera.cam_up, camera.cam_right, camera.cam_forward
                 );
                 let pt1 = camera.project_maybe_outside(&camera.target.to_vertex());
-                let pt2 = camera.project_maybe_outside(&Vertex::new(camera.cam_forward.get_X(),camera.cam_forward.get_Y(),camera.cam_forward.get_Z()));
+                let pt2 = camera.project_maybe_outside(&camera.cam_forward.to_vertex());
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFFFFFF);
                 }
-                println!("{0}",camera.cam_forward.to_vertex());
+                let pt1 = camera.project_maybe_outside(&camera.target.to_vertex());
+                let pt2 = camera.project_maybe_outside(&((camera.cam_right.normalize()*0.1).to_vertex()));
+                if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                    draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x00FF00);
+                }
+                let pt1 = camera.project_maybe_outside(&camera.target.to_vertex());
+                let pt2 = camera.project_maybe_outside(&camera.cam_up.to_vertex());
+                if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                    draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFF00FF);
+                }
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

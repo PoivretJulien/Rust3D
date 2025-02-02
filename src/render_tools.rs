@@ -1234,7 +1234,7 @@ pub mod visualization_v4 {
                         + (right.y * translation.y)
                         + (right.z * translation.z),
                     (up.x * translation.x) + (up.y * translation.y) + (up.z * translation.z),
-                    // notes: (ia hint ???) right.z * translation.z (upper line last op component) 
+                    // notes: (ia hint ???) right.z * translation.z (upper line last op component)
                     (forward.x * translation.x)
                         + (forward.y * translation.y)
                         + (forward.z * translation.z),
@@ -1536,13 +1536,13 @@ pub mod visualization_v4 {
                 self.view_matrix[2][2],
             )
         }
-        
+
         #[inline(always)]
         pub fn get_camera_up(&self) -> Vertex {
             Vertex::new(
-                self.view_matrix[0][1],
+                -self.view_matrix[1][0],
                 -self.view_matrix[1][1],
-                self.view_matrix[2][1],
+                -self.view_matrix[1][2],
             )
         }
         ////////////////////////////////////////////////////////////////////////
