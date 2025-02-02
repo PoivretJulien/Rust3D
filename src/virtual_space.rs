@@ -648,7 +648,6 @@ impl DisplayPipeLine {
             let mut buffer: Vec<u32> = vec![background_color; screen_width * screen_height];
             // Define the Display Unit initial Projection System.
             let mut camera = Camera::new(
-                // the normalized max value)
                 screen_width as f64,
                 screen_height as f64,
                 35.0,  // FOV (Zoom angle increase and you will get a smaller representation)
@@ -752,8 +751,14 @@ impl DisplayPipeLine {
                 ////////////////////////////////////////////////////////////////
                 // Update Camera Position.
                 if update_flg {
-                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(1.0, 0.0, 0.0), x_angle);
-                    let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), z_angle);
+                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
+                        &Vertex::new(1.0, 0.0, 0.0),
+                        x_angle,
+                    );
+                    let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(
+                        &Vertex::new(0.0, 0.0, 1.0),
+                        z_angle,
+                    );
                     let pan_matrix = camera.transform_camera_matrix_pan(pan_x, pan_y);
                     let scale_matrix = transformation::scaling_matrix_from_center(
                         Vertex::new(0.0, 0.0, 0.0),
@@ -772,14 +777,26 @@ impl DisplayPipeLine {
                     // (panning tracking is not ok for the moment the rotating axis of panning are
                     // not evaluated yet in study.).
                     // Update the first right component direction of the camera.
-                    camera.cam_right = (Quaternion::rotate_point_around_axis(&camera.initial_right, &Vertex::new(0.0,0.0,1.0), -z_angle).normalize()*0.2).to_vector3d();
+                    camera.cam_right = (Quaternion::rotate_point_around_axis(
+                        &camera.initial_right,
+                        &Vertex::new(0.0, 0.0, 1.0),
+                        -z_angle,
+                    )
+                    .normalize()
+                        * 0.2)
+                        .to_vector3d();
                     // Track orbit on x from updated camera right axis from initial state.
-                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(&camera.cam_right.to_vertex(), -x_angle);
-                    let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), -z_angle);
-                    // note the pan function need to be updated in function of the updated axis of
-                    // the comera.
-                    let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y); 
-                                                                                
+                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
+                        &camera.cam_right.to_vertex(),
+                        -x_angle,
+                    );
+                    let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(
+                        &Vertex::new(0.0, 0.0, 1.0),
+                        -z_angle,
+                    );
+                    // pan matrix now need to be apply to the camera target.
+                    let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
+
                     let scale_matrix = transformation::scaling_matrix_from_center(
                         Vertex::new(0.0, 0.0, 0.0),
                         1.0 / zoom,
@@ -795,13 +812,18 @@ impl DisplayPipeLine {
                     camera.position = camera
                         .multiply_matrix_vector(&invert_view_matrix, &camera.initial_position)
                         .to_point3d();
-                    
+                    camera.cam_forward = (camera.get_camera_direction().normalize()*0.2).to_vector3d();
+                    camera.cam_up = camera.get_camera_up().to_vector3d();
                 }
                 update_flg = false; // Reset flag for next loop.
                 // Display camera matrix on Console.
                 println!(
-                    "\x1b[3;0H\x1b[2K\r{0:?}\x1b[4;0H\x1b[2K\r{1:?}\x1b[5;0H\x1b[2K\r{2:?}\x1b[6;0H\x1b[2K\r{3:?}",
-                    camera.view_matrix[0], camera.view_matrix[1], camera.view_matrix[2],camera.view_matrix[3]
+                    "\x1b[3;0H\x1b[2K\r[{0:>6.3},{1:>6.3},{2:>6.3},{3:>6.3}]\x1b[4;0H\x1b[2K\r[{4:>6.3},{5:>6.3},{6:>6.3},{7:>6.3}]\
+                    \x1b[5;0H\x1b[2K\r[{8:>6.3},{9:>6.3},{10:>6.3},{11:>6.3}]\x1b[6;0H\x1b[2K\r[{12:>6.3},{13:>6.3},{14:>6.3},{15:>6.3}]",
+                    camera.view_matrix[0][0],camera.view_matrix[0][1],camera.view_matrix[0][2],camera.view_matrix[0][3],
+                    camera.view_matrix[1][0],camera.view_matrix[1][1],camera.view_matrix[1][2],camera.view_matrix[1][3],
+                    camera.view_matrix[2][0],camera.view_matrix[2][1],camera.view_matrix[2][2],camera.view_matrix[2][3],
+                    camera.view_matrix[3][0],camera.view_matrix[3][1],camera.view_matrix[3][2],camera.view_matrix[3][3],
                 );
                 ////////////////////////////////////////////////////////////////
                 // Draw an Unit grid test.
@@ -840,7 +862,7 @@ impl DisplayPipeLine {
                 );
                 ////////////////////////////////////////////////////////////////
                 // Display vertex of imported mesh. (wire frame not available yet) a GPU
-                // acceleration would be beneficial for that. 
+                // acceleration would be beneficial for that.
                 if false {
                     // Get points.
                     if let Ok(mesh) = m.object_list[0].lock() {
@@ -864,8 +886,6 @@ impl DisplayPipeLine {
                         }
                     }
                 }
-
-                ////////////////////////////////////////////////////////////////
                 ////////////////////////////////////////////////////////////////
                 // Draw a parametric mesh Box.
                 ////////////////////////////////////////////////////////////////
@@ -881,7 +901,7 @@ impl DisplayPipeLine {
                     &origin,
                     &mut dir_u,
                     &mut dir_v,
-                    0.2,
+                    0.1,
                     0.1,
                     0.1,
                     1,
@@ -1004,8 +1024,7 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw Camera Base components.       Testing. (no good result yet.)
-                let trackin_z_matrix =
-                    transformation::rotation_matrix_on_z(-z_angle);
+                let trackin_z_matrix = transformation::rotation_matrix_on_z(-z_angle);
                 let local_x = transformation::transform_point(&trackin_z_matrix, &cam_eval_local_x);
                 //let pt1 = camera.project_maybe_outside(&local_x);
                 let pt1 = camera.project_maybe_outside(&camera.cam_right.to_vertex());
@@ -1018,10 +1037,8 @@ impl DisplayPipeLine {
                 let test_m = transformation::rotation_matrix_from_axis_angle(local_x, z_angle);
                 let trackin_z_matrix =
                     transformation::rotation_matrix_from_angles(0.0, 0.0, z_angle);
-                let trackin_matrix = transformation::combine_matrices(vec![
-                    trackin_x_matrix,
-                    trackin_z_matrix,
-                ]);
+                let trackin_matrix =
+                    transformation::combine_matrices(vec![trackin_x_matrix, trackin_z_matrix]);
                 ////////////////////////////////////////////////////////////////
                 // a try to modify the target vector synchronously. (in Yellow)
                 // (a line in direction of the camera just a dot)
@@ -1043,17 +1060,25 @@ impl DisplayPipeLine {
                     "\x1b[2K\rTracking Camera position V3 -> {0}",
                     camera.position
                 );
-                    println!("\x1b[2K\r///////every things are not updated yet.");
-                    println!("\x1b[2K\rAngle (x:{0:>6.1},y:{1:>6.1}) (aware about overflow just a test)",x_angle,z_angle);
-                    println!("\x1b[2K\rCamera position:{0}, Target:{1}",camera.position,camera.target);
-                    println!("\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",camera.cam_up,camera.cam_right,camera.cam_forward);
-                /*
-                println!("\x1b[2K\r/////////////////////////////////////////////");
-                println!("\x1b[2K\rCamera Position: {0}",camera.get_camera_position());
-                println!("\x1b[2K\rCamera Direction: {0}",camera.get_camera_direction());
-                println!("\x1b[2K\rCamera Target: {0}",camera.get_camera_target());
-                println!("\x1b[2K\r/////////////////////////////////////////////");
-                */
+                println!("\x1b[2K\r///////every things are not updated yet.");
+                println!(
+                    "\x1b[2K\rAngle (x:{0:>6.1},y:{1:>6.1}) (aware about overflow just a test)",
+                    x_angle, z_angle
+                );
+                println!(
+                    "\x1b[2K\rCamera position:{0}, Target:{1}",
+                    camera.position, camera.target
+                );
+                println!(
+                    "\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",
+                    camera.cam_up, camera.cam_right, camera.cam_forward
+                );
+                let pt1 = camera.project_maybe_outside(&camera.target.to_vertex());
+                let pt2 = camera.project_maybe_outside(&Vertex::new(camera.cam_forward.get_X(),camera.cam_forward.get_Y(),camera.cam_forward.get_Z()));
+                if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                    draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFFFFFF);
+                }
+                println!("{0}",camera.cam_forward.to_vertex());
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

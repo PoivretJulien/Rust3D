@@ -1083,10 +1083,10 @@ pub mod visualization_v4 {
     pub struct Camera {
         // for tracking the delta camera position.
         pub initial_position: Vertex,
-        pub initial_target:Vertex,
-        pub initial_right:Vertex,
-        pub initial_forward:Vertex,
-        pub initial_up:Vertex,
+        pub initial_target: Vertex,
+        pub initial_right: Vertex,
+        pub initial_forward: Vertex,
+        pub initial_up: Vertex,
         // for caching the camera position.
         pub position: Point3d,
         pub target: Point3d,
@@ -1104,44 +1104,39 @@ pub mod visualization_v4 {
         pub projection_matrix: [[f64; 4]; 4],
     }
     impl Camera {
-        pub fn new(
-            width: f64,
-            height: f64,
-            fov: f64,
-            near: f64,
-            far: f64,
-        ) -> Self {
-            // Default system projection settings 
+        /*
+        pub fn new(width: f64, height: f64, fov: f64, near: f64, far: f64) -> Self {
+            // Default system projection settings
             // User setting will be just an offset of that initial setting.
             // User setting will be implemented later...
             //////////////////////////////////////////////////////////////////
             // Sytem projection initial settings:
-            // will be offseted by user setting 
+            // will be offseted by user setting
             // when fully implemented.
             let position = Point3d::new(0.0, -1.0, 0.3);
             let target = Point3d::new(0.0, 0.0, 0.0);
-            let up_system = Vector3d::new(0.0,0.0,1.0); 
+            let up_system = Vector3d::new(0.0, 0.0, 1.0);
             //////////////////////////////////////////////////////////////////
             // Compute inital component for the tracking elements.
             let p = position.to_vertex();
             let t = target.to_vertex();
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
-            let forward_direction = (t-p).normalize();
+            let forward_direction = (t - p).normalize();
             let mut up_direction = -forward_direction.cross(&right_direction).normalize();
-            up_direction.x = -up_direction.x;
+            up_direction.x = -up_direction.x; // to match world coordinate orientation.
             //////////////////////////////////////////////////////////////////
             let mut camera = Self {
-                initial_position:p,
-                initial_target:t,
-                initial_right:right_direction,
-                initial_forward:forward_direction,
-                initial_up:up_direction,
+                initial_position: p,
+                initial_target: t,
+                initial_right: right_direction,
+                initial_forward: forward_direction,
+                initial_up: up_direction,
                 position,
                 target,
-                up:up_system,
-                cam_up : up_direction.to_vector3d(),
-                cam_right : right_direction.to_vector3d(),
-                cam_forward : forward_direction.to_vector3d(),
+                up: up_system,
+                cam_up: up_direction.to_vector3d(),
+                cam_right: right_direction.to_vector3d(),
+                cam_forward: forward_direction.to_vector3d(),
                 fov,
                 width,
                 height,
@@ -1150,18 +1145,106 @@ pub mod visualization_v4 {
                 view_matrix: [[0.0; 4]; 4],
                 projection_matrix: [[0.0; 4]; 4],
             };
-            // remap z for inverse projection in camera space.
+            // Reverse z for inverting the projection of the camera view_matrix.
             camera.position.Z = -camera.position.Z;
-            // Precompute the matrices (camera space & projection).
+            // Precompute the two matrix (camera space & projection).
             camera.view_matrix = camera.compute_view_matrix();
             camera.projection_matrix = camera.compute_projection_matrix();
-            // Remap the intial camera z system projection to world coordinate. 
+            // Remap to the intial camera z system projection
+            // to matsh the world coordinate.
             camera.position.Z = -camera.position.Z;
             camera
         }
-
-        /// Compute the view matrix
+        */
+        pub fn new(width: f64, height: f64, fov: f64, near: f64, far: f64) -> Self {
+            // Default system projection settings
+            // User setting will be just an offset of that initial setting.
+            // User setting will be implemented later...
+            //////////////////////////////////////////////////////////////////
+            // Sytem projection initial settings:
+            // will be offseted by user setting
+            // when fully implemented.
+            let position = Point3d::new(0.0, -1.0, 0.3);
+            let target = Point3d::new(0.0, 0.0, 0.0);
+            let up_system = Vector3d::new(0.0, 0.0, 1.0);
+            //////////////////////////////////////////////////////////////////
+            // Compute inital component for the tracking elements.
+            let p = position.to_vertex();
+            let t = target.to_vertex();
+            let right_direction = Vertex::new(1.0, 0.0, 0.0);
+            let forward_direction = (t - p).normalize();
+            let mut up_direction = -forward_direction.cross(&right_direction).normalize();
+            up_direction.x = -up_direction.x; // to match world coordinate orientation.
+                                              //////////////////////////////////////////////////////////////////
+            let mut camera = Self {
+                initial_position: p,
+                initial_target: t,
+                initial_right: right_direction,
+                initial_forward: forward_direction,
+                initial_up: up_direction,
+                position,
+                target,
+                up: up_system,
+                cam_up: up_direction.to_vector3d(),
+                cam_right: right_direction.to_vector3d(),
+                cam_forward: forward_direction.to_vector3d(),
+                fov,
+                width,
+                height,
+                near,
+                far,
+                view_matrix: [[0.0; 4]; 4],
+                projection_matrix: [[0.0; 4]; 4],
+            };
+            // Reverse z for inverting the projection of the camera view_matrix.
+            camera.position.Z = -camera.position.Z;
+            //Precompute the two matrix (camera space & projection).
+            camera.view_matrix = camera.compute_view_matrix();
+            camera.projection_matrix = camera.compute_projection_matrix();
+            // Remap to the intial camera z system projection
+            // to matsh the world coordinate.
+            camera.position.Z = -camera.position.Z;
+            camera
+        }
+        /// Compute the view matrix space coordinates
+        /// (representing the camera transformation)
         fn compute_view_matrix(&self) -> [[f64; 4]; 4] {
+            let forward = Vertex::new(
+                self.target.X - self.position.X,
+                self.target.Y - self.position.Y,
+                self.target.Z - self.position.Z,
+            )
+            .normalize()
+            .reverse();
+
+            let mut right = forward.cross(&self.up.to_vertex()).normalize();
+            right.y = -right.y;
+            right.z = -right.z;
+            let mut up = right.cross(&forward).normalize();
+            //up.y = -up.y;
+            let translation = Vertex::new(-self.position.X, -self.position.Y, -self.position.Z);
+            //println!("Position:{0}Forward:{forward}, Right:{right},Up:{up},Translation:{translation}",self.position);
+            //panic!("---");
+            [
+                [right.x, up.x, forward.x, 0.0],
+                [right.y, up.y, forward.y, 0.0],
+                [right.z, up.z, forward.z, 0.0],
+                [
+                    (right.x * translation.x)
+                        + (right.y * translation.y)
+                        + (right.z * translation.z),
+                    (up.x * translation.x) + (up.y * translation.y) + (up.z * translation.z),
+                    // notes: (ia hint ???) right.z * translation.z (upper line last op component) 
+                    (forward.x * translation.x)
+                        + (forward.y * translation.y)
+                        + (forward.z * translation.z),
+                    1.0,
+                ],
+            ]
+        }
+        /// Compute the view matrix space coordinates
+        /// (representing the camera transformation)
+        fn compute_view_matrix_backup(&self) -> [[f64; 4]; 4] {
             let forward = Vector3d::new(
                 self.position.X - self.target.X,
                 self.position.Y - self.target.Y,
@@ -1190,8 +1273,8 @@ pub mod visualization_v4 {
                 ],
             ]
         }
-
-        /// Compute the projection matrix
+        /// Compute the projection matrix.
+        /// ( map 3d coordinates on 2d screen space )
         fn compute_projection_matrix(&self) -> [[f64; 4]; 4] {
             let aspect_ratio = self.width / self.height;
             let fov_rad = self.fov.to_radians();
@@ -1442,50 +1525,29 @@ pub mod visualization_v4 {
             }
             result
         }
-        ////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////
-        /// below function ar in construction.
-        #[inline(always)]
-        /// In construction for the moment not ready to use.
-        fn get_camera_direction(&self) -> Vertex {
-            // isolate transformation.
-            let matrix_rotation_x = [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, self.view_matrix[1][1], self.view_matrix[1][2], 0.0],
-                [0.0, self.view_matrix[2][1], self.view_matrix[2][2], 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
-            let matrix_rotation_y = [
-                [self.view_matrix[0][0], 0.0,self.view_matrix[0][2], 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [self.view_matrix[2][0], 0.0,self.view_matrix[2][2], 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
-            let matrix_rotation_z = [
-                [self.view_matrix[0][0], self.view_matrix[0][1], 0.0, 0.0],
-                [self.view_matrix[1][0], self.view_matrix[1][1], 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
-            let matrix_translation = [
-                [1.0, 0.0, 0.0,self.view_matrix[0][3]],
-                [0.0, 1.0, 0.0,self.view_matrix[1][3]],
-                [0.0, 0.0, 1.0,self.view_matrix[2][3]],
-                [0.0, 0.0, 0.0, 1.0],
-            ];
 
-            // Remap the forward direction.
-            let d = Vertex::new(
-                self.view_matrix[0][2],
-                self.view_matrix[1][2],
-                -self.view_matrix[2][2],
-            );
-            println!("initial position {d}");
-            // Apply the rotation part only.
-            let r = self.multiply_matrix_vector(&matrix_rotation_z, &d);
-            Vertex::new(r.x, -r.y, r.z)
+        #[inline(always)]
+        /// Below function ar in construction.
+        /// Extrat the Camera direction from the view matrix.
+        pub fn get_camera_direction(&self) -> Vertex {
+            Vertex::new(
+                self.view_matrix[2][0],
+                self.view_matrix[2][1],
+                self.view_matrix[2][2],
+            )
         }
+        
+        #[inline(always)]
+        pub fn get_camera_up(&self) -> Vertex {
+            Vertex::new(
+                self.view_matrix[0][1],
+                -self.view_matrix[1][1],
+                self.view_matrix[2][1],
+            )
+        }
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
 
         #[inline(always)]
         fn get_camera_direction_bcp(&self) -> Vertex {
@@ -1514,7 +1576,7 @@ pub mod visualization_v4 {
         | 0.0        0.0      0.0       1 |
         */
         #[inline(always)]
-        pub fn get_camera_up(&self) -> Vertex {
+        pub fn get_camera_up_(&self) -> Vertex {
             Vertex::new(
                 self.view_matrix[0][1],
                 -self.view_matrix[1][1],
