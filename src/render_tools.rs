@@ -1472,7 +1472,7 @@ pub mod visualization_v4 {
             Vertex::new(
                 -self.view_matrix[0][0],
                 -self.view_matrix[0][1],
-                self.view_matrix[0][2],
+                -self.view_matrix[0][2],
             )
         }
         ////////////////////////////////////////////////////////////////////////
