@@ -676,21 +676,16 @@ impl DisplayPipeLine {
             // Step angle in degrees.
             let step = 1.5;
             ////////////////////////////////////////////////////////////////////
-            ////Experiment part (garbage) //////////////////////////////////////
-            ////////////////////////////////////////////////////////////////////
-            // Extract initial camera angles.
-            let mut cam_position = camera.position;
+            // Extract initial camera angles
+            // (for visual initial camera vector direction as scene static reference).
+            let cam_position = camera.position;
             let cam_target = camera.target;
             // Build Basic Components.
             let cam_dir = cam_target - cam_position;
             let cam_dir_up = camera.get_camera_up().normalize();
-            let cam_dir_right = cam_dir.cross(&cam_dir_up).normalize();
             // Represent the camera vector.
             let reduce_factor = 0.1; // for visual display.
             let cam_eval_point = cam_target + -(cam_dir * reduce_factor);
-            let cam_eval_local_x = cam_target + (cam_dir_right * reduce_factor);
-            let cam_eval_local_z = cam_target + -(cam_dir_up * reduce_factor);
-            ////////////////////////////////////////////////////////////////////
             ////////////////////////////////////////////////////////////////////
             ////////////////////////////////////////////////////////////////////
             // Update Camera flg.
@@ -759,7 +754,6 @@ impl DisplayPipeLine {
                         &Vertex::new(0.0, 0.0, 1.0),
                         z_angle,
                     );
-                    let pan_matrix = camera.transform_camera_matrix_pan(pan_x, pan_y);
                     let scale_matrix = transformation::scaling_matrix_from_center(
                         Vertex::new(0.0, 0.0, 0.0),
                         zoom,
@@ -770,13 +764,10 @@ impl DisplayPipeLine {
                         camera_position, // initial camera system position.
                         orbit_x,
                         orbit_z,
-                        pan_matrix,
                         scale_matrix,
                     ]);
-                    // Reverse cinematic for camera position tracking.
-                    // (panning tracking is not ok for the moment the rotating axis of panning are
-                    // not evaluated yet in study.).
-                    // Update the first right component direction of the camera.
+                    // Reverse cinematic for the tracking of the camera position.
+                    // Update the Right direction camera component first (from camera.view_matrix).
                     camera.cam_right = (camera.get_camera_right() * 0.1).to_vector3d();
                     let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
                         &camera.cam_right.to_vertex(),
@@ -786,9 +777,6 @@ impl DisplayPipeLine {
                         &Vertex::new(0.0, 0.0, 1.0),
                         -z_angle,
                     );
-                    // Pan matrix now need to be apply to the camera target i will work on that
-                    // tomorrow.
-                    let pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
                     let scale_matrix = transformation::scaling_matrix_from_center(
                         Vertex::new(0.0, 0.0, 0.0),
                         1.0 / zoom,
@@ -798,15 +786,32 @@ impl DisplayPipeLine {
                     let invert_view_matrix = transformation::combine_matrices(vec![
                         orbit_x,
                         orbit_z,
-                        pan_matrix,
                         scale_matrix,
                     ]);
-                    // Update the 3 lasts component.
-                    camera.position = camera
-                        .multiply_matrix_vector(&invert_view_matrix, &camera.initial_position);
+                    // Update the 4 lasts component.
+                    camera.target = 
+                        camera.multiply_matrix_vector(&invert_view_matrix, &camera.initial_target);
+                    camera.position = 
+                        camera.multiply_matrix_vector(&invert_view_matrix, &camera.initial_position);
                     camera.cam_forward =
                         (camera.get_camera_direction().normalize() * 0.1).to_vector3d();
-                    camera.cam_up = (camera.get_camera_up().normalize() * 0.1).to_vector3d();
+                    camera.cam_up = 
+                        (camera.get_camera_up().normalize() * 0.1).to_vector3d();
+                    // Last step
+                    // Apply pan matrix from updated camera position an target.
+                    // Apply pan matrix to camera view_matrix.
+                    let pan_matrix = camera.transform_camera_matrix_pan(pan_x, pan_y);
+                    camera.view_matrix = camera.combine_matrices(vec![camera.view_matrix,pan_matrix]);
+                    // (this is incomplete or wrong for the moment.)
+                    let inverse_pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
+                    let invert_view_matrix = transformation::combine_matrices(
+                        vec![
+                        invert_view_matrix,
+                        inverse_pan_matrix
+                    ]);
+                    // Update camera after pan 
+                    camera.target = camera.multiply_matrix_vector(&invert_view_matrix, &camera.target);
+                    camera.position = camera.multiply_matrix_vector(&invert_view_matrix, &camera.position);
                 }
                 // Reset flag for next loop.
                 update_flg = false; 
@@ -882,6 +887,8 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a parametric mesh Box.
+                // (graphic wire frame in just temporary for mesh design)
+                // a method for mesh will be implemented soon.
                 ////////////////////////////////////////////////////////////////
                 let origin = Vertex::new(0.0, 0.0, 0.0);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
@@ -933,7 +940,7 @@ impl DisplayPipeLine {
                     }
                 }
                 ////////////////////////////////////////////////////////////////
-                // Test for an input vector. (for silhouette extraction).
+                // Test for an arbitrary input vector (for silhouette extraction).
                 ////////////////////////////////////////////////////////////////
                 let pt1 = Vertex::new(0.1, 0.1, 0.1); // Position
                 let pt2 = Vertex::new(0.0, 0.0, 0.0); // Target
@@ -1003,9 +1010,6 @@ impl DisplayPipeLine {
                                 );
 
                 */
-                // Series of experiments on camera position.
-                // the idea is to map the camera space to the world space at the end
-                // of my study.
                 ////////////////////////////////////////////////////////////////
                 //          Initial camera direction representation.  (in Red)
                 ////////////////////////////////////////////////////////////////
@@ -1016,25 +1020,16 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw Camera Base components.       Testing. (no good result yet.)
-                let trackin_z_matrix = transformation::rotation_matrix_on_z(-z_angle);
-                let local_x = transformation::transform_point(&trackin_z_matrix, &cam_eval_local_x);
-
                 let pt1 = camera.project_maybe_outside(&(camera.cam_right.to_vertex() * 2.0));
                 let pt2 = camera.project_maybe_outside(&cam_target);
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0);
                 }
-                let trackin_z_matrix =
-                    transformation::rotation_matrix_from_angles(0.0, 0.0, z_angle);
-                // the camera position with partial panning.
-                println!(
-                    "\x1b[2K\rTracking Camera position V3 -> {0}",
-                    camera.position
-                );
+                // The camera position with partial panning.
                 println!("\x1b[2K\r///////Pan with updated target need to be fixed");
                 println!(
-                    "\x1b[2K\rAngle (x:{0:>6.1},y:{1:>6.1},zoom:{2:>6.1}) (aware about overflow just a test)",
-                    x_angle, z_angle, zoom
+                    "\x1b[2K\rAngle (x:{0:^6.1},y:{1:^6.1}),zoom:({2:^3.1}),pan:(x:{3:3.1},y:{4:^3.1}))",
+                    x_angle, z_angle, zoom,pan_x,pan_y
                 );
                 println!(
                     "\x1b[2K\rCamera position:{0}, Target:{1}",
@@ -1044,22 +1039,22 @@ impl DisplayPipeLine {
                     "\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",
                     camera.cam_up, camera.cam_right, camera.cam_forward
                 );
-                // Plot the camera base vectors.
+                // Plot the camera base vectors from camera parameters.
                 // Cam right (red).
                 let pt1 = camera.project_maybe_outside(&camera.target);
-                let pt2 = camera.project_maybe_outside(&camera.cam_right.to_vertex());
+                let pt2 = camera.project_maybe_outside(&(camera.target + camera.cam_right.to_vertex()));
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFF0000);
                 }
                 // Cam up (yellow).
                 let pt1 = camera.project_maybe_outside(&camera.target);
-                let pt2 = camera.project_maybe_outside(&camera.cam_up.to_vertex());
+                let pt2 = camera.project_maybe_outside(&(camera.target+camera.cam_up.to_vertex()));
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0xFFD700);
                 }
                 // Cam forward (blue almost invisible since the line is a single dot projection).
                 let pt1 = camera.project_maybe_outside(&camera.target);
-                let pt2 = camera.project_maybe_outside(&camera.cam_forward.to_vertex());
+                let pt2 = camera.project_maybe_outside(&(camera.target + camera.cam_forward.to_vertex()));
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0000FF);
                 }
