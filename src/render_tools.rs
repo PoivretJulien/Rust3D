@@ -1118,7 +1118,7 @@ pub mod visualization_v4 {
             let up_system = Vector3d::new(0.0, 0.0, 1.0);
             //////////////////////////////////////////////////////////////////
             // Compute inital components for mapping the world sytem orientation 
-            // in the right orientation from intial setting inputs reference (above).
+            // in the right orientation from intial setting inputs of reference (above).
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
             let forward_direction = (target - position).normalize();
             let up_direction = -forward_direction.cross(&right_direction).normalize();
@@ -1143,8 +1143,8 @@ pub mod visualization_v4 {
                 view_matrix: [[0.0; 4]; 4],
                 projection_matrix: [[0.0; 4]; 4],
             };
-            // Reverse z for inverting the projection of the camera view_matrix
-            // point of view from universe (opposit).
+            // Reverse z for the projection of the camera view_matrix
+            // (the camera interpret it's system coordinate from reverse from above)
             camera.position.z = -camera.position.z;
             // Precompute the two matrix (camera space & projection).
             camera.view_matrix = camera.compute_view_matrix();
