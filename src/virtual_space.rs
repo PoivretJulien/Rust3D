@@ -1028,7 +1028,7 @@ impl DisplayPipeLine {
                 // The camera position with partial panning.
                 println!("\x1b[2K\r///////Pan with updated target need to be fixed");
                 println!(
-                    "\x1b[2K\rAngle (x:{0:^6.1},y:{1:^6.1}),zoom:({2:^3.1}),pan:(x:{3:3.1},y:{4:^3.1}))",
+                    "\x1b[2K\rAngle (x:{0:^6.1},y:{1:^6.1}),zoom:({2:^3.1}),pan:(x:{3:^3.2},y:{4:^4.2}))",
                     x_angle, z_angle, zoom,pan_x,pan_y
                 );
                 println!(
