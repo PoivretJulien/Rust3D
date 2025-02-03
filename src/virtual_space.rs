@@ -768,7 +768,7 @@ impl DisplayPipeLine {
                     ]);
                     // Reverse cinematic for the tracking of the camera position.
                     // Update the Right direction camera component first (from camera.view_matrix).
-                    camera.cam_right = (camera.get_camera_right()).to_vector3d();
+                    camera.cam_right = (camera.get_camera_right().normalize()).to_vector3d();
                     let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
                         &camera.cam_right.to_vertex(),
                         -x_angle,
