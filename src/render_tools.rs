@@ -1121,10 +1121,7 @@ pub mod visualization_v4 {
             // in the right orientation from intial setting inputs reference (above).
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
             let forward_direction = (target - position).normalize();
-            let mut up_direction = -forward_direction.cross(&right_direction).normalize();
-            // Orient x right vector from the base setting negative y approache choice.
-            // (Worl y positive should be in the direction of where we are looking)
-            up_direction.x = -up_direction.x;                                 
+            let up_direction = -forward_direction.cross(&right_direction).normalize();
             //////////////////////////////////////////////////////////////////
             let mut camera = Self {
                 initial_position: position,
@@ -1149,7 +1146,7 @@ pub mod visualization_v4 {
             // Reverse z for inverting the projection of the camera view_matrix
             // point of view from universe (opposit).
             camera.position.z = -camera.position.z;
-            //Precompute the two matrix (camera space & projection).
+            // Precompute the two matrix (camera space & projection).
             camera.view_matrix = camera.compute_view_matrix();
             camera.projection_matrix = camera.compute_projection_matrix();
             // Remap back, the camera z from view projection matrix to match
