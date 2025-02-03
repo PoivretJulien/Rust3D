@@ -747,7 +747,7 @@ impl DisplayPipeLine {
                 // Update Camera Position.
                 if update_flg {
                     let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
-                        &camera.cam_right.to_vertex(),
+                        &Vertex::new(1.0, 0.0, 0.0),
                         x_angle,
                     );
                     let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(
