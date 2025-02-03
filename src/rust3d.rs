@@ -197,7 +197,7 @@ pub mod geometry {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(
                 f,
-                "Point3d(x: {:.3}, y: {:.3}, z: {:.3})",
+                "Point3d(x: {0:.3}, y: {1:.3}, z: {2:.3})",
                 self.X, self.Y, self.Z
             )
         }
@@ -215,7 +215,7 @@ pub mod geometry {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(
                 f,
-                "Vector3d(x: {:.3}, y: {:.3}, z: {:.3} Length:{:.3})",
+                "Vector3d(x: {0:.3}, y: {1:.3}, z: {2:.3} Length:{3:.3})",
                 self.X, self.Y, self.Z,self.Length
             )
         }

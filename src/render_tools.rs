@@ -1709,7 +1709,7 @@ pub mod rendering_object {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(
                 f,
-                "Vertex(x: {:.3}, y: {:.3}, z: {:.3})",
+                "Vertex(x: {0:.3}, y: {1:.3}, z: {2:.3})",
                 self.x, self.y, self.z
             )
         }

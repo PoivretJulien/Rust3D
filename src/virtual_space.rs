@@ -856,7 +856,7 @@ impl DisplayPipeLine {
                 ////////////////////////////////////////////////////////////////
                 // Display vertex of imported mesh. (wire frame not available yet) a GPU
                 // acceleration would be beneficial for that.
-                if false {
+                if true {
                     // Get points.
                     if let Ok(mesh) = m.object_list[0].lock() {
                         if let Some(obj) = mesh.data.clone() {
@@ -1051,7 +1051,7 @@ impl DisplayPipeLine {
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0000FF);
                 }
-                println!("\x1b[2K\r{} {}",camera.get_initial_camera_position(),camera.get_camera_target());
+                println!("\x1b[2K\rExperimental {} {}",camera.get_initial_camera_position(),camera.get_camera_target());
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();
