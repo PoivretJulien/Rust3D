@@ -1234,7 +1234,8 @@ pub mod visualization_v4 {
         ) -> Vec<(usize, usize, f64)> {
             points
                 .par_iter() // Use parallel iterator
-                .filter_map(|point| self.project_with_depth(point)) // Apply the project method in parallel
+                .filter_map(|point| 
+                    self.project_with_depth(point)) // Apply the project method in parallel
                 .collect() // Collect results into a Vec
         }
 
@@ -1413,6 +1414,7 @@ pub mod visualization_v4 {
             )
         }
 
+        #[inline(always)]
         /// Utility Combine multiple transformation matrices into one
         /// they have to be call from a stack vector use macro vec! for that.
         pub fn combine_matrices(&self, matrices: Vec<[[f64; 4]; 4]>) -> [[f64; 4]; 4] {
@@ -1432,6 +1434,7 @@ pub mod visualization_v4 {
             result
         }
 
+        #[inline(always)]
         /// Utility function: Multiply two 4x4 matrices.
         fn multiply_matrices(&self, a: &[[f64; 4]; 4], b: &[[f64; 4]; 4]) -> [[f64; 4]; 4] {
             let mut result = [[0.0; 4]; 4];
@@ -1475,65 +1478,22 @@ pub mod visualization_v4 {
                 -self.view_matrix[0][2],
             )
         }
-        ////////////////////////////////////////////////////////////////////////
-        // scratch code do not use (below that line)
-        ////////////////////////////////////////////////////////////////////////
-        /*
-        #[inline(always)]
-        pub fn get_camera_target(&self) -> Vertex {
-            self.get_camera_position()
-                + (self.get_camera_direction().normalize() * (self.target - self.position).Length())
-        }
-        */
-
-        #[inline(always)]
-        fn get_camera_position(&self) -> Vertex {
-            let right = Vertex::new(
-                self.view_matrix[0][0],
-                self.view_matrix[1][0],
-                self.view_matrix[2][0],
-            );
-            let up = Vertex::new(
-                self.view_matrix[0][1],
-                self.view_matrix[1][1],
-                self.view_matrix[2][1],
-            );
-            let forward = Vertex::new(
-                self.view_matrix[0][2],
-                self.view_matrix[1][2],
-                self.view_matrix[2][2],
-            );
-            /*
-            let translation = Vertex::new(
-                self.view_matrix[0][3],
-                self.view_matrix[1][3],
-                self.view_matrix[2][3],
-            );
-            */
-            let translation = Vertex::new(1.0, 1.0, 1.0);
-            // Camera origin is the negation of the transformed translation
-            // The camera's world position is the inverse of the rotation times translation
-            Vertex::new(
-                right.x * translation.x + right.y * translation.y + right.z * translation.z,
-                up.x * translation.x + up.y * translation.y + up.z * translation.z,
-                forward.x * translation.x + forward.y * translation.y + forward.z * translation.z,
-            )
-        }
-
-        fn extract_camera_position(&self) -> (f64, f64, f64) {
+        
+        /// Extract the initial camera postoion of the view matrix.
+        pub fn get_initial_camera_position(&self) -> Vertex {
             let right = (
                 self.view_matrix[0][0],
-                self.view_matrix[1][0],
-                self.view_matrix[2][0],
+                self.view_matrix[0][1],
+                self.view_matrix[0][2],
             );
             let up = (
-                self.view_matrix[0][1],
+                self.view_matrix[1][0],
                 self.view_matrix[1][1],
-                self.view_matrix[2][1],
+                self.view_matrix[1][2],
             );
             let forward = (
-                self.view_matrix[0][2],
-                self.view_matrix[1][2],
+                self.view_matrix[2][0],
+                self.view_matrix[2][1],
                 self.view_matrix[2][2],
             );
             let translation = (
@@ -1542,28 +1502,24 @@ pub mod visualization_v4 {
                 self.view_matrix[3][2],
             );
             // Compute world position using the inverse transform
-            let x = -(right.0 * translation.0 + right.1 * translation.1 + right.2 * translation.2);
-            let y = -(up.0 * translation.0 + up.1 * translation.1 + up.2 * translation.2);
-            let z = -(forward.0 * translation.0
-                + forward.1 * translation.1
-                + forward.2 * translation.2);
-            (-x, -y, -z)
+            Vertex::new(
+             -(right.0 * translation.0 + right.1 * translation.1 + right.2 * translation.2),
+             -(up.0 * translation.0 + up.1 * translation.1 + up.2 * translation.2),
+             (forward.0 * translation.0 + forward.1 * translation.1 + forward.2 * translation.2))
         }
-
-        fn extract_camera_target(&self) -> (f64, f64, f64) {
-            let (px, py, pz) = self.extract_camera_position();
+        
+        #[inline(always)]
+        pub fn get_camera_target(&self) -> Vertex{
+            let initial_position = self.position;
             // Forward vector (negative Z-axis in view space)
-            let forward = (
-                -self.view_matrix[0][2],
-                -self.view_matrix[1][2],
-                -self.view_matrix[2][2],
-            );
-            let target_x = px + forward.0;
-            let target_y = py + forward.1;
-            let target_z = pz + forward.2;
-            (target_x, target_y, target_z)
+            let length =  initial_position.magnitude();
+             Vertex::new(
+                initial_position.x + (self.view_matrix[2][0]*length),
+                initial_position.y + (self.view_matrix[2][1]*length),
+                initial_position.z + (self.view_matrix[2][2]*length),
+             )
         }
-
+        
         /// Compute the inverse of a 4x4 matrix
         fn inverse_matrix(&self) -> [[f64; 4]; 4] {
             let mut inv = [[0.0; 4]; 4];
