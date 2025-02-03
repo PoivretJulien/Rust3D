@@ -1030,7 +1030,7 @@ impl DisplayPipeLine {
                 );
                 println!(
                     "\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",
-                    camera.cam_up, camera.cam_right, (camera.cam_forward*0.1)
+                    camera.cam_up, camera.cam_right, camera.cam_forward
                 );
                 // Plot the camera base vectors from camera parameters.
                 // Cam right (red).
