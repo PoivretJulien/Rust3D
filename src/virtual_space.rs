@@ -689,7 +689,7 @@ impl DisplayPipeLine {
             ////////////////////////////////////////////////////////////////////
             // Update Camera flg.
             let mut update_flg = true;
-            println!("\x1b[2;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry. z + Up or z + Down for Zoom ");
+            println!("\x1b[2;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera.");
             ////////////////////////////////////////////////////////////////////
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 for pixel in buffer.iter_mut() {
@@ -821,7 +821,7 @@ impl DisplayPipeLine {
                 }
                 ////////////////////////////////////////////////////////////////
                 // Draw a parametric mesh Box.
-                // (graphic wire frame in just temporary for mesh design)
+                // (graphic wire frame are just temporary for mesh design)
                 // a method for mesh will be implemented soon.
                 ////////////////////////////////////////////////////////////////
                 let origin = Vertex::new(0.0, 0.0, 0.0);
