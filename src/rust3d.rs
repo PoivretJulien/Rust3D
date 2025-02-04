@@ -349,6 +349,7 @@ pub mod geometry {
         }
 
         // Unitize the Vector3d.
+        /// Normalize the vector from memory cached length.
         pub fn unitize(&mut self) {
             self.X /= self.Length;
             self.Y /= self.Length;
@@ -357,6 +358,7 @@ pub mod geometry {
         }
 
         #[inline(always)]
+        /// Normalize the vector from memory cached length.
         pub fn unitize_b(&self) -> Self {
             let mag = self.Length;
             if mag > std::f64::EPSILON {
@@ -386,11 +388,7 @@ pub mod geometry {
         }
 
         #[inline(always)]
-        /// Normalize the point as a vector
-        /// (equivalent to unitize_b for Vector3d)
-        /// this remove ambiguity when point 3d is use as vector
-        /// ( to avoid sqrt penalty on magnetude creation when using Vector3d )
-        /// - it's recommended to use Vertex for that.
+        /// Normalize the vector from memory cached length.
         pub fn normalize(&self) -> Self {
             let mag = self.Length;
             if mag > std::f64::EPSILON {
