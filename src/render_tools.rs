@@ -1072,7 +1072,8 @@ pub mod visualization_v3 {
 
 pub mod visualization_v4 {
     use super::rendering_object::Vertex;
-    use crate::rust3d::geometry::Vector3d;
+    use crate::rust3d::geometry::{Quaternion, Vector3d};
+    use crate::rust3d::transformation;
     use rayon::prelude::*;
     /*
     - Camera Space mapping:
@@ -1501,8 +1502,8 @@ pub mod visualization_v4 {
         }
 
         #[inline(always)]
-        /// Compute the camera target from camera view_matrix 
-        /// - Only accurate if the camera position is correctlty 
+        /// Compute the camera target from camera view_matrix
+        /// - Only accurate if the camera position is correctlty
         /// tracked or computed and updated at first.
         pub fn get_camera_target(&self) -> Vertex {
             let length = (self.initial_target - self.initial_position).magnitude(); // Computed initial length.
@@ -1524,6 +1525,70 @@ pub mod visualization_v4 {
             inv[1][3] = -(m[0][1] * m[0][3] + m[1][1] * m[1][3] + m[2][1] * m[2][3]);
             inv[2][3] = -(m[0][2] * m[0][3] + m[1][2] * m[1][3] + m[2][2] * m[2][3]);
             inv
+        }
+
+        #[inline(always)]
+        /// Orbit camera view from input angles,zoom and panning translation.  
+        /// Note: initial view matrix should be a reference to a copy of the 
+        /// first transformation view matrix transformation of the camera which
+        /// align the camera sytem in it's initial orientation from world. 
+        /// an so incrementing angle will be updated from there in each runtime loop 
+        /// (this reference should be outside the loop of course).
+        pub fn orbit_around_world_z(
+            &mut self,
+            initial_view_matrix:&[[f64;4];4],
+            x_angle: f64,
+            z_angle: f64,
+            zoom: f64,
+            pan_x: f64,
+            pan_y: f64,
+        ) {
+            let orbit_x =
+                Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(1.0, 0.0, 0.0), x_angle);
+            let orbit_z =
+                Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), z_angle);
+            let scale_matrix = transformation::scaling_matrix_from_center(
+                Vertex::new(0.0, 0.0, 0.0),
+                zoom,
+                zoom,
+                zoom,
+            );
+            self.view_matrix = transformation::combine_matrices(vec![
+                *initial_view_matrix, // initial camera system position.
+                orbit_x,
+                orbit_z,
+                scale_matrix,
+            ]);
+            // Reverse cinematic for the tracking of the camera position.
+            // Update the Right direction camera component first (from camera.view_matrix).
+            self.cam_right = (self.get_camera_right().normalize()).to_vector3d();
+            let orbit_x =
+                Quaternion::rotate_point_around_axis_to_4x4(&self.cam_right.to_vertex(), -x_angle);
+            let orbit_z =
+                Quaternion::rotate_point_around_axis_to_4x4(&Vertex::new(0.0, 0.0, 1.0), -z_angle);
+            let scale_matrix = transformation::scaling_matrix_from_center(
+                Vertex::new(0.0, 0.0, 0.0),
+                1.0 / zoom,
+                1.0 / zoom,
+                1.0 / zoom,
+            );
+            let invert_view_matrix =
+                transformation::combine_matrices(vec![orbit_x, orbit_z, scale_matrix]);
+            // Update the 4 lasts component.
+            self.target = self.multiply_matrix_vector(&invert_view_matrix, &self.initial_target);
+            self.position =
+                self.multiply_matrix_vector(&invert_view_matrix, &self.initial_position);
+            self.cam_forward = (self.get_camera_direction().normalize()).to_vector3d();
+            self.cam_up = (self.get_camera_up().normalize()).to_vector3d();
+            // Last step
+            // Apply pan matrix from updated camera position an target.
+            // Apply pan matrix to camera view_matrix.
+            let pan_matrix = self.transform_camera_matrix_pan(pan_x, pan_y);
+            self.view_matrix = self.combine_matrices(vec![self.view_matrix, pan_matrix]);
+            let inverse_pan_matrix = self.transform_camera_matrix_pan(-pan_x, -pan_y);
+            // Update camera after pan
+            self.target = self.multiply_matrix_vector(&inverse_pan_matrix, &self.target);
+            self.position = self.multiply_matrix_vector(&inverse_pan_matrix, &self.position);
         }
     }
 }

@@ -682,7 +682,6 @@ impl DisplayPipeLine {
             let cam_target = camera.target;
             // Build Basic Components.
             let cam_dir = cam_target - cam_position;
-            let cam_dir_up = camera.get_camera_up().normalize();
             // Represent the camera vector.
             let reduce_factor = 0.1; // for visual display.
             let cam_eval_point = cam_target + -(cam_dir * reduce_factor);
@@ -746,66 +745,7 @@ impl DisplayPipeLine {
                 ////////////////////////////////////////////////////////////////
                 // Update Camera Position.
                 if update_flg {
-                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
-                        &Vertex::new(1.0, 0.0, 0.0),
-                        x_angle,
-                    );
-                    let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(
-                        &Vertex::new(0.0, 0.0, 1.0),
-                        z_angle,
-                    );
-                    let scale_matrix = transformation::scaling_matrix_from_center(
-                        Vertex::new(0.0, 0.0, 0.0),
-                        zoom,
-                        zoom,
-                        zoom,
-                    );
-                    camera.view_matrix = transformation::combine_matrices(vec![
-                        camera_position, // initial camera system position.
-                        orbit_x,
-                        orbit_z,
-                        scale_matrix,
-                    ]);
-                    // Reverse cinematic for the tracking of the camera position.
-                    // Update the Right direction camera component first (from camera.view_matrix).
-                    camera.cam_right = (camera.get_camera_right().normalize()).to_vector3d();
-                    let orbit_x = Quaternion::rotate_point_around_axis_to_4x4(
-                        &camera.cam_right.to_vertex(),
-                        -x_angle,
-                    );
-                    let orbit_z = Quaternion::rotate_point_around_axis_to_4x4(
-                        &Vertex::new(0.0, 0.0, 1.0),
-                        -z_angle,
-                    );
-                    let scale_matrix = transformation::scaling_matrix_from_center(
-                        Vertex::new(0.0, 0.0, 0.0),
-                        1.0 / zoom,
-                        1.0 / zoom,
-                        1.0 / zoom,
-                    );
-                    let invert_view_matrix = transformation::combine_matrices(vec![
-                        orbit_x,
-                        orbit_z,
-                        scale_matrix,
-                    ]);
-                    // Update the 4 lasts component.
-                    camera.target = 
-                        camera.multiply_matrix_vector(&invert_view_matrix, &camera.initial_target);
-                    camera.position = 
-                        camera.multiply_matrix_vector(&invert_view_matrix, &camera.initial_position);
-                    camera.cam_forward =
-                        (camera.get_camera_direction().normalize()).to_vector3d();
-                    camera.cam_up = 
-                        (camera.get_camera_up().normalize()).to_vector3d();
-                    // Last step
-                    // Apply pan matrix from updated camera position an target.
-                    // Apply pan matrix to camera view_matrix.
-                    let pan_matrix = camera.transform_camera_matrix_pan(pan_x, pan_y);
-                    camera.view_matrix = camera.combine_matrices(vec![camera.view_matrix,pan_matrix]);
-                    let inverse_pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
-                    // Update camera after pan 
-                    camera.target = camera.multiply_matrix_vector(&inverse_pan_matrix, &camera.target);
-                    camera.position = camera.multiply_matrix_vector(&inverse_pan_matrix, &camera.position);
+                    camera.orbit_around_world_z(&camera_position,x_angle, z_angle, zoom, pan_x, pan_y);                   
                 }
                 // Reset flag for next loop.
                 update_flg = false; 
