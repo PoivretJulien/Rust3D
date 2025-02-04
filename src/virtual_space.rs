@@ -800,9 +800,9 @@ impl DisplayPipeLine {
                     // Last step
                     // Apply pan matrix from updated camera position an target.
                     // Apply pan matrix to camera view_matrix.
-                    let pan_matrix = camera.transform_camera_matrix_pan_vb(pan_x, pan_y);
+                    let pan_matrix = camera.transform_camera_matrix_pan(pan_x, pan_y);
                     camera.view_matrix = camera.combine_matrices(vec![camera.view_matrix,pan_matrix]);
-                    let inverse_pan_matrix = camera.transform_camera_matrix_pan_vb(-pan_x, -pan_y);
+                    let inverse_pan_matrix = camera.transform_camera_matrix_pan(-pan_x, -pan_y);
                     // Update camera after pan 
                     camera.target = camera.multiply_matrix_vector(&inverse_pan_matrix, &camera.target);
                     camera.position = camera.multiply_matrix_vector(&inverse_pan_matrix, &camera.position);

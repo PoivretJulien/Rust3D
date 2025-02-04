@@ -1085,9 +1085,9 @@ pub mod visualization_v4 {
         // for tracking the delta camera position.
         pub initial_position: Vertex,
         pub initial_target: Vertex,
-        pub initial_right: Vertex,
-        pub initial_forward: Vertex,
-        pub initial_up: Vertex,
+        pub initial_right: Vector3d,
+        pub initial_forward: Vector3d,
+        pub initial_up: Vector3d,
         // for caching the camera position.
         pub position: Vertex,
         pub target: Vertex,
@@ -1126,9 +1126,9 @@ pub mod visualization_v4 {
             let mut camera = Self {
                 initial_position: position,
                 initial_target: target,
-                initial_right: right_direction,
-                initial_forward: forward_direction,
-                initial_up: up_direction,
+                initial_right: right_direction.to_vector3d(),
+                initial_forward: forward_direction.to_vector3d(),
+                initial_up: up_direction.to_vector3d(),
                 position,
                 target,
                 up: up_system,
@@ -1320,40 +1320,9 @@ pub mod visualization_v4 {
         ///need update...do not use
         /// Generate a panning transformation matrix
         /// `dx` and `dy` are the offsets in world space along the right and up directions.
-        pub fn transform_camera_matrix_pan_vb(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
+        pub fn transform_camera_matrix_pan(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
             let right = self.cam_right;
             let up = self.cam_up;
-
-            // Translation in the right and up directions
-            let translation = Vertex::new(
-                dx * right.get_X() + dy * up.get_X(),
-                dx * right.get_Y() + dy * up.get_Y(),
-                dx * right.get_Z() + dy * up.get_Z(),
-            );
-
-            // Construct the transformation matrix
-            [
-                [1.0, 0.0, 0.0, translation.x],
-                [0.0, 1.0, 0.0, translation.y],
-                [0.0, 0.0, 1.0, translation.z],
-                [0.0, 0.0, 0.0, 1.0],
-            ]
-        }
-
-        ///need update...do not use
-        /// Generate a panning transformation matrix
-        /// `dx` and `dy` are the offsets in world space along the right and up directions.
-        pub fn transform_camera_matrix_pan(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
-            // Calculate the right and up vectors based on the camera's orientation
-            let forward = Vector3d::new(
-                self.target.x - self.position.x,
-                self.target.y - self.position.y,
-                self.target.z - self.position.z,
-            )
-            .unitize_b();
-
-            let right = Vector3d::cross_product(&forward, &self.up).unitize_b();
-            let up = Vector3d::cross_product(&right, &forward).unitize_b();
 
             // Translation in the right and up directions
             let translation = Vertex::new(
