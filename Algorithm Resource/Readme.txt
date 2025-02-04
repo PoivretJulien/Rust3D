@@ -1,1 +1,3 @@
-Some Grasshopper 3d definitions for Rhinoceros3d (https://www.rhino3d.com)
+Personal algorithm study.
+Rhinoceros3d Grasshopper3d definition (https://www.rhino3d.com)
+ 
