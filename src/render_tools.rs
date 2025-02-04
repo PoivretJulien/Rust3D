@@ -1117,7 +1117,7 @@ pub mod visualization_v4 {
             let target = Vertex::new(0.0, 0.0, 0.0);
             let up_system = Vector3d::new(0.0, 0.0, 1.0);
             //////////////////////////////////////////////////////////////////
-            // Compute inital components for mapping the world sytem orientation 
+            // Compute inital components for mapping the world sytem orientation
             // in the right orientation from intial setting inputs of reference (above).
             let right_direction = Vertex::new(1.0, 0.0, 0.0);
             let forward_direction = (target - position).normalize();
@@ -1234,8 +1234,7 @@ pub mod visualization_v4 {
         ) -> Vec<(usize, usize, f64)> {
             points
                 .par_iter() // Use parallel iterator
-                .filter_map(|point| 
-                    self.project_with_depth(point)) // Apply the project method in parallel
+                .filter_map(|point| self.project_with_depth(point)) // Apply the project method in parallel
                 .collect() // Collect results into a Vec
         }
 
@@ -1322,8 +1321,8 @@ pub mod visualization_v4 {
         /// Generate a panning transformation matrix
         /// `dx` and `dy` are the offsets in world space along the right and up directions.
         pub fn transform_camera_matrix_pan_vb(&self, dx: f64, dy: f64) -> [[f64; 4]; 4] {
-            let right =  self.cam_right;
-            let up = self.cam_up; 
+            let right = self.cam_right;
+            let up = self.cam_up;
 
             // Translation in the right and up directions
             let translation = Vertex::new(
@@ -1501,7 +1500,7 @@ pub mod visualization_v4 {
                 -self.view_matrix[0][2],
             )
         }
-        
+
         /// Extract the initial camera postoion of the view matrix.
         pub fn get_initial_camera_position(&self) -> Vertex {
             let right = (
@@ -1526,23 +1525,25 @@ pub mod visualization_v4 {
             );
             // Compute world position using the inverse transform
             Vertex::new(
-             -(right.0 * translation.0 + right.1 * translation.1 + right.2 * translation.2),
-             -(up.0 * translation.0 + up.1 * translation.1 + up.2 * translation.2),
-             (forward.0 * translation.0 + forward.1 * translation.1 + forward.2 * translation.2))
+                -(right.0 * translation.0 + right.1 * translation.1 + right.2 * translation.2),
+                -(up.0 * translation.0 + up.1 * translation.1 + up.2 * translation.2),
+                (forward.0 * translation.0 + forward.1 * translation.1 + forward.2 * translation.2),
+            )
         }
-        
+
         #[inline(always)]
-        pub fn get_camera_target(&self) -> Vertex{
-            let initial_position = self.position;
-            // Forward vector (negative Z-axis in view space)
-            let length =  initial_position.magnitude();
-             Vertex::new(
-                initial_position.x + (self.view_matrix[2][0]*length),
-                initial_position.y + (self.view_matrix[2][1]*length),
-                initial_position.z + (self.view_matrix[2][2]*length),
-             )
+        /// Compute the camera target from camera view_matrix 
+        /// - Only accurate if the camera position is correctlty 
+        /// tracked or computed and updated at first.
+        pub fn get_camera_target(&self) -> Vertex {
+            let length = (self.initial_target - self.initial_position).magnitude(); // Computed initial length.
+            Vertex::new(
+                self.position.x + (self.view_matrix[2][0] * length),
+                self.position.y + (self.view_matrix[2][1] * length),
+                self.position.z + (self.view_matrix[2][2] * length),
+            )
         }
-        
+
         /// Compute the inverse of a 4x4 matrix
         fn inverse_matrix(&self) -> [[f64; 4]; 4] {
             let mut inv = [[0.0; 4]; 4];

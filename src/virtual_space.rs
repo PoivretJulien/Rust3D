@@ -856,7 +856,7 @@ impl DisplayPipeLine {
                 ////////////////////////////////////////////////////////////////
                 // Display vertex of imported mesh. (wire frame not available yet) a GPU
                 // acceleration would be beneficial for that.
-                if true {
+                if false {
                     // Get points.
                     if let Ok(mesh) = m.object_list[0].lock() {
                         if let Some(obj) = mesh.data.clone() {
