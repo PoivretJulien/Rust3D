@@ -1574,7 +1574,7 @@ pub mod visualization_v4 {
             );
             let invert_view_matrix =
                 transformation::combine_matrices(vec![orbit_x, orbit_z, scale_matrix]);
-            // Update the 4 lasts component.
+            // Update the 4 lasts components.
             self.target = self.multiply_matrix_vector(&invert_view_matrix, &self.initial_target);
             self.position =
                 self.multiply_matrix_vector(&invert_view_matrix, &self.initial_position);
