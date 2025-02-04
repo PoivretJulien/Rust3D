@@ -211,17 +211,20 @@ pub mod geometry {
         Z: f64,
         Length: f64,
     }
+
     impl fmt::Display for Vector3d {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(
                 f,
                 "Vector3d(x: {0:.3}, y: {1:.3}, z: {2:.3} Length:{3:.3})",
-                self.X, self.Y, self.Z,self.Length
+                self.X, self.Y, self.Z, self.Length
             )
         }
     }
+
     #[allow(non_snake_case)]
     impl Vector3d {
+        #[inline(always)]
         ///  Create a 3d vector.
         ///  # Arguments
         ///  (x:f64, y:f64, z:f64)
@@ -241,24 +244,36 @@ pub mod geometry {
                 Length: Vector3d::compute_length(x, y, z),
             }
         }
+
+        #[inline(always)]
         pub fn set_X(&mut self, new_x_value: f64) {
             self.X = new_x_value;
             self.update_length();
         }
+
+        #[inline(always)]
         pub fn set_Y(&mut self, new_y_value: f64) {
             self.Y = new_y_value;
             self.update_length();
         }
+
+        #[inline(always)]
         pub fn set_Z(&mut self, new_z_value: f64) {
             self.Z = new_z_value;
             self.update_length();
         }
+
+        #[inline(always)]
         pub fn get_X(&self) -> f64 {
             self.X
         }
+
+        #[inline(always)]
         pub fn get_Y(&self) -> f64 {
             self.Y
         }
+
+        #[inline(always)]
         pub fn get_Z(&self) -> f64 {
             self.Z
         }
@@ -341,38 +356,57 @@ pub mod geometry {
             self.update_length();
         }
 
-        pub fn unitize_b(&self) -> Vector3d {
-            if self.Length > std::f64::EPSILON {
-                // set very tinny vector to zero.
-                Vector3d::new(
-                    self.X / self.Length,
-                    self.Y / self.Length,
-                    self.Z / self.Length,
-                )
+        #[inline(always)]
+        pub fn unitize_b(&self) -> Self {
+            let mag = self.Length;
+            if mag > std::f64::EPSILON {
+                Self {
+                    X: self.X / mag,
+                    Y: self.Y / mag,
+                    Z: self.Z / mag,
+                    Length: 1.0,
+                }
             } else {
-                Vector3d::new(0.0, 0.0, 0.0)
+                Self {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0,
+                    Length: 0.0,
+                }
             }
         }
 
         // the 3 following methods are alias for keeping
         // habits from other 3d Api.
 
+        #[inline(always)]
         /// Same as unitize
         pub fn magnitude(&self) -> f64 {
             (self.X * self.X + self.Y * self.Y + self.Z * self.Z).sqrt()
         }
 
+        #[inline(always)]
         /// Normalize the point as a vector
         /// (equivalent to unitize_b for Vector3d)
         /// this remove ambiguity when point 3d is use as vector
         /// ( to avoid sqrt penalty on magnetude creation when using Vector3d )
         /// - it's recommended to use Vertex for that.
         pub fn normalize(&self) -> Self {
-            let mag = self.magnitude();
+            let mag = self.Length;
             if mag > std::f64::EPSILON {
-                Vector3d::new(self.X / mag, self.Y / mag, self.Z / mag)
+                Self {
+                    X: self.X / mag,
+                    Y: self.Y / mag,
+                    Z: self.Z / mag,
+                    Length: 1.0,
+                }
             } else {
-                Vector3d::new(0.0, 0.0, 0.0)
+                Self {
+                    X: 0.0,
+                    Y: 0.0,
+                    Z: 0.0,
+                    Length: 0.0,
+                }
             }
         }
 
@@ -1498,11 +1532,11 @@ pub mod geometry {
             let rotated_q = self.multiply(&q_point).multiply(&q_conjugate);
             T::new(rotated_q.x, rotated_q.y, rotated_q.z)
         }
-        
+
         pub fn rotate_point_around_axis<T: Coordinate3d>(point: &T, axis: &T, angle: f64) -> T
         where
             T: Coordinate3d<Output = T>,
-                //let pt1 = camera.project_maybe_outside(&local_x);
+            //let pt1 = camera.project_maybe_outside(&local_x);
         {
             // Normalize the axis vector
             let axis_length = (axis.get_x() * axis.get_x()
@@ -1582,7 +1616,7 @@ pub mod geometry {
                     1.0 - 2.0 * (y * y + z * z),
                     2.0 * (x * y - w * z),
                     2.0 * (x * z + w * y),
-                    0.0, // Translation x part left at zero 
+                    0.0, // Translation x part left at zero
                          // (quaternion represent only rotation.)
                 ],
                 [

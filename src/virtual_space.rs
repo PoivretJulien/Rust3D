@@ -654,7 +654,7 @@ impl DisplayPipeLine {
                 0.5,   // Near clip plane
                 100.0, // Far clip plane
             );
-            window.set_target_fps(40); // limit to 25 fps max.
+            window.set_target_fps(60); // limit to 25 fps max.
                                        // Scale transformation for the geometry.
             let scale_matrix = transformation::scaling_matrix_from_center_4x3(
                 Vertex::new(0.0, 0.0, 0.0),
@@ -824,7 +824,7 @@ impl DisplayPipeLine {
                 // (graphic wire frame are just temporary for mesh design)
                 // a method for mesh will be implemented soon.
                 ////////////////////////////////////////////////////////////////
-                let origin = Vertex::new(0.0, 0.0, 0.0);
+                let origin = Vertex::new(-0.05, -0.05, 0.1);
                 let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                 let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
                 let m_box = MeshBox::new(
@@ -839,9 +839,9 @@ impl DisplayPipeLine {
                     0.1,
                     0.1,
                     0.1,
-                    1,
-                    1,
-                    1,
+                    2,
+                    2,
+                    2,
                 )
                 .to_mesh();
                 /////////////////////////////////////////////////////////////////////////////////////
@@ -875,7 +875,7 @@ impl DisplayPipeLine {
                 ////////////////////////////////////////////////////////////////
                 // Test for an arbitrary input vector (for silhouette extraction).
                 ////////////////////////////////////////////////////////////////
-                let pt1 = Vertex::new(0.1, 0.1, 0.1); // Position
+                let pt1 = Vertex::new(-0.1, -0.1, -0.1); // Position
                 let pt2 = Vertex::new(0.0, 0.0, 0.0); // Target
                 println!(
                     "\x1b[2K\rTest vector (for silhouette extraction):{0:?}, Test target:{1:?}",
@@ -991,7 +991,7 @@ impl DisplayPipeLine {
                 if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0000FF);
                 }
-                println!("\x1b[2K\rExperimental {} {}",camera.get_initial_camera_position(),camera.get_camera_target());
+                println!("\x1b[2K\r-> Camera target from view matrix projection {}",camera.get_camera_target_zoom_insensitive());
                 window
                     .update_with_buffer(&buffer, screen_width, screen_height)
                     .unwrap();

@@ -1505,7 +1505,7 @@ pub mod visualization_v4 {
         /// Compute the camera target from camera view_matrix
         /// - Only accurate if the camera position is correctlty
         /// tracked or computed and updated at first.
-        pub fn get_camera_target(&self) -> Vertex {
+        pub fn get_camera_target_zoom_insensitive(&self) -> Vertex {
             let length = (self.initial_target - self.initial_position).magnitude(); // Computed initial length.
             Vertex::new(
                 self.position.x + (self.view_matrix[2][0] * length),
@@ -1529,14 +1529,14 @@ pub mod visualization_v4 {
 
         #[inline(always)]
         /// Orbit camera view from input angles,zoom and panning translation.  
-        /// Note: initial view matrix should be a reference to a copy of the 
+        /// Note: initial view matrix should be a reference to a copy of the
         /// first transformation view matrix transformation of the camera which
-        /// align the camera sytem in it's initial orientation from world. 
-        /// an so incrementing angle will be updated from there in each runtime loop 
+        /// align the camera sytem in it's initial orientation from world.
+        /// an so incrementing angle will be updated from there in each runtime loop
         /// (this reference should be outside the loop of course).
         pub fn orbit_around_world_z(
             &mut self,
-            initial_view_matrix:&[[f64;4];4],
+            initial_view_matrix: &[[f64; 4]; 4],
             x_angle: f64,
             z_angle: f64,
             zoom: f64,
@@ -1561,7 +1561,7 @@ pub mod visualization_v4 {
             ]);
             // Reverse cinematic for the tracking of the camera position.
             // Update the Right direction camera component first (from camera.view_matrix).
-            self.cam_right = (self.get_camera_right().normalize()).to_vector3d();
+            self.cam_right = (self.get_camera_right()).to_vector3d().normalize();
             let orbit_x =
                 Quaternion::rotate_point_around_axis_to_4x4(&self.cam_right.to_vertex(), -x_angle);
             let orbit_z =
@@ -2875,8 +2875,8 @@ pub mod rendering_object {
             // Cube face 0 (Sud).
             let sud_cplane = CPlane::new_origin_x_aligned_y_oriented(
                 &anchor_sud,
-                &direction_u.to_point3d(),
-                &direction_w.to_point3d(),
+                &(anchor_sud + direction_u.to_point3d()),
+                &(anchor_sud + direction_w.to_point3d()),
             );
             faces_list[0] = MeshPlane::new(
                 buffer,
@@ -2891,10 +2891,11 @@ pub mod rendering_object {
                 divide_count_w,
             );
             // Cube face 1 (Est).
-            let pt_dir_v = anchor_est + direction_v.to_point3d();
-            let pt_dir_w = anchor_est + direction_w.to_point3d();
-            let est_cplane =
-                CPlane::new_origin_x_aligned_y_oriented(&anchor_est, &pt_dir_v, &pt_dir_w);
+            let est_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_est,
+                &(anchor_est + direction_v.to_point3d()),
+                &(anchor_est + direction_w.to_point3d()),
+            );
             faces_list[1] = MeshPlane::new(
                 buffer,
                 screen_width,
@@ -2908,10 +2909,11 @@ pub mod rendering_object {
                 divide_count_w,
             );
             // Cube face 2 (North).
-            let pt_dir_u = anchor_north + direction_u.to_point3d();
-            let pt_dir_w = anchor_north + direction_w.to_point3d();
-            let north_cplane =
-                CPlane::new_origin_x_aligned_y_oriented(&anchor_north, &pt_dir_u, &pt_dir_w);
+            let north_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_north,
+                &(anchor_north + direction_u.to_point3d()),
+                &(anchor_north + direction_w.to_point3d()),
+            );
             faces_list[2] = MeshPlane::new(
                 buffer,
                 screen_width,
@@ -2926,10 +2928,11 @@ pub mod rendering_object {
             );
             faces_list[2].flip_mesh_plane_normals();
             // Cube face 3 (west)
-            let pt_dir_v = anchor_west + direction_v.reverse().to_point3d();
-            let pt_dir_w = anchor_west + direction_w.to_point3d();
-            let west_cplane =
-                CPlane::new_origin_x_aligned_y_oriented(&anchor_west, &pt_dir_v, &pt_dir_w);
+            let west_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_west,
+                &(anchor_west + direction_v.reverse().to_point3d()),
+                &(anchor_west + direction_w.to_point3d()),
+            );
             faces_list[3] = MeshPlane::new(
                 buffer,
                 screen_width,
@@ -2943,10 +2946,11 @@ pub mod rendering_object {
                 divide_count_w,
             );
             // Cube face 4 (bottom)
-            let pt_dir_u = anchor_bottom + direction_u.to_point3d();
-            let pt_dir_v = anchor_bottom + direction_v.to_point3d();
-            let bottom_cplane =
-                CPlane::new_origin_x_aligned_y_oriented(&anchor_bottom, &pt_dir_u, &pt_dir_v);
+            let bottom_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_bottom,
+                &(anchor_bottom + direction_u.to_point3d()),
+                &(anchor_bottom + direction_v.to_point3d()),
+            );
             faces_list[4] = MeshPlane::new(
                 buffer,
                 screen_width,
@@ -2961,10 +2965,11 @@ pub mod rendering_object {
             );
             faces_list[4].flip_mesh_plane_normals();
             // Cube face 5 (top)
-            let pt_dir_u = anchor_top + direction_u.to_point3d();
-            let pt_dir_v = anchor_top + direction_v.to_point3d();
-            let top_cplane =
-                CPlane::new_origin_x_aligned_y_oriented(&anchor_top, &pt_dir_u, &pt_dir_v);
+            let top_cplane = CPlane::new_origin_x_aligned_y_oriented(
+                &anchor_top,
+                &(anchor_top + direction_u.to_point3d()),
+                &(anchor_top + direction_v.to_point3d()),
+            );
             faces_list[5] = MeshPlane::new(
                 buffer,
                 screen_width,
