@@ -839,6 +839,7 @@ impl DisplayPipeLine {
                     ////////////////////////////////////////////////////////////////
                     // Display vertex of imported mesh. (wire frame not available yet) a GPU
                     // acceleration would be beneficial for that.
+                    ////////////////////////////////////////////////////////////////
                     if true {
                         // Get points.
                         if let Ok(mesh) = m.object_list[0].lock() {
@@ -848,31 +849,10 @@ impl DisplayPipeLine {
                                         // Project mesh vertices on screen space coordinates.
                                         let projected_points =
                                             camera.project_a_list_of_points(&mesh.vertices);
+                                        projected_points.iter().for_each(|point| {
+                                            buffer[point.1 * screen_width + point.0] = 0x00004e;
+                                        });
                                         let buffer_ptr = Arc::new(Mutex::new(&mut buffer));
-                                        println!("\x1b[2;30H test mode:{test_flg}");
-                                        if test_flg == false {
-                                            if let Some(mut m) = buffer_ptr.lock().ok(){
-                                            projected_points.iter().for_each(|point| {
-                                                m[point.1 * screen_width + point.0] = 0x00004e;
-                                            });
-                                            }
-                                        } else {
-                                            // Make a smart pointer read/write of the frame buffer.
-                                            projected_points.par_iter().for_each({
-                                                // make smart pointer instance for each thread (references counting).
-                                                let buffer_thread_instance_pointer =
-                                                    Arc::clone(&buffer_ptr);
-                                                // Closure runtime of each threads.
-                                                move |point| {
-                                                    if let Some(mut buffer) =
-                                                        buffer_thread_instance_pointer.lock().ok()
-                                                    {
-                                                        buffer[point.1 * screen_width + point.0] =
-                                                            0x00004e;
-                                                    }
-                                                }
-                                            });
-                                        }
                                         if silhouette_flg {
                                             // Extract mesh silhouette dynamically from camera orientation.
                                             // ( The use of a cached shared edge map help to reduce
@@ -934,13 +914,13 @@ impl DisplayPipeLine {
                             }
                         }
                     }
-                    if true {
+                    if test_flg {
                         ////////////////////////////////////////////////////////////////
                         // Draw a parametric mesh Box.
                         // (graphic wire frame are just temporary for mesh design)
                         // a method for mesh will be implemented soon.
                         ////////////////////////////////////////////////////////////////
-                        let origin = Vertex::new(-0.05, -0.25, 0.05);
+                        let origin = Vertex::new(0.3, 0.3, 0.05);
                         let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                         let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
                         let m_box = MeshBox::new(
