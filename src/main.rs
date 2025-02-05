@@ -15,7 +15,7 @@ use virtual_space::{
 fn main() {
     // Init the first parameters.
     let display_parameters =
-        Display_config::new( 800, 900, Color::convert_rgb_color(157, 163, 170));
+        Display_config::new( 600, 700, Color::convert_rgb_color(157, 163, 170));
     // Init the virtual space with multi thread concurrency context ( atomic reference counting and
     // mutual exclusion ).
     let vs = Arc::new(Mutex::new(Virtual_space::new(
@@ -28,7 +28,7 @@ fn main() {
     // Code some Geometry manipulation there.
     // Start by importing an object. (a torus test mesh in a .obj file.)
     let mut obj_mesh = Mesh::new();
-    match Mesh::import_obj_with_normals("./geometry/ghost_b.obj") {
+    match Mesh::import_obj_with_normals("./geometry/dk.obj") {
         Ok(obj) => {
             obj_mesh = obj;
         }

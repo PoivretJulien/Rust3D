@@ -1077,10 +1077,10 @@ pub mod visualization_v4 {
     use rayon::prelude::*;
     /*
     - Camera Space mapping:
-    | Right.x   Right.y   Right.z   Tx |
-    | Up.x      Up.y      Up.z      Ty |
-    | Forward.x Forward.y Forward.z Tz |
-    | 0.0        0.0      0.0        1 |
+    | -Right.x   -Right.y -Right.z   Tx |
+    | -Up.x      -Up.y    -Up.z      Ty |
+    | Forward.x Forward.y Forward.z  Tz |
+    | 0.0        0.0      0.0         1 |
     */
     pub struct Camera {
         // for tracking the delta camera position.
@@ -1518,7 +1518,6 @@ pub mod visualization_v4 {
         fn inverse_matrix(&self) -> [[f64; 4]; 4] {
             let mut inv = [[0.0; 4]; 4];
             let m = self.view_matrix;
-
             // Compute inverse using Gaussian elimination or optimized inverse function
             // Extract translation component from the inverse matrix
             inv[0][3] = -(m[0][0] * m[0][3] + m[1][0] * m[1][3] + m[2][0] * m[2][3]);
@@ -1580,13 +1579,13 @@ pub mod visualization_v4 {
                 self.multiply_matrix_vector(&invert_view_matrix, &self.initial_position);
             self.cam_forward = (self.get_camera_direction().normalize()).to_vector3d();
             self.cam_up = (self.get_camera_up().normalize()).to_vector3d();
-            // Last step
+            // Last step.
             // Apply pan matrix from updated camera position an target.
             // Apply pan matrix to camera view_matrix.
             let pan_matrix = self.transform_camera_matrix_pan(pan_x, pan_y);
             self.view_matrix = self.combine_matrices(vec![self.view_matrix, pan_matrix]);
             let inverse_pan_matrix = self.transform_camera_matrix_pan(-pan_x, -pan_y);
-            // Update camera after pan
+            // Update camera after pan.
             self.target = self.multiply_matrix_vector(&inverse_pan_matrix, &self.target);
             self.position = self.multiply_matrix_vector(&inverse_pan_matrix, &self.position);
         }
@@ -2482,68 +2481,45 @@ pub mod rendering_object {
         // Extract the edge describing the contour of the mesh.
         pub fn extract_silhouette(
             &self,
+            shared_edge_map: &HashMap<(usize, usize), Vec<usize>>,
             camera_direction: &Vertex,
-        ) -> Vec<(Vertex, Vertex, String)> {
-            let mut result = Vec::new();
-            /*
-            println!("Extract silhouette Debug Mode:");
-            if self.is_watertight() {
-                println!("The mesh is closed.");
-            } else {
-                println!("The mesh is open.");
-            }
-            */
-            let map = self.find_shared_edges();
-            for (edge, triangle_id) in map.iter() {
-                // if edge is shared with two triangles.
-                if triangle_id.len() == 2 {
-                    // Compute visibility from camera direction.
-                    let triangle_a_is_visible =
-                        if self.triangles[triangle_id[0]].normal.dot(&camera_direction) > 0.0 {
-                            true
-                        } else {
-                            false
-                        };
-                    let triangle_b_is_visible =
-                        if self.triangles[triangle_id[1]].normal.dot(&camera_direction) > 0.0 {
-                            true
-                        } else {
-                            false
-                        };
-                    if triangle_a_is_visible != triangle_b_is_visible {
-                        result.push((self.vertices[edge.0], self.vertices[edge.1],
-                        format!(
-                            "Shared Edge ({6:?},{7:?}) is a border, bound to triangles index:({0:?}&{1:?}), visibility:\"{2:?},{3:?}\" dot:({4:?},{5:?})",
-                            triangle_id[0],
-                            triangle_id[1],
-                            triangle_a_is_visible,
-                            triangle_b_is_visible,
-                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
-                            self.triangles[triangle_id[1]].normal.dot(&camera_direction),
-                            self.vertices[edge.0],
-                            self.vertices[edge.1],
-                        )));
+        ) -> Vec<(Vertex, Vertex)> {
+            // Allocate memory for storing the result.
+            let result_ptr = Arc::new(Mutex::new(Vec::new()));
+
+            // TODO: Mesh object should probably implement Arc<Mutex> nativelly for avoiding this deep
+            // copy.)
+            // Make smart pointers for safe parallelization access (in read only mode no mutex...).
+            let vertices = Arc::new(self.vertices.clone()); // Arc for thread safety
+            let triangles = Arc::new(self.triangles.clone()); // Arc for thread safety
+            // Process in parrallel.
+            shared_edge_map.par_iter().for_each({
+                // Make smart pointer instance for each threads.
+                let result_instance = result_ptr.clone();
+                let vertices = Arc::clone(&vertices);
+                let triangles = Arc::clone(&triangles);
+                // Process the thread runtime.
+                move |(edge, triangle_id)| {
+                    if triangle_id.len() == 2 {
+                        let triangle_a_is_visible =
+                            triangles[triangle_id[0]].normal.dot(&camera_direction) > 0.0;
+                        let triangle_b_is_visible =
+                            triangles[triangle_id[1]].normal.dot(&camera_direction) > 0.0;
+                        if triangle_a_is_visible != triangle_b_is_visible {
+                            if let Ok(mut m_result) = result_instance.lock() {
+                                m_result.push((vertices[edge.0], vertices[edge.1]));
+                            }
+                        }
+                    }
+                    if triangle_id.len() == 1 {
+                        if let Ok(mut m_result) = result_instance.lock() {
+                            m_result.push((vertices[edge.0], vertices[edge.1]));
+                        }
                     }
                 }
-                if triangle_id.len() == 1 {
-                    let triangle_a_is_visible =
-                        if self.triangles[triangle_id[0]].normal.dot(&camera_direction) < 0.0 {
-                            true
-                        } else {
-                            false
-                        };
-                    result.push((self.vertices[edge.0], self.vertices[edge.1],
-                    format!(
-                            "Edge ({3:?},{4:?}) is a border, bound to  triangle {0:?} visibility:\"{1:?}\" dot:{2:?}",
-                            triangle_id[0],
-                            triangle_a_is_visible,
-                            self.triangles[triangle_id[0]].normal.dot(&camera_direction),
-                            edge.0,
-                            edge.1,
-                        )));
-                }
-            }
-            result
+            });
+            // Unlock and return results fom sub inferences meta data types. (thanks IA for that)
+            Arc::try_unwrap(result_ptr).unwrap().into_inner().unwrap()
         }
 
         #[inline(always)]
@@ -2555,6 +2531,7 @@ pub mod rendering_object {
                 .collect()
         }
     }
+
     ////////////////////////////////////////////////////////////////////////////
     // A temporary object representing a parametric object.
     // (this object will be merge in the implementation
