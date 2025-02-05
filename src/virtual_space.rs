@@ -669,7 +669,7 @@ impl DisplayPipeLine {
             let mut zoom = 1.0;
             let mut z_angle = 0.0;
             let mut pan_x = 0.0;
-            let mut pan_y = 0.0;
+            let mut pan_y = -0.25;
             // Camera matrix transformation.
             // initial position of the camera.
             let camera_position = camera.view_matrix;
