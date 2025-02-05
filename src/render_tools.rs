@@ -2478,7 +2478,8 @@ pub mod rendering_object {
             self.vertices = unique_vertices;
         }
 
-        // Extract the edge describing the contour of the mesh.
+        /// Extract the edge describing the contour of the mesh.
+        /// this method is not fast enought for the moment.
         pub fn extract_silhouette(
             &self,
             mesh_vertices:&Arc<Vec<Vertex>>,
@@ -2488,11 +2489,7 @@ pub mod rendering_object {
         ) -> Vec<(Vertex, Vertex)> {
             // Allocate memory for storing the result.
             let result_ptr = Arc::new(Mutex::new(Vec::new()));
-            // TODO: Mesh object should probably implement Arc<Mutex> nativelly for avoiding this deep
-            // copy.)
             // Make smart pointers for safe parallelization access (in read only mode no mutex...).
-            //let vertices = Arc::new(self.vertices.clone()); // Arc for thread safety
-            //let triangles = Arc::new(self.triangles.clone()); // Arc for thread safety
             // Process in parrallel.
             shared_edge_map.par_iter().for_each({
                 // Make smart pointer instance for each threads.
