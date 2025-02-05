@@ -48,7 +48,7 @@ use crate::rust3d::intersection::clip_line;
 use crate::rust3d::transformation::{self, transform_point};
 use crate::rust3d::{self, geometry::*};
 use core::f64;
-use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, MouseButton, MouseMode, Window, WindowOptions};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -711,7 +711,8 @@ impl DisplayPipeLine {
             ////////////////////////////////////////////////////////////////////
             // Update Camera flg.
             let mut update_flg = true; // update the first frame.
-            println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera.");
+            let mut silhouette_flg = true;
+            println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera. (s) for toggling silhouette on/off ");
             ////////////////////////////////////////////////////////////////////
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 if window.is_key_down(Key::Space)
@@ -759,6 +760,9 @@ impl DisplayPipeLine {
                 } else if window.is_key_pressed(Key::Down, minifb::KeyRepeat::Yes) {
                     println!("\x1b[2;0H\x1b[2K\rkey Down pressed");
                     x_angle -= step;
+                    update_flg = true;
+                } else if window.is_key_pressed(Key::S, KeyRepeat::No) {
+                    silhouette_flg = !silhouette_flg;
                     update_flg = true;
                 }
                 ////////////////////////////////////////////////////////////////
@@ -849,20 +853,23 @@ impl DisplayPipeLine {
                                                 }
                                             }
                                         });
-                                        // Extract mesh silhouette dynamically from camera orientation.
-                                        // ( The use of a cached shared edge map help to reduce
-                                        // computation time ) though some optimisation can still be done.
-                                        // like cpu vector instruction and avoiding deep copy at each
-                                        // frames of triangle and vertices i' working on that.
-                                        let border_edges = mesh.extract_silhouette(
-                                            &mesh_vertices,
-                                            &mesh_triangles,
-                                            &shared_edge_map,
-                                            &camera.get_camera_direction(),
-                                        );
-                                        // Project each edge points in parallel on screen space.
-                                        let projected_edges_points: Vec<((f64, f64), (f64, f64))> =
-                                            border_edges
+                                        if silhouette_flg {
+                                            // Extract mesh silhouette dynamically from camera orientation.
+                                            // ( The use of a cached shared edge map help to reduce
+                                            // computation time ) though some optimisations can still be done.
+                                            // like cpu vector instruction and avoiding deep copy at each
+                                            // frames of triangle and vertices i' working on that.
+                                            let border_edges = mesh.extract_silhouette(
+                                                &mesh_vertices,
+                                                &mesh_triangles,
+                                                &shared_edge_map,
+                                                &camera.get_camera_direction(),
+                                            );
+                                            // Project each edge points in parallel on screen space.
+                                            let projected_edges_points: Vec<(
+                                                (f64, f64),
+                                                (f64, f64),
+                                            )> = border_edges
                                                 .par_iter()
                                                 .map(|edge| {
                                                     (
@@ -871,30 +878,37 @@ impl DisplayPipeLine {
                                                     )
                                                 })
                                                 .collect();
-                                        // Draw Edge in parallel (each lines by thread.).
-                                        projected_edges_points.par_iter().for_each({
-                                            let buffer_ptr_instance = buffer_ptr.clone();
-                                            move |&edge| {
-                                                if let Some(pt) = clip_line(
-                                                    edge.0,
-                                                    edge.1,
-                                                    screen_width,
-                                                    screen_height,
-                                                ) {
-                                                    if let Some(mut mutex) =
-                                                        buffer_ptr_instance.lock().ok()
-                                                    {
-                                                        draw::draw_line(
-                                                            &mut (*mutex),
-                                                            screen_width,
-                                                            (pt.0 .0 as usize, pt.0 .1 as usize),
-                                                            (pt.1 .0 as usize, pt.1 .1 as usize),
-                                                            0xFFD700,
-                                                        );
+                                            // Draw Edge in parallel (each lines by thread.).
+                                            projected_edges_points.par_iter().for_each({
+                                                let buffer_ptr_instance = buffer_ptr.clone();
+                                                move |&edge| {
+                                                    if let Some(pt) = clip_line(
+                                                        edge.0,
+                                                        edge.1,
+                                                        screen_width,
+                                                        screen_height,
+                                                    ) {
+                                                        if let Some(mut mutex) =
+                                                            buffer_ptr_instance.lock().ok()
+                                                        {
+                                                            draw::draw_line(
+                                                                &mut (*mutex),
+                                                                screen_width,
+                                                                (
+                                                                    pt.0 .0 as usize,
+                                                                    pt.0 .1 as usize,
+                                                                ),
+                                                                (
+                                                                    pt.1 .0 as usize,
+                                                                    pt.1 .1 as usize,
+                                                                ),
+                                                                0xFFD700,
+                                                            );
+                                                        }
                                                     }
                                                 }
-                                            }
-                                        });
+                                            });
+                                        }
                                     }
                                 }
                             }
