@@ -742,7 +742,7 @@ impl DisplayPipeLine {
                 {
                     zoom += 0.05;
                     update_flg = true;
-                } else if window.is_key_down(Key::G)
+                } else if window.is_key_down(Key::Z)
                     && window.is_key_pressed(Key::Down, minifb::KeyRepeat::Yes)
                 {
                     zoom -= 0.05;
