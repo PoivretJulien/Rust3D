@@ -824,18 +824,34 @@ impl DisplayPipeLine {
                         if let Some(obj) = mesh.data.clone() {
                             if let Ok(mut m) = obj.lock() {
                                 if let Displayable::Mesh(ref mut mesh) = *m {
-                                    let r = camera.project_a_list_of_points(&mesh.vertices);
-                                    // Could have been parallelized.
-                                    for projected_point in r.iter() {
-                                        buffer[projected_point.1 * screen_width
-                                            + projected_point.0] = 0x00004e;
-                                    }
-
+                                    // Project mesh vertices on screen space coordinates.
+                                    let projected_points =
+                                        camera.project_a_list_of_points(&mesh.vertices);
+                                    // Make a smart pointer read/write of the frame buffer.
+                                    let buffer_ptr = Arc::new(Mutex::new(&mut buffer));
+                                    projected_points.par_iter().for_each({
+                                        // make smart pointer instance for each thread (references counting).
+                                        let buffer_thread_instance_pointer =
+                                            Arc::clone(&buffer_ptr);
+                                        // Closure runtime of each threads.
+                                        move |point| {
+                                            if let Some(mut buffer) =
+                                                buffer_thread_instance_pointer.lock().ok()
+                                            {
+                                                buffer[point.1 * screen_width + point.0] = 0x00004e;
+                                            }
+                                        }
+                                    });
+                                    // Extract mesh silhouette dynamically from camera orientation.
+                                    // ( The use of a cached shared edge map help to reduce
+                                    // computation time ) though some optimisation can still be done.
+                                    // like cpu vector instruction and avoiding deep copy at each
+                                    // frames of triangle and vertices i' working on that.
                                     let border_edges = mesh.extract_silhouette(
                                         &shared_edge_map,
                                         &camera.get_camera_direction(),
                                     );
-
+                                    // Project each edge points in parallel on screen space.
                                     let projected_edges_points: Vec<((f64, f64), (f64, f64))> =
                                         border_edges
                                             .par_iter()
@@ -846,7 +862,7 @@ impl DisplayPipeLine {
                                                 )
                                             })
                                             .collect();
-                                    let buffer_ptr = Arc::new(Mutex::new(&mut buffer));
+                                    // Draw Edge in parallel (each lines by thread.).
                                     projected_edges_points.par_iter().for_each({
                                         let buffer_ptr_instance = buffer_ptr.clone();
                                         move |&edge| {
@@ -1025,17 +1041,16 @@ impl DisplayPipeLine {
                     draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0);
                 }
                 // The camera position with partial panning.
-                println!("\x1b[2K\r///////Pan with updated target need to be fixed");
                 println!(
-                    "\x1b[2K\rAngle (x:{0:^6.1},y:{1:^6.1}),zoom:({2:^3.1}),pan:(x:{3:^3.2},y:{4:^4.2}))",
+                    "\x1b[2K\rKey Board input(s) -> Angle(x:{0:^6.1},y:{1:^6.1}),Zoom:({2:^3.1}),Camera Panning:(x:{3:^3.2},y:{4:^4.2}))",
                     x_angle, z_angle, zoom,pan_x,pan_y
                 );
                 println!(
-                    "\x1b[2K\rCamera position:{0}, Target:{1}",
+                    "\x1b[2K\r- Camera position:{0}, Target:{1}",
                     camera.position, camera.target
                 );
                 println!(
-                    "\x1b[2K\rCamera orientation: Up:{0}, Right:{1}, Forward:{2}",
+                    "\x1b[2K\r- Camera orientation: Up:{0}, Right:{1}, Forward:{2}",
                     camera.cam_up, camera.cam_right, camera.cam_forward
                 );
                 // Plot the camera base vectors from camera parameters.

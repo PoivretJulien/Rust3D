@@ -2486,7 +2486,6 @@ pub mod rendering_object {
         ) -> Vec<(Vertex, Vertex)> {
             // Allocate memory for storing the result.
             let result_ptr = Arc::new(Mutex::new(Vec::new()));
-
             // TODO: Mesh object should probably implement Arc<Mutex> nativelly for avoiding this deep
             // copy.)
             // Make smart pointers for safe parallelization access (in read only mode no mutex...).
