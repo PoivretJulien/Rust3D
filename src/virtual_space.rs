@@ -703,9 +703,8 @@ impl DisplayPipeLine {
             }
             ////////////////////////////////////////////////////////////////////
             // Update Camera flg.
-            let mut update_flg = true;
+            let mut update_flg = true; // update the first frame.
             println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera.");
-            // For now each frame is recomputed even nothing as change with
             ////////////////////////////////////////////////////////////////////
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 if window.is_key_down(Key::Space)
@@ -756,7 +755,7 @@ impl DisplayPipeLine {
                     update_flg = true;
                 }
                 ////////////////////////////////////////////////////////////////
-                // Update Camera Position.
+                // Update frame buffer only if something as changed or (at first frame);
                 if update_flg {
                     camera.orbit_around_world_z(
                         &camera_position,
@@ -766,8 +765,7 @@ impl DisplayPipeLine {
                         pan_x,
                         pan_y,
                     );
-
-                    /////////////////////////
+                    ////////////////////////////////////////////////////////////
                     // Format background color.
                     for pixel in buffer.iter_mut() {
                         *pixel = background_color; // Stet the bg color.
@@ -899,7 +897,7 @@ impl DisplayPipeLine {
                         // (graphic wire frame are just temporary for mesh design)
                         // a method for mesh will be implemented soon.
                         ////////////////////////////////////////////////////////////////
-                        let origin = Vertex::new(-0.05, 0.25, 0.05);
+                        let origin = Vertex::new(-0.05, -0.25, 0.05);
                         let mut dir_u = Vertex::new(1.0, 0.0, 0.0);
                         let mut dir_v = Vertex::new(0.0, 1.0, 0.0);
                         let m_box = MeshBox::new(
