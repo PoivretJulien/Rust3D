@@ -608,7 +608,7 @@ impl DisplayPipeLine {
                 m.scene_state = VirtualSpaceState::SceneIsOk; // this action is only possible there.
             }
             Err(err) => {
-                eprintln!("Cannot acknowledege scene update to \"SceneIsOk\" err:({err})");
+                eprintln!("Cannot acknowledge scene update to \"SceneIsOk\" err:({err})");
             }
         }
     }
@@ -713,8 +713,10 @@ impl DisplayPipeLine {
             let mut update_flg = true; // update the first frame.
             let mut silhouette_flg = true;
             let mut grid_flg = true;
+            let mut cam_axis_flg = true;
             let mut test_flg = true;
-            println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera. (g) for toggling grid on/off");
+            let mut mesh_flg = true;
+            println!("\x1b[1;0H\x1b[2K\r-> Press arrows to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera. ('g','c','s','m' or 't') for toggling display option on/off");
             ////////////////////////////////////////////////////////////////////
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 if window.is_key_down(Key::Space)
@@ -771,6 +773,12 @@ impl DisplayPipeLine {
                     update_flg = true;
                 } else if window.is_key_pressed(Key::T, KeyRepeat::No) {
                     test_flg = !test_flg;
+                    update_flg = true;
+                } else if window.is_key_pressed(Key::C, KeyRepeat::No) {
+                    cam_axis_flg = !cam_axis_flg;
+                    update_flg = true;
+                } else if window.is_key_pressed(Key::M, KeyRepeat::No) {
+                    mesh_flg = !mesh_flg;
                     update_flg = true;
                 }
 
@@ -840,36 +848,35 @@ impl DisplayPipeLine {
                     // Display vertex of imported mesh. (wire frame not available yet) a GPU
                     // acceleration would be beneficial for that.
                     ////////////////////////////////////////////////////////////////
-                    if true {
-                        // Get points.
-                        if let Ok(mesh) = m.object_list[0].lock() {
-                            if let Some(obj) = mesh.data.clone() {
-                                if let Ok(mut m) = obj.lock() {
-                                    if let Displayable::Mesh(ref mut mesh) = *m {
+                    // Get points.
+                    if let Ok(mesh) = m.object_list[0].lock() {
+                        if let Some(obj) = mesh.data.clone() {
+                            if let Ok(mut m) = obj.lock() {
+                                if let Displayable::Mesh(ref mut mesh) = *m {
+                                    if mesh_flg {
                                         // Project mesh vertices on screen space coordinates.
                                         let projected_points =
                                             camera.project_a_list_of_points(&mesh.vertices);
                                         projected_points.iter().for_each(|point| {
                                             buffer[point.1 * screen_width + point.0] = 0x00004e;
                                         });
+                                    }
+                                    if silhouette_flg {
                                         let buffer_ptr = Arc::new(Mutex::new(&mut buffer));
-                                        if silhouette_flg {
-                                            // Extract mesh silhouette dynamically from camera orientation.
-                                            // ( The use of a cached shared edge map help to reduce
-                                            // computation time ) though some optimisations can still be done.
-                                            // like cpu vector instruction and avoiding deep copy at each
-                                            // frames of triangle and vertices i' working on that.
-                                            let border_edges = mesh.extract_silhouette(
-                                                &mesh_vertices,
-                                                &mesh_triangles,
-                                                &shared_edge_map,
-                                                &camera.get_camera_direction(),
-                                            );
-                                            // Project each edge points in parallel on screen space.
-                                            let projected_edges_points: Vec<(
-                                                (f64, f64),
-                                                (f64, f64),
-                                            )> = border_edges
+                                        // Extract mesh silhouette dynamically from camera orientation.
+                                        // ( The use of a cached shared edge map help to reduce
+                                        // computation time ) though some optimisations can still be done.
+                                        // like cpu vector instruction and avoiding deep copy at each
+                                        // frames of triangle and vertices i' working on that.
+                                        let border_edges = mesh.extract_silhouette(
+                                            &mesh_vertices,
+                                            &mesh_triangles,
+                                            &shared_edge_map,
+                                            &camera.get_camera_direction(),
+                                        );
+                                        // Project each edge points in parallel on screen space.
+                                        let projected_edges_points: Vec<((f64, f64), (f64, f64))> =
+                                            border_edges
                                                 .par_iter()
                                                 .map(|edge| {
                                                     (
@@ -878,37 +885,30 @@ impl DisplayPipeLine {
                                                     )
                                                 })
                                                 .collect();
-                                            // Draw Edge in parallel (each lines by thread.).
-                                            projected_edges_points.par_iter().for_each({
-                                                let buffer_ptr_instance = buffer_ptr.clone();
-                                                move |&edge| {
-                                                    if let Some(pt) = clip_line(
-                                                        edge.0,
-                                                        edge.1,
-                                                        screen_width,
-                                                        screen_height,
-                                                    ) {
-                                                        if let Some(mut mutex) =
-                                                            buffer_ptr_instance.lock().ok()
-                                                        {
-                                                            draw::draw_line(
-                                                                &mut (*mutex),
-                                                                screen_width,
-                                                                (
-                                                                    pt.0 .0 as usize,
-                                                                    pt.0 .1 as usize,
-                                                                ),
-                                                                (
-                                                                    pt.1 .0 as usize,
-                                                                    pt.1 .1 as usize,
-                                                                ),
-                                                                0xFFD700,
-                                                            );
-                                                        }
+                                        // Draw Edge in parallel (each lines by thread.).
+                                        projected_edges_points.par_iter().for_each({
+                                            let buffer_ptr_instance = buffer_ptr.clone();
+                                            move |&edge| {
+                                                if let Some(pt) = clip_line(
+                                                    edge.0,
+                                                    edge.1,
+                                                    screen_width,
+                                                    screen_height,
+                                                ) {
+                                                    if let Some(mut mutex) =
+                                                        buffer_ptr_instance.lock().ok()
+                                                    {
+                                                        draw::draw_line(
+                                                            &mut (*mutex),
+                                                            screen_width,
+                                                            (pt.0 .0 as usize, pt.0 .1 as usize),
+                                                            (pt.1 .0 as usize, pt.1 .1 as usize),
+                                                            0xFFD700,
+                                                        );
                                                     }
                                                 }
-                                            });
-                                        }
+                                            }
+                                        });
                                     }
                                 }
                             }
@@ -1048,91 +1048,101 @@ impl DisplayPipeLine {
 
                         */
                     }
-                    ////////////////////////////////////////////////////////////////
-                    //          Initial camera direction representation.  (in Red)
-                    ////////////////////////////////////////////////////////////////
-                    let pt1 = camera.project_maybe_outside(&cam_eval_point);
-                    let pt2 = camera.project_maybe_outside(&cam_target);
-                    if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
-                        draw_aa_line_with_thickness(
-                            &mut buffer,
-                            screen_width,
-                            pt.0,
-                            pt.1,
-                            3,
-                            0xFF0000,
-                        );
-                    }
-                    ////////////////////////////////////////////////////////////////
-                    // Draw Camera Base components.       Testing. (no good result yet.)
-                    let pt1 = camera.project_maybe_outside(&(camera.cam_right.to_vertex() * 0.2));
-                    let pt2 = camera.project_maybe_outside(&cam_target);
-                    if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
-                        draw_aa_line_with_thickness(&mut buffer, screen_width, pt.0, pt.1, 3, 0x0);
-                    }
-                    // The camera position with partial panning.
-                    println!(
+                    if cam_axis_flg {
+                        ////////////////////////////////////////////////////////////////
+                        //          Initial camera direction representation.  (in Red)
+                        ////////////////////////////////////////////////////////////////
+                        let pt1 = camera.project_maybe_outside(&cam_eval_point);
+                        let pt2 = camera.project_maybe_outside(&cam_target);
+                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                            draw_aa_line_with_thickness(
+                                &mut buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                3,
+                                0xFF0000,
+                            );
+                        }
+                        ////////////////////////////////////////////////////////////////
+                        // Draw Camera Base components.       Testing. (no good result yet.)
+                        let pt1 =
+                            camera.project_maybe_outside(&(camera.cam_right.to_vertex() * 0.2));
+                        let pt2 = camera.project_maybe_outside(&cam_target);
+                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                            draw_aa_line_with_thickness(
+                                &mut buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                3,
+                                0x0,
+                            );
+                        }
+                        // The camera position with partial panning.
+                        println!(
                     "\x1b[2K\rKey Board input(s) -> Angle(x:{0:^6.1},y:{1:^6.1}),Zoom:({2:^3.1}),Camera Panning:(x:{3:^3.2},y:{4:^4.2}))",
                     x_angle, z_angle, zoom,pan_x,pan_y
                 );
-                    println!(
-                        "\x1b[2K\r- Camera position:{0}, Target:{1}",
-                        camera.position, camera.target
-                    );
-                    println!(
-                        "\x1b[2K\r- Camera orientation: Up:{0}, Right:{1}, Forward:{2}",
-                        camera.cam_up, camera.cam_right, camera.cam_forward
-                    );
-                    // Plot the camera base vectors from camera parameters.
-                    // Cam right (red).
-                    let pt1 = camera.project_maybe_outside(&camera.target);
-                    let pt2 = camera.project_maybe_outside(
-                        &(camera.target + (camera.cam_right.to_vertex() * 0.1)),
-                    );
-                    if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
-                        draw_aa_line_with_thickness(
-                            &mut buffer,
-                            screen_width,
-                            pt.0,
-                            pt.1,
-                            3,
-                            0xFF0000,
+                        println!(
+                            "\x1b[2K\r- Camera position:{0}, Target:{1}",
+                            camera.position, camera.target
+                        );
+                        println!(
+                            "\x1b[2K\r- Camera orientation: Up:{0}, Right:{1}, Forward:{2}",
+                            camera.cam_up, camera.cam_right, camera.cam_forward
+                        );
+                        // Plot the camera base vectors from camera parameters.
+                        // Cam right (red).
+                        let pt1 = camera.project_maybe_outside(&camera.target);
+                        let pt2 = camera.project_maybe_outside(
+                            &(camera.target + (camera.cam_right.to_vertex() * 0.1)),
+                        );
+                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                            draw_aa_line_with_thickness(
+                                &mut buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                3,
+                                0xFF0000,
+                            );
+                        }
+                        // Cam up (yellow).
+                        let pt1 = camera.project_maybe_outside(&camera.target);
+                        let pt2 = camera.project_maybe_outside(
+                            &(camera.target + (camera.cam_up.to_vertex() * 0.1)),
+                        );
+                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                            draw_aa_line_with_thickness(
+                                &mut buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                3,
+                                0xFFD700,
+                            );
+                        }
+                        // Cam forward (blue almost invisible since the line is a single dot projection).
+                        let pt1 = camera.project_maybe_outside(&camera.target);
+                        let pt2 = camera.project_maybe_outside(
+                            &(camera.target + (camera.cam_forward.to_vertex() * 0.1)),
+                        );
+                        if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
+                            draw_aa_line_with_thickness(
+                                &mut buffer,
+                                screen_width,
+                                pt.0,
+                                pt.1,
+                                3,
+                                0x0000FF,
+                            );
+                        }
+                        println!(
+                            "\x1b[2K\r-> Camera target from view matrix projection {}",
+                            camera.get_camera_target_zoom_insensitive()
                         );
                     }
-                    // Cam up (yellow).
-                    let pt1 = camera.project_maybe_outside(&camera.target);
-                    let pt2 = camera.project_maybe_outside(
-                        &(camera.target + (camera.cam_up.to_vertex() * 0.1)),
-                    );
-                    if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
-                        draw_aa_line_with_thickness(
-                            &mut buffer,
-                            screen_width,
-                            pt.0,
-                            pt.1,
-                            3,
-                            0xFFD700,
-                        );
-                    }
-                    // Cam forward (blue almost invisible since the line is a single dot projection).
-                    let pt1 = camera.project_maybe_outside(&camera.target);
-                    let pt2 = camera.project_maybe_outside(
-                        &(camera.target + (camera.cam_forward.to_vertex() * 0.1)),
-                    );
-                    if let Some(pt) = clip_line(pt1, pt2, screen_width, screen_height) {
-                        draw_aa_line_with_thickness(
-                            &mut buffer,
-                            screen_width,
-                            pt.0,
-                            pt.1,
-                            3,
-                            0x0000FF,
-                        );
-                    }
-                    println!(
-                        "\x1b[2K\r-> Camera target from view matrix projection {}",
-                        camera.get_camera_target_zoom_insensitive()
-                    );
                 }
                 // Reset flag for next loop.
                 update_flg = false;
