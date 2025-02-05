@@ -2481,6 +2481,51 @@ pub mod rendering_object {
         // Extract the edge describing the contour of the mesh.
         pub fn extract_silhouette(
             &self,
+            mesh_vertices:&Arc<Vec<Vertex>>,
+            mesh_triangles:&Arc<Vec<Triangle>>,
+            shared_edge_map: &HashMap<(usize, usize), Vec<usize>>,
+            camera_direction: &Vertex,
+        ) -> Vec<(Vertex, Vertex)> {
+            // Allocate memory for storing the result.
+            let result_ptr = Arc::new(Mutex::new(Vec::new()));
+            // TODO: Mesh object should probably implement Arc<Mutex> nativelly for avoiding this deep
+            // copy.)
+            // Make smart pointers for safe parallelization access (in read only mode no mutex...).
+            //let vertices = Arc::new(self.vertices.clone()); // Arc for thread safety
+            //let triangles = Arc::new(self.triangles.clone()); // Arc for thread safety
+            // Process in parrallel.
+            shared_edge_map.par_iter().for_each({
+                // Make smart pointer instance for each threads.
+                let result_instance = result_ptr.clone();
+                let vertices = Arc::clone(&mesh_vertices);
+                let triangles = Arc::clone(&mesh_triangles);
+                // Process the thread runtime.
+                move |(edge, triangle_id)| {
+                    if triangle_id.len() == 2 {
+                        let triangle_a_is_visible =
+                            triangles[triangle_id[0]].normal.dot(&camera_direction) > 0.0;
+                        let triangle_b_is_visible =
+                            triangles[triangle_id[1]].normal.dot(&camera_direction) > 0.0;
+                        if triangle_a_is_visible != triangle_b_is_visible {
+                            if let Ok(mut m_result) = result_instance.lock() {
+                                m_result.push((vertices[edge.0], vertices[edge.1]));
+                            }
+                        }
+                    }
+                    if triangle_id.len() == 1 {
+                        if let Ok(mut m_result) = result_instance.lock() {
+                            m_result.push((vertices[edge.0], vertices[edge.1]));
+                        }
+                    }
+                }
+            });
+            // Unlock and return results fom sub inferences meta data types. (thanks IA for that)
+            Arc::try_unwrap(result_ptr).unwrap().into_inner().unwrap()
+        }
+
+        // Extract the edge describing the contour of the mesh.
+        pub fn extract_silhouette_vb(
+            &self,
             shared_edge_map: &HashMap<(usize, usize), Vec<usize>>,
             camera_direction: &Vertex,
         ) -> Vec<(Vertex, Vertex)> {

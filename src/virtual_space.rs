@@ -690,13 +690,20 @@ impl DisplayPipeLine {
             ////////////////////////////////////////////////////////////////////
             // Cache shared edge in memory for further usage.
             let mut shared_edge_map = HashMap::new();
+            let mut mesh_vertices = Arc::new(Vec::new());
+            let mut mesh_triangles = Arc::new(Vec::new());
             if let Ok(mesh) = m.object_list[0].lock() {
                 if let Some(obj) = mesh.data.clone() {
                     if let Ok(mut m) = obj.lock() {
                         if let Displayable::Mesh(ref mut mesh) = *m {
+                            // Update the size of the imported mesh (scale down by 50%).
                             mesh.vertices =
                                 transformation::transform_points_4x3(&scale_matrix, &mesh.vertices);
+                            // Cache the mapping of shared edge by adjacent triangles.
                             shared_edge_map = mesh.find_shared_edges();
+                            // Extract vertices and triangle as smart pointers (avoiding deep copy later in the code)
+                            mesh_vertices = Arc::new(mesh.vertices.clone());
+                            mesh_triangles = Arc::new(mesh.triangles.clone());
                         }
                     }
                 }
@@ -848,6 +855,8 @@ impl DisplayPipeLine {
                                         // like cpu vector instruction and avoiding deep copy at each
                                         // frames of triangle and vertices i' working on that.
                                         let border_edges = mesh.extract_silhouette(
+                                            &mesh_vertices,
+                                            &mesh_triangles,
                                             &shared_edge_map,
                                             &camera.get_camera_direction(),
                                         );
@@ -970,7 +979,7 @@ impl DisplayPipeLine {
                         }
                         // This sim to work with a regular vector. (now i just need to compute the camera position.)
                         let border_edges =
-                            m_box.extract_silhouette(&m_box.find_shared_edges(), &test_dir);
+                            m_box.extract_silhouette_vb(&m_box.find_shared_edges(), &test_dir);
                         for (i, edge) in border_edges.iter().enumerate() {
                             let pt1 = camera.project_maybe_outside(&edge.0);
                             let pt2 = camera.project_maybe_outside(&edge.1);
