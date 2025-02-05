@@ -712,7 +712,9 @@ impl DisplayPipeLine {
             // Update Camera flg.
             let mut update_flg = true; // update the first frame.
             let mut silhouette_flg = true;
-            println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera. (s) for toggling silhouette on/off ");
+            let mut grid_flg = true;
+            let mut test_flg = true;
+            println!("\x1b[1;0H\x1b[2K\r-> Press arrows of the keys board to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera. (g) for toggling grid on/off");
             ////////////////////////////////////////////////////////////////////
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 if window.is_key_down(Key::Space)
@@ -740,7 +742,7 @@ impl DisplayPipeLine {
                 {
                     zoom += 0.05;
                     update_flg = true;
-                } else if window.is_key_down(Key::Z)
+                } else if window.is_key_down(Key::G)
                     && window.is_key_pressed(Key::Down, minifb::KeyRepeat::Yes)
                 {
                     zoom -= 0.05;
@@ -764,7 +766,14 @@ impl DisplayPipeLine {
                 } else if window.is_key_pressed(Key::S, KeyRepeat::No) {
                     silhouette_flg = !silhouette_flg;
                     update_flg = true;
+                } else if window.is_key_pressed(Key::G, KeyRepeat::No) {
+                    grid_flg = !grid_flg;
+                    update_flg = true;
+                } else if window.is_key_pressed(Key::T, KeyRepeat::No) {
+                    test_flg = !test_flg;
+                    update_flg = true;
                 }
+
                 ////////////////////////////////////////////////////////////////
                 // Update frame buffer only if something as changed or (at first frame);
                 if update_flg {
@@ -790,41 +799,43 @@ impl DisplayPipeLine {
                     camera.view_matrix[2][0],camera.view_matrix[2][1],camera.view_matrix[2][2],camera.view_matrix[2][3],
                     camera.view_matrix[3][0],camera.view_matrix[3][1],camera.view_matrix[3][2],camera.view_matrix[3][3],
                 );
-                    ////////////////////////////////////////////////////////////////
-                    // Draw an Unit grid test.
-                    let o = Point3d::new(0.0, 0.0, 0.0);
-                    let x = o + Point3d::new(0.1, 0.0, 0.0);
-                    let y = o + Point3d::new(0.0, 0.1, 0.0);
-                    let p = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
-                    draw::draw_unit_grid_system(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        background_color,
-                        &p,
-                        &camera,
-                        None,
-                        1.0,
-                        1.0,
-                        0.1,
-                    );
-                    // Test for a gimball graphic position.
-                    let o = Point3d::new(0.3, -0.2, 0.0);
-                    let x = o + Point3d::new(0.1, 0.0, 0.0);
-                    let y = o + Point3d::new(0.0, 0.1, 0.0);
-                    let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
-                    draw::draw_gimball_from_plane(
-                        &mut buffer,
-                        screen_width,
-                        screen_height,
-                        background_color,
-                        &p2,
-                        &camera,
-                        None,
-                        0.15,
-                        1.0,
-                        true,
-                    );
+                    if grid_flg {
+                        ////////////////////////////////////////////////////////////////
+                        // Draw an Unit grid test.
+                        let o = Point3d::new(0.0, 0.0, 0.0);
+                        let x = o + Point3d::new(0.1, 0.0, 0.0);
+                        let y = o + Point3d::new(0.0, 0.1, 0.0);
+                        let p = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
+                        draw::draw_unit_grid_system(
+                            &mut buffer,
+                            screen_width,
+                            screen_height,
+                            background_color,
+                            &p,
+                            &camera,
+                            None,
+                            1.0,
+                            1.0,
+                            0.1,
+                        );
+                        // Test for a gimball graphic position.
+                        let o = Point3d::new(0.3, -0.2, 0.0);
+                        let x = o + Point3d::new(0.1, 0.0, 0.0);
+                        let y = o + Point3d::new(0.0, 0.1, 0.0);
+                        let p2 = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
+                        draw::draw_gimball_from_plane(
+                            &mut buffer,
+                            screen_width,
+                            screen_height,
+                            background_color,
+                            &p2,
+                            &camera,
+                            None,
+                            0.15,
+                            1.0,
+                            true,
+                        );
+                    }
                     ////////////////////////////////////////////////////////////////
                     // Display vertex of imported mesh. (wire frame not available yet) a GPU
                     // acceleration would be beneficial for that.
@@ -837,22 +848,31 @@ impl DisplayPipeLine {
                                         // Project mesh vertices on screen space coordinates.
                                         let projected_points =
                                             camera.project_a_list_of_points(&mesh.vertices);
-                                        // Make a smart pointer read/write of the frame buffer.
                                         let buffer_ptr = Arc::new(Mutex::new(&mut buffer));
-                                        projected_points.par_iter().for_each({
-                                            // make smart pointer instance for each thread (references counting).
-                                            let buffer_thread_instance_pointer =
-                                                Arc::clone(&buffer_ptr);
-                                            // Closure runtime of each threads.
-                                            move |point| {
-                                                if let Some(mut buffer) =
-                                                    buffer_thread_instance_pointer.lock().ok()
-                                                {
-                                                    buffer[point.1 * screen_width + point.0] =
-                                                        0x00004e;
-                                                }
+                                        println!("\x1b[2;30H test mode:{test_flg}");
+                                        if test_flg == false {
+                                            if let Some(mut m) = buffer_ptr.lock().ok(){
+                                            projected_points.iter().for_each(|point| {
+                                                m[point.1 * screen_width + point.0] = 0x00004e;
+                                            });
                                             }
-                                        });
+                                        } else {
+                                            // Make a smart pointer read/write of the frame buffer.
+                                            projected_points.par_iter().for_each({
+                                                // make smart pointer instance for each thread (references counting).
+                                                let buffer_thread_instance_pointer =
+                                                    Arc::clone(&buffer_ptr);
+                                                // Closure runtime of each threads.
+                                                move |point| {
+                                                    if let Some(mut buffer) =
+                                                        buffer_thread_instance_pointer.lock().ok()
+                                                    {
+                                                        buffer[point.1 * screen_width + point.0] =
+                                                            0x00004e;
+                                                    }
+                                                }
+                                            });
+                                        }
                                         if silhouette_flg {
                                             // Extract mesh silhouette dynamically from camera orientation.
                                             // ( The use of a cached shared edge map help to reduce
