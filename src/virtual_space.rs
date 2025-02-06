@@ -713,8 +713,8 @@ impl DisplayPipeLine {
             let mut update_flg = true; // update the first frame.
             let mut silhouette_flg = true;
             let mut grid_flg = true;
-            let mut cam_axis_flg = true;
-            let mut test_flg = true;
+            let mut cam_axis_flg = false;
+            let mut test_flg = false;
             let mut mesh_flg = true;
             println!("\x1b[1;0H\x1b[2K\r-> Press arrows to rotate the geometry, (z + Up) or (z + Down) for zooming or (Space + Direction) to pan the camera. ('g','c','s','m' or 't') for toggling display option on/off");
             ////////////////////////////////////////////////////////////////////
