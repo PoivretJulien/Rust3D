@@ -15,7 +15,7 @@ use virtual_space::{
 fn main() {
     // Init the first parameters.
     let display_parameters =
-        Display_config::new( 600, 700, Color::convert_rgb_color(157, 163, 170));
+        Display_config::new( 1000, 1100, Color::convert_rgb_color(157, 163, 170));
     // Init the virtual space with multi thread concurrency context ( atomic reference counting and
     // mutual exclusion ).
     let vs = Arc::new(Mutex::new(Virtual_space::new(
