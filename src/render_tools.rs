@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 /*
  *     Visualization V3 bring Vertex standardization
  *     and some code optimization providing matrix 4x4
@@ -1616,7 +1617,9 @@ pub mod rendering_object {
     use std::io::{BufWriter, Write};
     use std::marker::Copy;
     use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub};
+    use std::simd::{f32x4, f64x2, f64x4, f64x8, num::SimdFloat, Simd};
     use std::sync::{Arc, Mutex};
+
     /// A 3D vertex or point.
     #[derive(Debug, Clone, Copy, PartialOrd)]
     pub struct Vertex {
@@ -1695,6 +1698,11 @@ pub mod rendering_object {
         /// Computes the dot product of two vertices
         pub fn dot(&self, other: &Vertex) -> f64 {
             self.x * other.x + self.y * other.y + self.z * other.z
+        }
+
+        #[inline(always)]
+        fn to_simd(&self) -> f64x4 {
+            f64x4::from_array([self.x, self.y, self.z, 0.0])
         }
 
         #[inline(always)]
@@ -2006,6 +2014,7 @@ pub mod rendering_object {
         }
     }
     use std::path::Path;
+
     /// A mesh containing vertices and triangles.
     #[derive(Debug, Clone, PartialEq, PartialOrd)]
     pub struct Mesh {
@@ -2482,18 +2491,18 @@ pub mod rendering_object {
         /// this method is not fast enought for the moment.
         pub fn extract_silhouette(
             &self,
-            mesh_vertices:&Arc<Vec<Vertex>>,
-            mesh_triangles:&Arc<Vec<Triangle>>,
+            mesh_vertices: &Arc<Vec<Vertex>>,
+            mesh_triangles: &Arc<Vec<Triangle>>,
             shared_edge_map: &HashMap<(usize, usize), Vec<usize>>,
             camera_direction: &Vertex,
         ) -> Vec<(Vertex, Vertex)> {
             // Allocate memory for storing the result.
             let result_ptr = Arc::new(Mutex::new(Vec::new()));
-            // Make smart pointers for safe parallelization access (in read only mode no mutex...).
             // Process in parrallel.
             shared_edge_map.par_iter().for_each({
                 // Make smart pointer instance for each threads.
                 let result_instance = result_ptr.clone();
+                // Make smart pointers for safe parallelization access (in read only mode no mutex...).
                 let vertices = Arc::clone(&mesh_vertices);
                 let triangles = Arc::clone(&mesh_triangles);
                 // Process the thread runtime.
@@ -2520,7 +2529,61 @@ pub mod rendering_object {
             Arc::try_unwrap(result_ptr).unwrap().into_inner().unwrap()
         }
 
+        //////////////////////////// test area
+        // after some study i found that simd:"single instruction multiple data"
+        // alow cpu to behave like a gpu by processing vector array of data.
+        // which is beneficial if this shunk aspect is used.
+        // for that data structure have to be carefully designed for holding the 
+        // data to process. so i made a special custom dot product method dising 
+        // to compute two dot product between 2 triangles and 1 vector direction 
+        // theorically in unified singel register cpu instruction.
+        // i will make some test to improve the perf by computing more face at a 
+        // glance but the performancce improvement is tangible and the scalability 
+        // of the loghic may only be limited by the memory and hardware.
+        pub fn extract_silhouette_simd_beta(
+            &self,
+            mesh_vertices: &Arc<Vec<Vertex>>,
+            mesh_triangles: &Arc<Vec<Triangle>>,
+            shared_edge_map: &HashMap<(usize, usize), Vec<usize>>,
+            camera_direction: &Vertex,
+        ) -> Vec<(Vertex, Vertex)> {
+            let result_ptr = Arc::new(Mutex::new(Vec::new()));
+            shared_edge_map.par_iter().for_each({
+                let result_instance = Arc::clone(&result_ptr);
+                let vertices = Arc::clone(&mesh_vertices);
+                let triangles = Arc::clone(&mesh_triangles);
+
+                move |(edge, triangle_id)| {
+                    let mut local_result = Vec::with_capacity(2);
+
+                    if triangle_id.len() == 2 {
+                        let dot = Self::simd_dot_x2_va(
+                            &camera_direction,
+                            &triangles[triangle_id[0]].normal,
+                            &triangles[triangle_id[1]].normal,
+                        );
+                        let triangle_a_is_visible = dot[0] > 0.0;
+                        let triangle_b_is_visible = dot[1] > 0.0;
+
+                        if triangle_a_is_visible != triangle_b_is_visible {
+                            local_result.push((vertices[edge.0], vertices[edge.1]));
+                        }
+                    } else if triangle_id.len() == 1 {
+                        local_result.push((vertices[edge.0], vertices[edge.1]));
+                    }
+
+                    if !local_result.is_empty() {
+                        if let Ok(mut m_result) = result_instance.lock() {
+                            m_result.extend(local_result);
+                        }
+                    }
+                }
+            });
+            Arc::try_unwrap(result_ptr).unwrap().into_inner().unwrap()
+        }
+
         // Extract the edge describing the contour of the mesh.
+        /// deprecated method.
         pub fn extract_silhouette_vb(
             &self,
             shared_edge_map: &HashMap<(usize, usize), Vec<usize>>,
@@ -2533,7 +2596,7 @@ pub mod rendering_object {
             // Make smart pointers for safe parallelization access (in read only mode no mutex...).
             let vertices = Arc::new(self.vertices.clone()); // Arc for thread safety
             let triangles = Arc::new(self.triangles.clone()); // Arc for thread safety
-            // Process in parrallel.
+                                                              // Process in parrallel.
             shared_edge_map.par_iter().for_each({
                 // Make smart pointer instance for each threads.
                 let result_instance = result_ptr.clone();
@@ -2570,6 +2633,75 @@ pub mod rendering_object {
                 .iter()
                 .map(|triangle| (triangle.center_to_vertex(&self.vertices), triangle.normal))
                 .collect()
+        }
+
+        // My version 
+        pub fn simd_dot_x2_va(
+            view_direction: &Vertex,
+            normal_face_a: &Vertex,
+            normal_face_b: &Vertex,
+        ) -> [f64; 2] {
+            let smid_mult = f64x8::from_array([
+                normal_face_a.x,
+                normal_face_a.y,
+                normal_face_a.z,
+                0.0,
+                normal_face_b.x,
+                normal_face_b.y,
+                normal_face_b.z,
+                0.0,
+            ]) * f64x8::from_array([
+                view_direction.x,
+                view_direction.y,
+                view_direction.z,
+                0.0,
+                view_direction.x,
+                view_direction.y,
+                view_direction.z,
+                0.0,
+            ]);
+            (f64x2::from_array([smid_mult[0], smid_mult[4]])
+                + f64x2::from_array([smid_mult[1], smid_mult[5]])
+                + f64x2::from_array([smid_mult[2], smid_mult[6]]))
+            .to_array()
+        }
+
+        // ia corrected version.
+        // (i dont know benchmark and asm language analisis is the only way to 
+        // answer i m not low level enougth at this stage to evealuate)
+        // i may have to use goldbolt and stop watch to check which one is really
+        // (ON BOTH IMPROVEMENT IS TANGIBLE) 
+        pub fn simd_dot_x2_vb(
+            view_direction: &Vertex,
+            normal_face_a: &Vertex,
+            normal_face_b: &Vertex,
+        ) -> [f64; 2] {
+            // Convert to SIMD vectors (f64x4)
+            let normals = f64x4::from_array([
+                normal_face_a.x,
+                normal_face_a.y,
+                normal_face_a.z,
+                0.0, // Face A
+            ]);
+            let normals_b = f64x4::from_array([
+                normal_face_b.x,
+                normal_face_b.y,
+                normal_face_b.z,
+                0.0, // Face B
+            ]);
+
+            let view_simd = f64x4::from_array([
+                view_direction.x,
+                view_direction.y,
+                view_direction.z,
+                0.0, // View direction
+            ]);
+
+            // Compute dot products in parallel
+            let dot_a = (normals * view_simd).reduce_sum();
+            let dot_b = (normals_b * view_simd).reduce_sum();
+
+            [dot_a, dot_b] // Return the two dot products
         }
     }
 

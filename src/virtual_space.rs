@@ -865,9 +865,7 @@ impl DisplayPipeLine {
                                         let buffer_ptr = Arc::new(Mutex::new(&mut buffer));
                                         // Extract mesh silhouette dynamically from camera orientation.
                                         // ( The use of a cached shared edge map help to reduce
-                                        // computation time ) though some optimisations can still be done.
-                                        // like cpu vector instruction and avoiding deep copy at each
-                                        // frames of triangle and vertices i' working on that.
+                                        // computation time ) 
                                         let border_edges = mesh.extract_silhouette(
                                             &mesh_vertices,
                                             &mesh_triangles,

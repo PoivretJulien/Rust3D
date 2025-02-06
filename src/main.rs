@@ -1,3 +1,4 @@
+#![feature(portable_simd)]
 // load modules.
 mod models_3d;
 mod render_tools;
@@ -28,7 +29,7 @@ fn main() {
     // Code some Geometry manipulation there.
     // Start by importing an object. (a torus test mesh in a .obj file.)
     let mut obj_mesh = Mesh::new();
-    match Mesh::import_obj_with_normals("./geometry/Simpsons.obj") {
+    match Mesh::import_obj_with_normals("./geometry/ghost_b.obj") {
         Ok(obj) => {
             obj_mesh = obj;
         }
