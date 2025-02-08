@@ -1,8 +1,7 @@
-use crate::render_tools::rendering_object::{Mesh, MeshBox, MeshPlane, Vertex};
-use crate::render_tools::visualization_v3::coloring::*;
+use crate::render_tools::rendering_object::{Mesh, MeshBox, MeshPlane, Vertex}; 
+use crate::render_tools::visualization_v3::coloring::Color;
 use crate::render_tools::visualization_v4::Camera;
-use crate::draw::{
-    self, draw_aa_line, draw_aa_line_with_thickness, draw_disc, draw_gimball_from_plane, draw_text,
+use crate::draw::{ self, draw_aa_line, draw_aa_line_with_thickness, draw_disc, draw_gimball_from_plane, draw_text,
 };
 use crate::intersection::clip_line;
 use crate::transformation::{self, transform_point};
@@ -12,7 +11,7 @@ use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelI
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::{clone, fmt};
+use std::fmt;
 use crate::geometry::{CPlane,Vector3d,Point3d};
 
 // Updated Virtual_space.
@@ -778,11 +777,12 @@ impl DisplayPipeLine {
                             screen_width,
                             screen_height,
                             background_color,
+                            1.0,
                             &p,
                             &camera,
                             None,
-                            1.0,
-                            1.0,
+                            0.8,
+                            0.8,
                             0.1,
                         );
                         // Test for a gimball graphic position.

@@ -1,8 +1,7 @@
 #![feature(portable_simd)]
+pub mod models_3d;
 pub mod render_tools;
 pub mod virtual_space;
-pub mod models_3d;
-
 
 // *************************************************************************
 // ******   First scratch of my basic lib for my computational need  *******
@@ -2839,6 +2838,7 @@ pub mod draw {
         screen_width: usize,
         screen_height: usize,
         background_color: u32,
+        grid_global_alpha: f64,
         grid_plane: &CPlane,
         camera: &Camera,
         matrix: Option<&[[f64; 4]; 3]>,
@@ -2918,7 +2918,7 @@ pub mod draw {
                     screen_width,
                     pt.0,
                     pt.1,
-                    Color::convert_rgba_color(20, 20, 20, 0.3, background_color),
+                    blend_colors(0x141414, background_color, 0.3 * grid_global_alpha),
                 );
             }
         }
@@ -2936,7 +2936,7 @@ pub mod draw {
                     screen_width,
                     pt.0,
                     pt.1,
-                    Color::convert_rgba_color(20, 20, 20, 0.3, background_color),
+                    blend_colors(0x141414, background_color, 0.3 * grid_global_alpha),
                 );
             }
         }
@@ -2969,7 +2969,15 @@ pub mod draw {
             camera.project_maybe_outside(&u_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x964b4b);
+            //draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x964b4b);
+            draw_aa_line_with_thickness(
+                buffer,
+                screen_width,
+                pt.0,
+                pt.1,
+                2,
+                blend_colors(0x964b4b, background_color, grid_global_alpha),
+            );
         }
         //////////////////////////////////////////////////////////////////////
         // Project v axis line (from Start and End point)  (green line aligned and clipped on screen space).
@@ -2978,7 +2986,14 @@ pub mod draw {
             camera.project_maybe_outside(&v_points[1].to_vertex()),
         );
         if let Some(pt) = clip_line(line_point.0, line_point.1, screen_width, screen_height) {
-            draw_aa_line_with_thickness(buffer, screen_width, pt.0, pt.1, 2, 0x4b964b);
+            draw_aa_line_with_thickness(
+                buffer,
+                screen_width,
+                pt.0,
+                pt.1,
+                2,
+                blend_colors(0x4b964b, background_color, grid_global_alpha),
+            );
         }
     }
 
@@ -3629,8 +3644,9 @@ pub mod draw {
         }
     }
 
-    //private function to blend two colors based on alpha
-    pub fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
+    // Private function to blend two colors based on alpha
+    #[inline(always)]
+    pub fn blend_colors_deprecated(foreground: u32, background: u32, alpha: f64) -> u32 {
         let fg_r = ((foreground >> 16) & 0xFF) as f64;
         let fg_g = ((foreground >> 8) & 0xFF) as f64;
         let fg_b = (foreground & 0xFF) as f64;
@@ -3646,6 +3662,21 @@ pub mod draw {
         (0xFF << 24) | (r << 16) | (g << 8) | b // ARGB format
     }
 
+    #[inline(always)]
+    // after benchmark performance are revelated identical with the version of above. 
+    // compile time may be slightly faster though...
+    pub fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
+        // ARGB format
+        (0xFF << 24)
+            | (((alpha * (((foreground >> 16) & 0xFF) as f64)
+                + (1.0 - alpha) * (((background >> 16) & 0xFF) as f64)) as u32)
+                << 16)
+            | (((alpha * (((foreground >> 8) & 0xFF) as f64)
+                + (1.0 - alpha) * (((background >> 8) & 0xFF) as f64)) as u32)
+                << 8)
+            | ((alpha * ((foreground & 0xFF) as f64) + (1.0 - alpha) * ((background & 0xFF) as f64))
+                as u32)
+    }
     use crate::render_tools::rendering_object::Vertex;
 
     /// Describe a circle With Point 3d (this not draw the circle on buffer a function will be
