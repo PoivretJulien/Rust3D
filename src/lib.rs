@@ -3342,8 +3342,8 @@ pub mod draw {
         divide_count_v: usize,
     ) -> Vec<Vertex> {
         // Evaluate from (u,v) dimension of the grid.
-        let mut spacing_unit_u = u_length / (divide_count_u as f64);
-        let mut spacing_unit_v = v_length / (divide_count_v as f64);
+        let spacing_unit_u = u_length / (divide_count_u as f64);
+        let spacing_unit_v = v_length / (divide_count_v as f64);
 
         // Define memory components.
         let mut grid_points = vec![Vertex::new(0.0, 0.0, 0.0); divide_count_u * divide_count_v];
@@ -3644,9 +3644,9 @@ pub mod draw {
         }
     }
 
-    // Private function to blend two colors based on alpha
     #[inline(always)]
-    pub fn blend_colors_deprecated(foreground: u32, background: u32, alpha: f64) -> u32 {
+    /// Function to blend two colors based on alpha
+    pub fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
         let fg_r = ((foreground >> 16) & 0xFF) as f64;
         let fg_g = ((foreground >> 8) & 0xFF) as f64;
         let fg_b = (foreground & 0xFF) as f64;
@@ -3663,9 +3663,9 @@ pub mod draw {
     }
 
     #[inline(always)]
-    // after benchmark performance are revelated identical with the version of above. 
+    // after benchmark performance are revelated worst with the version of above. 
     // compile time may be slightly faster though...
-    pub fn blend_colors(foreground: u32, background: u32, alpha: f64) -> u32 {
+    pub fn blend_colors_deprecated(foreground: u32, background: u32, alpha: f64) -> u32 {
         // ARGB format
         (0xFF << 24)
             | (((alpha * (((foreground >> 16) & 0xFF) as f64)
