@@ -624,11 +624,11 @@ impl DisplayPipeLine {
                 0.5,
             );
             // Init angles of reference for the view experiment.
-            let mut x_angle = 0.0;
-            let mut zoom = 1.0;
-            let mut z_angle = 0.0;
+            let mut x_angle = 9.0;
+            let mut zoom = 1.4;
+            let mut z_angle = 67.5;
             let mut pan_x = 0.0;
-            let mut pan_y = -0.25;
+            let mut pan_y = -0.15;
             // Camera matrix transformation.
             // initial position of the camera.
             let camera_position = camera.view_matrix;
