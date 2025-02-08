@@ -23,7 +23,7 @@ fn main() {
     // Code some Geometry manipulation there.
     // Start by importing an object. (a torus test mesh in a .obj file.)
     let mut obj_mesh = Mesh::new();
-    match Mesh::import_obj_with_normals("./geometry/ghost_a.obj") {
+    match Mesh::import_obj_with_normals("./geometry/deadpool.obj") {
         Ok(obj) => {
             obj_mesh = obj;
         }
