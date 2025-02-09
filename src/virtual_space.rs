@@ -2,22 +2,24 @@
  *   Modules to organize the collection of object 3d by layers and visualize it
  *   from one camera or more with light and shaders.
  *    the main idea is to get:
- *    - a virtual space tracking geometry absolute location 
- *    keeping them organised up to date by layer 
- *    (the virtual space may be updated in real time) 
- *    - a display pipe line space where one or more cameras can interpret 
+ *    - a virtual space tracking geometry absolute location
+ *    keeping them organised up to date by layer
+ *    (the virtual space may be updated in real time)
+ *    - a display pipe line space where one or more cameras can interpret
  *    the virtual space with light and shaders.
  */
 use crate::cad_operations::draw::{self, draw_aa_line_with_thickness, draw_disc, draw_text};
 use crate::cad_operations::geometry::{CPlane, Point3d, Vector3d};
 use crate::cad_operations::intersection::clip_line;
 use crate::cad_operations::transformation::{self};
+use crate::cad_operations::utillity;
 use crate::render_tools::rendering_object::{Mesh, MeshBox, Vertex};
 use crate::render_tools::visualization_v3::coloring::Color;
 use crate::render_tools::visualization_v4::Camera;
 use core::f64;
 use minifb::{Key, KeyRepeat, MouseButton, MouseMode, Window, WindowOptions};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use std::arch::global_asm;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -768,19 +770,34 @@ impl DisplayPipeLine {
                         let x = o + Point3d::new(0.1, 0.0, 0.0);
                         let y = o + Point3d::new(0.0, 0.1, 0.0);
                         let p = CPlane::new_origin_x_aligned_y_oriented(&o, &x, &y);
-                        draw::draw_unit_grid_system(
-                            &mut buffer,
-                            screen_width,
-                            screen_height,
-                            background_color,
-                            1.0,
-                            &p,
-                            &camera,
-                            None,
-                            0.8,
-                            0.8,
-                            0.1,
-                        );
+                        let mut global_alpha = 1.0;
+                        let mut grid_length = 0.8;
+                        let cam_distance = camera.position.magnitude();
+                        if cam_distance < (grid_length / 2.0) + 0.2 {
+                            grid_length = 0.2;
+                            if cam_distance < 0.3 {
+                                if let Some(modified_alpha) =
+                                    utillity::ilerp(0.15, 0.3, cam_distance)
+                                {
+                                    global_alpha = modified_alpha;
+                                }
+                            }
+                        }
+                        if global_alpha > 0.0 {
+                            draw::draw_unit_grid_system(
+                                &mut buffer,
+                                screen_width,
+                                screen_height,
+                                background_color,
+                                global_alpha,
+                                &p,
+                                &camera,
+                                None,
+                                grid_length,
+                                grid_length,
+                                0.1,
+                            );
+                        }
                         // Test for a gimball graphic position.
                         let o = Point3d::new(0.3, -0.2, 0.0);
                         let x = o + Point3d::new(0.1, 0.0, 0.0);
