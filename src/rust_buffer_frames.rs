@@ -1,8 +1,8 @@
 ////////////  Prototype  ///////////
 /*
- * Windows object to manage slicing and cellular
+ * Buffer Frames object to manage slicing and cellular
  * id of the frame buffer the idea is to provide
- * dynamic windows slicing and safe shared access
+ * dynamic frames slicing and safe shared access
  * for fast processing.
  */
 
