@@ -776,11 +776,7 @@ impl DisplayPipeLine {
                         if cam_distance < (grid_length / 2.0) + 0.2 {
                             grid_length = 0.2;
                             if cam_distance < 0.3 {
-                                if let Some(modified_alpha) =
-                                    utillity::ilerp(0.15, 0.3, cam_distance)
-                                {
-                                    global_alpha = modified_alpha;
-                                }
+                                global_alpha =  utillity::ilerp(0.15, 0.3, cam_distance).unwrap();
                             }
                         }
                         if global_alpha > 0.0 {
