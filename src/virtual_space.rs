@@ -776,6 +776,8 @@ impl DisplayPipeLine {
                         if cam_distance < (grid_length / 2.0) + 0.2 {
                             grid_length = 0.2;
                             if cam_distance < 0.3 {
+                                // ilerp function is feed from fixed values (in that case) so 
+                                // better there to take advantage of the zero cost abstraction of the .unwrap() method.
                                 global_alpha =  utillity::ilerp(0.15, 0.3, cam_distance).unwrap();
                             }
                         }
