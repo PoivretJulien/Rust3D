@@ -2,9 +2,9 @@
 // Load modules.
 use std::sync::{Arc,Mutex};
 use rust3d::cad_operations::geometry::{Point3d,Vector3d,CPlane};
+use rust3d::cad_operations::coloring::Color;
 use rust3d::render_tools::rendering_object::Mesh;
 use rust3d::virtual_space::{DisplayConfig,VirtualSpace,UnitScale,Object3d,Displayable,DisplayPipeLine};
-use rust3d::render_tools::visualization_v3::coloring::Color;
 // Import dependencies.
 // Start the main thread.
 fn main() {
